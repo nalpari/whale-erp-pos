@@ -48,6 +48,7 @@
 |---|---|---|
 | `docs/research/coffee-smart-order-admin-system.md` | 업계 전반 리서치 | **참고용.** 범위가 이 프로젝트보다 훨씬 넓고, 출처 없는 수치와 부정확한 기술 설명(ESC/POS 명령, 2PC 등)이 있음. 설계 근거로 직접 인용하지 말 것 |
 | `docs/research/store-order-receiver-tech-research.md` | 이 프로젝트 범위 기술 리서치 (Win 버전 지원, Tauri v2, Next.js 정적 내보내기, 프린터 출력, 실시간 전달, 코드 서명) | 1차 출처 기반, 주장마다 출처 링크. "확인 불가" 항목은 근거로 쓰지 말 것 (2026-11-12 기준) |
+| `docs/research/store-order-delivery-industry-practices.md` | 다른 서비스의 매장 주문 전달 방식 조사 (배달의민족 폴링 → MQTT → SSE, 미접수 자동 취소 규칙 등) | 회사가 직접 밝힌 자료만 근거. 매장 단말 구간이 확인된 곳은 배달의민족뿐. `[도구 요약 경유]` 표시 항목은 인용 전 링크 확인 (2026-11-16 기준) |
 | `docs/research/research-comparison.md` | 두 리서치 문서 비교, 기존 문서 활용 가이드 | 기존 문서를 볼 때 먼저 확인 |
 | `docs/questions/ceo-store-environment.md` | 대표님께 드릴 질문 (매장 환경, Win7, 프린터) | 답변 기록 표 확인 |
 | `docs/requests/backend-api-request.md` | 백엔드 팀 API 요청 초안 | 협의 전 초안 |
