@@ -1,0 +1,32 @@
+[package]
+name = "whale-smart-pos"
+version = "0.1.0"
+description = "픽업오더 주문접수"
+edition = "2024"
+
+# 키 설명: https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# `_lib` 접미사는 bin 이름과 lib 이름이 겹치지 않게 하려고 붙인다 (Tauri 템플릿 기본값).
+# Windows에서 이름이 겹치면 문제가 생긴다: https://github.com/rust-lang/cargo/issues/8519
+name = "whale_smart_pos_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+
+# 설치 파일 크기를 줄이는 릴리스 설정 (Tauri 템플릿 기본값): https://tauri.app/concept/size/#cargo-configuration
+# 주의: panic = "abort"는 Rust panic 시 앱을 바로 종료하고, strip = true는 크래시 원인 추적을 어렵게 한다.
+# 매장 PC에서 오래 켜 두는 앱이므로 크래시 보고 · 복구를 설계할 때 다시 검토한다.
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true

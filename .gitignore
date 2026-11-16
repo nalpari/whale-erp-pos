@@ -1,2 +1,13 @@
 # Claude Code 개인 설정
 .claude/settings.local.json
+
+# Node · Vite
+node_modules
+dist
+dist-ssr
+*.local
+*.log
+
+# Tauri · Rust (src-tauri/.gitignore에도 있음)
+src-tauri/target
+src-tauri/gen/schemas

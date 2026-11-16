@@ -1,0 +1,11 @@
+dist
+src-tauri/target
+src-tauri/gen
+pnpm-lock.yaml
+# 사람이 직접 쓰는 문서 · 규칙 파일은 Prettier가 표 정렬 · 줄바꿈을 바꾸지 않게 뺀다.
+docs
+.claude
+.agents
+AGENTS.md
+CLAUDE.md
+skills-lock.json
