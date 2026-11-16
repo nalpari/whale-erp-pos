@@ -2,7 +2,8 @@
 
 ## 2026-11-16
 
-- T02 로그인 보고서 추가 (`2026-11-16-login.md`, status: draft)
+- T02 로그인 보고서 추가 (`2026-11-16-login.md`)
+- T02 보고서 사용자 승인 (status: stable)
 - T01 프로그램 틀 보고서 추가 (`2026-11-16-app-shell.md`)
 - T01 보고서 사용자 승인 (status: stable)
 - T00 프로젝트 골격 보고서 추가 (`2026-11-16-project-skeleton.md`)
