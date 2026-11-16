@@ -54,6 +54,7 @@
 | `docs/proposals/ui-delivery-options.md` | 화면 배포 방식(A-1/A-2) 협의 문서 | 협의 전 초안 |
 | `docs/proposals/realtime-delivery-options.md` | 주문 실시간 전달 방식 협의 문서 | 협의 전 초안 |
 | `docs/reviews/2026-11-16-docs-verification.md` | 위 문서 전체에 대한 검증 보고서 (틀린 곳, 빠진 것, 방향 판단) | [확인]은 공식 문서로 확인한 사실, [판단]은 검증자 의견(출처 없음). 반영 현황은 8장 |
+| `docs/meetings/backend-pl-brief.md` | 백엔드 PL 회의 준비 자료 (물을 질문, 담당자 의견, 받아 올 결정) | 담당자 메모. "내 의견" 절은 확정이 아님. 회의 후 6장 기록 칸 확인 |
 | `docs/specs/` | (예정) 스펙 문서 | |
 
 ## 핵심 설계 원칙
