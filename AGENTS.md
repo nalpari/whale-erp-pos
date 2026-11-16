@@ -41,14 +41,20 @@
 
 | 항목 | 상태 | 영향 |
 |---|---|---|
-| Windows 7 지원 여부 | 대표님 확인 대기 (`docs/questions/ceo-store-environment.md`) | 기술 스택 선택 전체 |
 | 프린터 모델·연결 방식, 전용 프린터 여부 | 대표님 확인 대기. 화면정의서는 Windows 드라이버로 설치된 프린터를 목록에서 고르는 방식을 전제한다(p.19). 이 방식은 용지 없음 등을 알기 어려워 출력 실패 처리를 기획자에게 문의 중(Q47) | 출력 방식 (드라이버 vs 포트 직접) |
 | 화면정의서로 확정되지 않는 동작 (주문접수 화면 배치, 주문받기 기본값, 제조시작 단계, 거부/취소 구분, 픽업 상태 등) | 기획자 문의 대기 (`docs/tasks/planner-questions.md`, 52개 중 중요도 상 10개) | 해당 태스크의 화면·상태 흐름 |
 | 주문 실시간 전달 방식 (WebSocket / SSE / 롱 폴링 / 짧은 폴링 / MQTT)과 서버 측 담당 | 백엔드 PL 회의 대기 (`docs/proposals/realtime-delivery-options.md`) | 수신 모듈 (화면은 무관) |
 | 백엔드 API 형태 (엔드포인트, 상태명) | 백엔드 팀 협의 전. 화면정의서로 요청 범위가 늘었다(`docs/requests/backend-api-request.md` 7장) | 통신 계층 |
-| 기술 스택 | **1순위 후보: Tauri(Rust) + Next.js**. 화면 배포 방식(A-1 원격 웹 / A-2 화면 내장)은 협의로 정한다. 담당자가 혼자 정하지 않으며, 기능은 두 방식이 같고 운영 책임이 갈린다 (`docs/proposals/ui-delivery-options.md`). A-2로 정해지면 Next.js는 정적 내보내기만 쓰게 되므로 React + Vite와 비교한다 (`docs/reviews/2026-11-16-docs-verification.md` 3.1절). Win7 지원 여부 확정 후 스펙 단계에서 다른 후보와 비교해 결정 | 전부 |
 
 위 항목에 기대는 작업을 할 때는 **가정임을 명시**하고, 확정되면 이 표를 갱신한다.
+
+## 확정 사항
+
+| 항목 | 결정 | 결정일 | 비고 |
+|---|---|---|---|
+| Windows 7 지원 | **지원하지 않는다.** Windows 10 이상만 지원 | 2026-11-16 (담당자) | 파일럿 매장 PC의 실제 Windows 버전은 아직 확인하지 못했다. Windows 7이면 PC 교체가 필요하다 (`docs/questions/ceo-store-environment.md` Q1, Q2) |
+| 기술 스택 | **Tauri v2 (Rust) + Vite + React** | 2026-11-16 (담당자) | Next.js는 쓰지 않는다. 화면 내장 방식에서는 서버 기능을 쓸 수 없어 Vite가 더 단순하다 |
+| 화면 배포 방식 | **화면 내장(A-2).** 화면 파일을 설치 파일에 넣고, 수정은 Tauri 자동 업데이트로 배포 | 2026-11-16 (담당자) | 화면용 웹 서버를 두지 않는다. 비교 근거는 `docs/proposals/ui-delivery-options.md`. 매장이 늘어 즉시 반영이 필요해지면 원격 웹(A-1)을 다시 검토한다 |
 
 ## 문서 위치
 
@@ -58,9 +64,9 @@
 | `docs/research/store-order-receiver-tech-research.md` | 이 프로젝트 범위 기술 리서치 (Win 버전 지원, Tauri v2, Next.js 정적 내보내기, 프린터 출력, 실시간 전달, 코드 서명) | 1차 출처 기반, 주장마다 출처 링크. "확인 불가" 항목은 근거로 쓰지 말 것 (2026-11-12 기준) |
 | `docs/research/store-order-delivery-industry-practices.md` | 다른 서비스의 매장 주문 전달 방식 조사 (배달의민족 폴링 → MQTT → SSE, 미접수 자동 취소 규칙 등) | 회사가 직접 밝힌 자료만 근거. 매장 단말 구간이 확인된 곳은 배달의민족뿐. `[도구 요약 경유]` 표시 항목은 인용 전 링크 확인 (2026-11-16 기준) |
 | `docs/research/research-comparison.md` | 두 리서치 문서 비교, 기존 문서 활용 가이드 | 기존 문서를 볼 때 먼저 확인 |
-| `docs/questions/ceo-store-environment.md` | 대표님께 드릴 질문 (매장 환경, Win7, 프린터) | 답변 기록 표 확인 |
+| `docs/questions/ceo-store-environment.md` | 대표님께 드릴 질문 (매장 환경, Win7, 프린터) | 답변 기록 표 확인. Win7 미지원은 확정(Q7), 파일럿 PC의 실제 버전(Q1)은 아직 필요 |
 | `docs/requests/backend-api-request.md` | 백엔드 팀 API 요청 초안 | 협의 전 초안 |
-| `docs/proposals/ui-delivery-options.md` | 화면 배포 방식(A-1/A-2) 협의 문서 | 협의 전 초안 |
+| `docs/proposals/ui-delivery-options.md` | 화면 배포 방식(A-1/A-2) 비교 문서 | **결정됨: A-2 화면 내장 (2026-11-16).** 비교 근거와 A-2의 업데이트 적용 시점(3.1절) 참고용 |
 | `docs/proposals/realtime-delivery-options.md` | 주문 실시간 전달 방식 협의 문서 | 협의 전 초안 |
 | `docs/reviews/2026-11-16-docs-verification.md` | 위 문서 전체에 대한 검증 보고서 (틀린 곳, 빠진 것, 방향 판단) | [확인]은 공식 문서로 확인한 사실, [판단]은 검증자 의견(출처 없음). 반영 현황은 8장 |
 | `docs/meetings/backend-pl-brief.md` | 백엔드 PL 회의 준비 자료 (물을 질문, 담당자 의견, 받아 올 결정) | 담당자 메모. "내 의견" 절은 확정이 아님. 회의 후 6장 기록 칸 확인 |
@@ -138,7 +144,9 @@
 
 ## 기술 스택 / 명령어
 
-> 아직 미정. 스택이 정해지면 여기에 빌드·테스트·실행 명령어와 코드 컨벤션을 추가한다.
+- **스택 (2026-11-16 확정)**: Tauri v2 (Rust) + Vite + React. 화면은 설치 파일에 내장한다.
+- 지원 OS: Windows 10 이상.
+- 프로젝트를 아직 만들지 않았다. 버전, 패키지 매니저, 테스트 도구, 빌드·테스트·실행 명령어와 코드 컨벤션은 프로젝트를 만들 때 정해 여기에 적는다. 그 전까지 명령어를 추측해서 쓰지 않는다.
 
 ## OKF 작업 보고서
 
