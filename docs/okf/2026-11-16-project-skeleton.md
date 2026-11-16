@@ -3,7 +3,7 @@ type: Task Report
 title: T00. 프로젝트 골격 (Tauri v2 + Vite + React)
 description: Tauri v2 + Vite + React 프로젝트를 만들고 검사 · 테스트 · 빌드 명령을 정한다.
 tags: [project-skeleton, tauri, vite, react, tooling]
-status: draft
+status: stable
 generated:
   by: claude-code/claude-opus-5-5
   at: 2026-11-16T15:54:00+09:00
@@ -17,6 +17,9 @@ sources:
   - id: ui
     resource: /docs/proposals/ui-delivery-options.md
     title: 화면 배포 방식 (A-2 화면 내장으로 결정)
+verified:
+  - by: human:yjnoh
+    at: 2026-11-16T16:18:00+09:00
 ---
 
 # 목표
@@ -62,7 +65,7 @@ sources:
 - `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm test`, `pnpm build`: 모두 exit 0. 테스트 1개 통과.
 - `pnpm-workspace.yaml` 없음 확인, `package.json` 의존성이 허용 목록 안인지 확인, `tauri.conf.json`의 productName · identifier 확인, capability가 `core:default`뿐인지 확인.
 - `pnpm dev`: 작업 세션이 curl로 `<title>` 확인. 지휘 세션은 직접 띄워 보지 않았다.
-- Rust 검사: 처음에는 Linux 시스템 패키지와 rustfmt · clippy가 없어 돌리지 못했다. 사용자가 개발 환경을 설치한 뒤(히스토리 참고) 지휘 세션이 16:20에 직접 실행: `cargo check` · `cargo fmt --check` · `cargo clippy -- -D warnings` · `cargo test`(테스트 0개) 모두 exit 0. 화면 쪽 5종도 다시 모두 exit 0.
+- Rust 검사: 처음에는 Linux 시스템 패키지와 rustfmt · clippy가 없어 돌리지 못했다. 사용자가 개발 환경을 설치한 뒤(히스토리 참고) 지휘 세션이 16:13에 직접 실행: `cargo check` · `cargo fmt --check` · `cargo clippy -- -D warnings` · `cargo test`(테스트 0개) 모두 exit 0. 화면 쪽 5종도 다시 모두 exit 0.
 - `pnpm tauri dev`: 작업 세션이 X11 백엔드(`GDK_BACKEND=x11`)로 띄워 창 제목 · 화면 제목을 확인하고 종료했다. Wayland 기본 백엔드로는 띄워 보지 않았다.
 - Windows 설치 파일 빌드: 사용자 Windows 확인 필요.
 - 리뷰: ② 지적 8건 → 고침 3 · 보류 5, ③ 지적 10건 → 고침 8 · 보류 2 (히스토리 참고).
@@ -87,19 +90,20 @@ sources:
 
 - 2026-11-16T15:36+09:00 워크트리 생성 (`main` 2f52575 기준)
 - 2026-11-16T15:44+09:00 규칙 커밋 `2a45e5a` 뒤 워크트리를 최신 `main`으로 맞춤 (fast-forward)
-- 2026-11-16T15:47+09:00 사용자가 작업 세션을 엶. 이름은 `t00-project-skeleton-0d` 그대로 쓰기로 함 (A-2). 식별자 임시값 결정 (B-2), 지시서 승인 (C-1)
-- 2026-11-16T15:48+09:00 지시서 전달 (pos-boss → t00-project-skeleton-0d)
+- 2026-11-16T15:49+09:00 사용자가 작업 세션을 엶. 이름은 `t00-project-skeleton-0d` 그대로 쓰기로 함 (A-2). 식별자 임시값 결정 (B-2), 지시서 승인 (C-1)
+- 2026-11-16T15:50+09:00 지시서 전달 (pos-boss → t00-project-skeleton-0d)
 - 2026-11-16T15:51+09:00 Plane WHALEERPPO-1 상태를 In Progress로 바꿈 (사용자 요청)
 - 2026-11-16T15:54+09:00 OKF 규칙에 "작업 내용 · 작업 방법 · 히스토리" 추가 (사용자 결정), 이 보고서 초안 작성. 작업 세션에 `docs/okf/`를 건드리지 말라고 알림
-- 2026-11-16T16:00+09:00 작업 세션 완료 보고. ② 지적 8건 → 고침 3 · 보류 5, ③ 지적 10건 → 고침 8 · 보류 2. Rust 검사는 시스템 패키지 없어 못 돌림
+- 2026-11-16T16:01+09:00 작업 세션 완료 보고. ② 지적 8건 → 고침 3 · 보류 5, ③ 지적 10건 → 고침 8 · 보류 2. Rust 검사는 시스템 패키지 없어 못 돌림
 - 2026-11-16T16:01+09:00 지휘 세션이 lint · typecheck · format:check · test · build를 직접 실행해 모두 통과 확인, diff · 설정 확인
 - 2026-11-16T16:05+09:00 사용자 결정: Linux 패키지 · rustup을 깔고 Rust 검사를 먼저 돌린 뒤 커밋 (A-2). 머지는 로컬에서 main에 바로 (B-1)
-- 2026-11-16T16:12+09:00 사용자가 Linux 개발 환경 설치 완료: apt로 Tauri 시스템 패키지(webkit2gtk-4.1 2.52.6 등) → rustup 1.29.3 공식 스크립트 → stable 툴체인(rustc · cargo 1.100.0) + rustfmt · clippy. 배포판 Rust 1.93.1은 남겨 둠. 지휘 세션이 `which cargo`가 `~/.cargo/bin`을 가리키는 것 확인
-- 2026-11-16T16:13+09:00 추가 지시 전달: Rust 검사 4종, `pnpm tauri dev`, `AGENTS.md`에 Linux 개발 환경 준비 절차 기록
-- 2026-11-16T16:19+09:00 작업 세션 보고: Rust 검사 4종 통과(clippy 경고 0), `pnpm tauri dev` 창 확인, `AGENTS.md`에 개발 환경 준비(Linux, Windows 미확인) 추가. Rust 코드는 고치지 않아 ② 리뷰는 생략
-- 2026-11-16T16:20+09:00 지휘 세션이 Rust 검사 4종과 화면 쪽 5종을 직접 실행해 모두 통과 확인
-- 2026-11-16T16:24+09:00 사용자가 작업 세션에서 직접 답함: Rust 버전 고정 안 함, `~/.bashrc`의 cargo 설정은 사용자가 직접 확인, Windows 확인은 지금 못 함. 작업 세션이 `AGENTS.md` Rust 행에 결정을 적음 (지휘 세션이 diff 확인)
-- 2026-11-16T16:27+09:00 사용자 "커밋해" → 최신 `main`(2e5fab3)을 fast-forward로 합친 뒤 골격 커밋 `1f7845c`, 이어서 이 보고서 커밋, 로컬 `main`에 fast-forward 머지
+- 2026-11-16T16:08+09:00 사용자가 Linux 개발 환경 설치 완료: apt로 Tauri 시스템 패키지(webkit2gtk-4.1 2.52.6 등) → rustup 1.29.3 공식 스크립트 → stable 툴체인(rustc · cargo 1.100.0) + rustfmt · clippy. 배포판 Rust 1.93.1은 남겨 둠. 지휘 세션이 `which cargo`가 `~/.cargo/bin`을 가리키는 것 확인
+- 2026-11-16T16:09+09:00 추가 지시 전달: Rust 검사 4종, `pnpm tauri dev`, `AGENTS.md`에 Linux 개발 환경 준비 절차 기록
+- 2026-11-16T16:12+09:00 작업 세션 보고: Rust 검사 4종 통과(clippy 경고 0), `pnpm tauri dev` 창 확인, `AGENTS.md`에 개발 환경 준비(Linux, Windows 미확인) 추가. Rust 코드는 고치지 않아 ② 리뷰는 생략
+- 2026-11-16T16:13+09:00 지휘 세션이 Rust 검사 4종과 화면 쪽 5종을 직접 실행해 모두 통과 확인
+- 2026-11-16T16:14+09:00 사용자가 작업 세션에서 직접 답함: Rust 버전 고정 안 함, `~/.bashrc`의 cargo 설정은 사용자가 직접 확인, Windows 확인은 지금 못 함. 작업 세션이 `AGENTS.md` Rust 행에 결정을 적음 (지휘 세션이 diff 확인)
+- 2026-11-16T16:15+09:00 사용자 "커밋해" → 최신 `main`(2e5fab3)을 fast-forward로 합친 뒤 골격 커밋 `1f7845c`, 이어서 이 보고서 커밋, 로컬 `main`에 fast-forward 머지
+- 2026-11-16T16:18+09:00 사용자 승인 → status stable. Plane WHALEERPPO-1 Done
 
 [^task]: Plane WHALEERPPO-1
 [^rules]: `AGENTS.md` 확정 사항 · 개발 규칙
