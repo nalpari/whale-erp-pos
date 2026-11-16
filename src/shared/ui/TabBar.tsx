@@ -1,4 +1,4 @@
-import { tabId, panelId } from "./tabs";
+import { panelId, tabId } from "./tab-ids";
 
 // 탭 줄. 라우터 없이 화면 상태로 탭을 바꾼다 (스펙 2.1, 데스크톱이라 주소창이 없다).
 interface TabBarProps<Id extends string> {

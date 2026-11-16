@@ -1,9 +1,9 @@
-// 프로그램 틀: 헤더 + (로그인 전) 로그인 화면 자리 / (로그인 후) 탭 · 콘텐츠 + 확인 팝업.
+// 프로그램 틀: 헤더 + (로그인 전) 로그인 화면 / (로그인 후) 탭 · 콘텐츠 + 확인 팝업.
 import { ConfirmDialog } from "../../shared/ui/ConfirmDialog";
+import { LoginScreen } from "../login/LoginScreen";
 import { useAppShell } from "./AppShellContext";
 import { DIALOG_TEXTS, TOGGLE_ERROR_MESSAGE } from "./dialog-texts";
 import { Header } from "./Header";
-import { LoginPlaceholder } from "./LoginPlaceholder";
 import { MainContent } from "./MainContent";
 
 function ToggleErrorNotice() {
@@ -26,7 +26,7 @@ function ToggleErrorNotice() {
 }
 
 export function AppShell() {
-  const { state, actions } = useAppShell();
+  const { state, actions, authApi } = useAppShell();
   const dialog = state.dialog ? DIALOG_TEXTS[state.dialog] : null;
 
   return (
@@ -36,7 +36,14 @@ export function AppShell() {
         <Header />
         {state.toggleError && <ToggleErrorNotice />}
         <main className="flex min-h-0 flex-1 flex-col">
-          {state.session ? <MainContent /> : <LoginPlaceholder />}
+          {state.session ? (
+            <MainContent />
+          ) : state.restoring ? (
+            // 자동 로그인 확인 중: 로그인 폼이 깜빡이지 않게 빈 화면 (스펙 4장).
+            <section aria-label="로그인" aria-busy="true" className="flex-1" />
+          ) : (
+            <LoginScreen authApi={authApi} onLogin={actions.login} />
+          )}
         </main>
       </div>
       {dialog && (
