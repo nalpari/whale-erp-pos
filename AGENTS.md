@@ -245,6 +245,7 @@ Ubuntu 26.04.1 LTS에서 확인했다 (2026-11-16). 근거: [Tauri Prerequisites
    ```
 3. Rust 검사 도구 추가: `rustup component add rustfmt clippy`
 4. `which cargo`가 `~/.cargo/bin/cargo`를 가리키는지 확인한다. 배포판 Rust 패키지(`/usr/bin/cargo`, 1.93.1)는 지우지 않고 남겨 두었으므로, rustup 쪽이 먼저 잡혀야 한다. 셸에서 배포판 쪽이 잡히면 `export PATH="$HOME/.cargo/bin:$PATH"`를 앞에 붙인다.
+   - 자동 로그인 토큰을 Linux에서는 Secret Service(gnome-keyring)에 저장한다. 데스크톱에 로그인해 키링이 잠금 해제된 상태여야 하고, 잠겨 있으면 `pnpm tauri dev` 시작 때 멈추거나 잠금 해제 창이 뜰 수 있다. SSH처럼 화면 없는 환경에서는 실패할 수 있다 (T02, 2026-11-16).
 5. Node(22.12 이상의 22.x · 24.x · 26 이상)와 pnpm을 준비한 뒤 `pnpm install`.
 
 ### 개발 환경 준비 (Windows, 미확인)
