@@ -33,7 +33,8 @@
 | 장치 | 역할 | 요청 문서 |
 |---|---|---|
 | 수신 확인 (ack) | 매장이 받은 주문을 서버에 확인. 미확인 주문을 서버가 감지 | 3.4 |
-| 미확인 주문 조회 | 재연결·재시작 시 놓친 주문 수신 | 3.3 |
+| 미확인 주문 조회 | 놓친 주문 수신. 재연결·재시작 시, 그리고 연결 중에도 주기적으로(예: 30~60초) 호출. 연결은 정상인데 이벤트만 빠진 경우를 잡기 위함 | 3.3 |
+| 연결 감시 | 서버 하트비트가 일정 시간 오지 않으면 매장이 연결을 끊고 재연결 (①②⑤ 해당) | 3.2 |
 | 중복 처리 방지 | 같은 주문이 두 번 와도 한 번만 처리 (`orderId` / `eventId`) | 3.2 |
 
 ---
@@ -120,7 +121,7 @@
 | **추가 API** | WebSocket 엔드포인트 | SSE 엔드포인트 | 대기형 조회 API | 없음 (3.3 재사용) | 없음 (발행 로직만) |
 | **상시 연결 유지** | 예 | 예 | 아니오 (요청 단위) | 아니오 | 예 (브로커가 유지) |
 | **서버 증설 시 라우팅 장치** | 필요 | 필요 | 필요 (또는 DB 확인) | 불필요 | 불필요 (브로커 담당) |
-| **서버 배포 시 매장 영향** | 연결 전체 끊김 → 재연결 | 연결 전체 끊김 → 재연결 | 진행 중 요청만 재시도 | 거의 없음 | 없음 (브로커 별도) |
+| **서버 배포 시 매장 영향** | 교체되는 서버의 연결이 끊김 → 재연결 (서버 1대면 전체) | 교체되는 서버의 연결이 끊김 → 재연결 (서버 1대면 전체) | 진행 중 요청만 재시도 | 거의 없음 | 없음 (브로커 별도) |
 | **프록시·LB 설정** | 업그레이드·유휴 타임아웃 | 버퍼링 해제·유휴 타임아웃 | 요청 타임아웃 | 기본 설정 | 브로커 엔드포인트 |
 | **놓친 메시지 처리** | 미확인 주문 조회 | `Last-Event-ID` + 미확인 주문 조회 | 조회 기준점(`after`) | 매 요청이 조회 | 영구 세션 + 미확인 주문 조회 |
 | **신규 인프라** | (증설 시) Redis 등 | (증설 시) Redis 등 | (증설 시) Redis 등 | 없음 | 관리형 브로커 |
@@ -147,7 +148,7 @@
 | 연결 위치 기록 | 매장 접속 시 "매장 A → 서버 1" 기록 → 해당 서버로만 전달 |
 | 연결 전담 서버 분리 | WebSocket/SSE 연결만 담당하는 서버를 별도 운영, API 서버는 발행만 |
 
-> 라우팅 장치 없이 증설하면 일부 주문이 실시간으로 전달되지 않고 재연결·미확인 주문 조회 시점에야 도착합니다(증상: "가끔 주문이 늦게 뜸"). 증설 전에 준비가 필요합니다.
+> 라우팅 장치 없이 증설하면 일부 주문이 실시간으로 전달되지 않고 다음 미확인 주문 조회 시점에야 도착합니다(증상: "가끔 주문이 늦게 뜸"). 주기적 조회(1.2)가 있으면 지연은 조회 주기 이내로 제한되지만, 증설 전에 라우팅 장치를 준비해야 합니다.
 
 ④는 연결 상태가 없고, ⑤는 브로커가 라우팅을 담당하므로 해당하지 않습니다.
 
@@ -186,13 +187,13 @@
 
 | 사실 | 의미 | 출처 |
 |---|---|---|
-| 매장 PC는 NAT 뒤에 있어 외부에서 시작한 연결을 받을 수 없다 | 모든 방식에서 매장 PC가 먼저 연결해야 함 (1.1) | [RFC 5382](https://www.rfc-editor.org/rfc/rfc5382.html) |
-| AWS ALB 유휴 타임아웃 기본 60초, nginx `proxy_read_timeout` 기본 60초 | ①②③은 60초보다 짧은 하트비트 필요 | [AWS ALB](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-load-balancer-attributes.html), [nginx](https://nginx.org/en/docs/http/websocket.html) |
+| 매장 PC가 먼저 나가는 연결을 열지 않으면 공유기(NAT)에 통로가 없어, 외부에서 온 연결 시도가 걸러진다 | 모든 방식에서 매장 PC가 먼저 연결해야 함 (1.1) | [RFC 5382](https://www.rfc-editor.org/rfc/rfc5382.html) |
+| AWS ALB 유휴 타임아웃 기본 60초, nginx `proxy_read_timeout` 기본 60초 | ①②는 60초보다 짧은 하트비트 필요. ③은 요청 대기 시간을 60초보다 짧게 설정 | [AWS ALB](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-load-balancer-attributes.html), [nginx](https://nginx.org/en/docs/http/websocket.html) |
 | WebSocket·SSE 표준에는 메시지 단위 수신 확인(ack)·재전송이 없다 | 앱 수준 ack(REST)와 미확인 주문 조회 필요 (1.2) | [RFC 6455](https://www.rfc-editor.org/rfc/rfc6455.html), [WHATWG SSE](https://html.spec.whatwg.org/multipage/server-sent-events.html) |
 | SSE는 재연결 시 `Last-Event-ID`를 보내고, 프록시 대비 15초 주기 주석 전송을 권장 | ②의 재전송 기준점과 하트비트 근거 | [WHATWG SSE](https://html.spec.whatwg.org/multipage/server-sent-events.html) |
 | 롱 폴링 타임아웃은 "generally 30 seconds is a safer value" | ③의 대기 시간 기준 | [RFC 6202](https://www.rfc-editor.org/rfc/rfc6202.html) |
 | Redis Pub/Sub는 at-most-once: 끊긴 구독자에게 간 메시지는 사라진다. 더 강한 보장은 Streams | 4장 Pub/Sub 방송은 "빠른 전달"용, 누락 방지는 미확인 조회로 보완 | [Redis Pub/Sub](https://redis.io/docs/latest/develop/pubsub/) |
-| AWS IoT Core: QoS 2 미지원, 영구 세션 기본 1시간, 재연결 후 저장 메시지 재과금 | ⑤도 밤새 꺼진 매장은 미확인 조회 필요 | [AWS IoT Core MQTT](https://docs.aws.amazon.com/iot/latest/developerguide/mqtt.html) |
+| AWS IoT Core: QoS 2 미지원, 영구 세션 기본 1시간(최대 7일), 재연결 후 저장 메시지 재과금, 세션 만료로 버려진 메시지도 과금 | ⑤도 밤새 꺼진 매장은 미확인 조회 필요 | [AWS IoT Core MQTT](https://docs.aws.amazon.com/iot/latest/developerguide/mqtt.html) |
 | Idempotency-Key 헤더는 아직 IETF 초안(draft-08)이며 RFC가 아니다 | 상태 변경 API의 멱등키는 초안 기준으로 합의 필요 | [IETF Datatracker](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/) |
 
 ---
@@ -208,4 +209,4 @@
 | 5 | (①②③) 서버 증설 시 라우팅 장치 | Redis Pub/Sub / 연결 위치 기록 / 연결 전담 서버 / 당분간 1대 운영 |
 | 6 | (⑤) 브로커 서비스 선정과 비용 부담 | AWS IoT Core / EMQX Cloud / HiveMQ Cloud 등 |
 | 7 | 결제 완료 → 전달 계층까지의 내부 흐름 | 이벤트 발행 위치와 형식 (Redis / MQ / 직접 호출) |
-| 8 | 전달 지연 목표 | 예: 결제 완료 → 매장 수신 3초 이내 |
+| 8 | 전달 지연 목표 | 예: 결제 완료 → 매장 수신 3초 이내. ④를 고르면 폴링 간격과 함께 정해야 함(3초 간격이면 3초 이내를 지키기 어려움) |

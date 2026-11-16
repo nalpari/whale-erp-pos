@@ -34,7 +34,7 @@
 |---|---|---|---|
 | Windows 7 (SP1) | 2020-01-14 (PT 기준 1/15 06:59:59) | 볼륨 라이선스로 3년, 2023-01-10까지 (ESU Year 3 종료 1/11/2023 06:59 PT) | [MS Lifecycle – Windows 7](https://learn.microsoft.com/en-us/lifecycle/products/windows-7) (ms.date 2022-12-14) |
 | Windows Embedded POSReady 7 | 2021-10-12 (PT 10/13 06:59) | OEM을 통해 ESU 3년, 2024-10-08까지 (PT 10/9 06:59) | [MS Lifecycle – POSReady 7](https://learn.microsoft.com/en-us/lifecycle/products/windows-embedded-posready-7) |
-| Windows 10 Home/Pro (22H2) | 2025-10-14 | 조직: 연간 구매, 최대 3년. 1년차 기기당 $61, 매년 2배([MS ESU](https://learn.microsoft.com/en-us/windows/whats-new/extended-security-updates), ms.date 2025-11-17). 소비자: 2027-10-12까지(무료 동기화 / Rewards 1,000점 / $30)([MS 소비자 ESU](https://www.microsoft.com/en-us/windows/extended-security-updates)) | [MS Lifecycle – Win10 Home/Pro](https://learn.microsoft.com/en-us/lifecycle/products/windows-10-home-and-pro) |
+| Windows 10 Home/Pro (22H2) | 2025-10-14 | 조직: 연간 구매, 최대 3년. 1년차 기기당 $61, 매년 2배([MS ESU](https://learn.microsoft.com/en-us/windows/whats-new/extended-security-updates), ms.date 2026-11-10). 소비자: 2027-10-12까지(무료 동기화 / Rewards 1,000점 / $30)([MS 소비자 ESU](https://www.microsoft.com/en-us/windows/extended-security-updates)) | [MS Lifecycle – Win10 Home/Pro](https://learn.microsoft.com/en-us/lifecycle/products/windows-10-home-and-pro) |
 | Windows 10 IoT Enterprise LTSC 2016 | 2026-10-13 (이미 종료) | — | [IoT Enterprise 릴리스 이력](https://learn.microsoft.com/en-us/windows/iot/iot-enterprise/whats-new/release-history) (ms.date 2026-09-29) |
 | Windows 10 IoT Enterprise LTSC 2019 (1809) | 2029-01-09 | — | 같은 문서 |
 | Windows 10 IoT Enterprise LTSC 2021 (21H2) | 2032-01-13 (일반 지원 종료 2027-01-12) | — | 같은 문서, [MS Lifecycle – IoT LTSC 2021](https://learn.microsoft.com/en-us/lifecycle/products/windows-10-iot-enterprise-ltsc-2021) |
@@ -47,7 +47,7 @@
 
 | 기술 | 최소 Windows / Win7 상태 | 출처 |
 |---|---|---|
-| **WebView2 Runtime** | Win7/8/8.1용 마지막 버전은 **109**(2023-01-12 주 출시). SDK 1.0.1519.0 이상은 Win7/8 미지원. Fixed Version이 109보다 높으면 Win7/8에서 시작하지 않는다. 현재 공식 지원 클라이언트는 Windows 10 SAC 1709 이상, Windows 10 Enterprise/IoT LTSC 2015·2016·2019·2021, Windows 11 | [MS Edge 블로그 (2022-12-09)](https://blogs.windows.com/msedgedev/2022/12/09/microsoft-edge-and-webview2-ending-support-for-windows-7-and-windows-8-8-1/), [WebView2 소개 – Supported Windows versions](https://learn.microsoft.com/en-us/microsoft-edge/webview2/) (updated 2026-10-02) |
+| **WebView2 Runtime** | Win7/8/8.1용 마지막 버전은 **109**(2023-01-12 주 출시). SDK 1.0.1519.0 이상은 Win7/8 미지원. Fixed Version이 109보다 높으면 Win7/8에서 시작하지 않는다. 현재 공식 지원 클라이언트는 Windows 10 SAC 1709 이상, Windows 10 Enterprise LTSC 2015·2016·2019·2021, Windows 10 IoT Enterprise LTSC 2019·2021(IoT 2015·2016은 목록에 없음), Windows 11. Edge와 WebView2 Runtime은 Windows 10 22H2에서 최소 2028년 10월까지 업데이트되며 ESU 가입이 필요 없다([Edge 지원 OS](https://learn.microsoft.com/en-us/deployedge/microsoft-edge-supported-operating-systems), ms.date 2026-11-09) | [MS Edge 블로그 (2022-12-09)](https://blogs.windows.com/msedgedev/2022/12/09/microsoft-edge-and-webview2-ending-support-for-windows-7-and-windows-8-8-1/), [WebView2 소개 – Supported Windows versions](https://learn.microsoft.com/en-us/microsoft-edge/webview2/) (updated 2026-10-02) |
 | **Rust 컴파일러/표준 타깃** | Rust 1.78(2024-05)부터 `*-pc-windows-*` 타깃의 최소 버전은 Windows 10. `x86_64-pc-windows-msvc`는 Tier 1, "Windows 10+, Windows Server 2016+". Win7용 `x86_64-win7-windows-msvc` / `i686-win7-windows-msvc`는 **Tier 3**이고 rustup으로 미리 빌드된 std를 받을 수 없다(`build-std` 필요) | [Rust 블로그](https://blog.rust-lang.org/2024/02/26/Windows-7/), [rustc platform support](https://doc.rust-lang.org/nightly/rustc/platform-support.html), [win7-windows-msvc](https://doc.rust-lang.org/nightly/rustc/platform-support/win7-windows-msvc.html) |
 | **Tauri v2** | 공식 Prerequisites 페이지의 지원 OS 목록에는 "Windows 7 and later"라고 적혀 있다. Webview Versions 페이지도 "WebView2 is supported on Windows 7 and newer"라고 쓴다. 그러나 **Tauri 2.12 발표(2026-09-26)에서 Win7 공식 지원 중단을 명시**했다([Tauri 2.12 발표](https://v2.tauri.app/blog/tauri-2.12)). Prerequisites 표기는 갱신되지 않은 것으로 보인다(아래 설명). 공식 플러그인(single-instance, autostart, window-state)은 Rust 1.90 이상을 요구한다 | [Tauri Prerequisites](https://v2.tauri.app/start/prerequisites/), [Webview Versions](https://v2.tauri.app/reference/webview-versions/), [single-instance](https://v2.tauri.app/plugin/single-instance/), [autostart](https://v2.tauri.app/plugin/autostart/), [window-state](https://v2.tauri.app/plugin/window-state/) |
 | **Electron** | **Electron 23**(2023-02-07)부터 Win7/8/8.1 미지원. 마지막 지원 버전 Electron 22(Chromium 108)는 EOL이 2023-10-10까지 연장되었다 | [Electron 블로그](https://www.electronjs.org/blog/windows-7-to-8-1-deprecation-notice) |
@@ -132,6 +132,8 @@
 - MS 문서상 Evergreen Runtime은 자동으로 업데이트된다. 그러나 **앱이 계속 실행 중이면 이전 런타임 버전을 계속 쓴다.** 새 버전을 쓰려면 앱을 재시작하거나 WebView2 환경을 다시 만들어야 하고, `NewBrowserVersionAvailable` 이벤트로 감지할 수 있다([WebView2 Distribution](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution)). 며칠씩 켜 두는 매장 PC(설계 원칙 5)와 관련된다.
 - Fixed Version 바이너리는 250MB가 넘는다. Windows 10에서 Fixed Version 120 이상을 쓰는 unpackaged Win32 앱은 `icacls`로 권한(ALL APPLICATION PACKAGES 등)을 부여해야 한다. 네트워크 경로(UNC)에서는 실행할 수 없다([WebView2 Distribution](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution)). Tauri 문서는 fixedRuntime을 약 180MB라고 적어 MS의 "250MB 초과"와 수치가 다르다. 압축 여부의 차이로 보이지만 **확인 불가**.
 - MS 문서는 "대다수 Windows 10 기기에는 WebView2 Runtime이 이미 설치되어 있지만, 일부는 없다"고 하며 존재 여부를 확인하라고 권장한다([WebView2 Distribution](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution)).
+- (2026-11-16 추가) POS에 많이 쓰이는 Windows 10 IoT Enterprise LTSC 2019에는 Edge가 기본 포함이 아니다. OEM이 사전 설치하는 방식이다([Edge 지원 OS](https://learn.microsoft.com/en-us/deployedge/microsoft-edge-supported-operating-systems)). LTSC 2021은 Edge 브라우저가 기본 포함이다([LTSC 2021 안내](https://learn.microsoft.com/en-us/windows/whats-new/ltsc/whats-new-windows-10-2021)). **두 LTSC에 WebView2 Runtime이 기본으로 설치돼 있는지는 확인 불가**. 설치 프로그램이 Runtime 유무를 확인하고 없으면 설치해야 한다.
+- (2026-11-16 추가) 일반 "Windows 10 Enterprise LTSC 2021"(IoT 아님)은 지원 기간이 5년이다. 10년은 IoT Enterprise LTSC만 해당한다(같은 LTSC 2021 안내).
 
 ### 3.3 업데이터 플러그인
 출처: [Tauri – Updater](https://v2.tauri.app/plugin/updater/)
@@ -144,13 +146,14 @@
   - 동적 서버: 업데이트가 없으면 `204 No Content`, 있으면 `200` + `url`/`version`/`signature`.
 - JS API 흐름: `check()` → `downloadAndInstall()`(Started/Progress/Finished 이벤트) → `@tauri-apps/plugin-process`의 `relaunch()`.
 - **Windows 동작**: "On Windows the application is automatically exited when the install step is executed"(Windows 설치 프로그램의 제약 때문). 업데이트 설치 중에는 주문을 받을 수 없으므로, 언제 업데이트할지를 따로 설계해야 한다.
+- (2026-11-16 추가) **`download()` 결과는 프로세스 메모리에만 있다.** 앱을 끄면 사라지므로 "내려받아 두고 다음 시작 때 설치"는 기본 기능이 아니다. 앱이 패키지 바이트와 릴리스 정보를 직접 디스크에 저장하고, 다음 시작 때 Rust API `Updater::restore_update` → `Update::verify` → `Update::install`로 설치해야 한다(플러그인 2.14.0, 2026-10-14 추가, Rust 전용). JS `install()`은 같은 객체에서 `download()`를 먼저 부르지 않으면 오류를 낸다. 설치 후 재실행을 끄는 `restartAfterInstall` 옵션이 있다([plugins-workspace](https://github.com/tauri-apps/plugins-workspace)의 `plugins/updater/src/updater.rs`, `guest-js/index.ts`, `CHANGELOG.md`).
 - `windows.installMode`:
   - `passive`(기본값): 작은 진행 창, 사용자 조작 불필요.
   - `basicUi`: 사용자가 조작해야 함.
   - `quiet`: 진행 표시 없음. **사용자 단위 설치이거나 앱이 이미 관리자 권한으로 실행 중일 때만 동작**한다. 일반적으로 비권장.
 
 ### 3.4 NSIS 설치 범위(installMode)와 UAC, MSI vs NSIS
-출처: [Tauri – Windows Installer](https://v2.tauri.app/distribute/windows-installer/)
+출처: [Tauri – Windows Installer](https://v2.tauri.app/distribute/windows-installer/). 값 이름(`currentUser` 등)과 기본값은 [Tauri – Config 레퍼런스](https://v2.tauri.app/reference/config/)의 NSISInstallerMode에 있다.
 
 | NSIS installMode | 설치 위치 | 관리자 권한 |
 |---|---|---|
@@ -199,6 +202,14 @@
   - 한 창이 여러 capability에 속하면 권한이 합쳐진다.
 - 해석(사실 아님): 원격 화면(A-1)은 원격 서버가 뚫리면 그 서버가 허용된 Rust 커맨드(프린터 출력 등)를 호출할 수 있게 된다. 그래서 허용 범위를 최소화해야 한다는 함의가 있다.
 
+### 3.9 알림음 자동 재생과 32비트 빌드 (2026-11-16 추가)
+- **자동 재생**: Tauri의 웹뷰 라이브러리(wry)는 Windows에서 기본으로 `--autoplay-policy=no-user-gesture-required`를 WebView2에 넘긴다(wry `src/webview2/mod.rs`, `autoplay: true`가 기본값). 즉 사용자 조작 없이 소리를 재생하는 것이 기본으로 허용된다([wry 저장소](https://github.com/tauri-apps/wry)).
+  - `additionalBrowserArgs`를 설정하면 이 기본 플래그가 통째로 대체된다. wry 문서 주석: "if you use this method, you have to add these arguments yourself".
+  - MS는 브라우저 플래그를 실서비스에 쓰지 말라고 경고한다: "Apps in production shouldn't use WebView2 browser flags, because these flags might be removed or altered at any time"([WebView2 browser flags](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/webview-features-flags), ms.date 2026-08-28).
+  - 플래그 없는 WebView2의 자동 재생 기본 동작은 **확인 불가**.
+  - 해석(사실 아님): 알림음을 웹뷰에서 내는 방식은 보증되지 않는 플래그에 기댄다. Rust 본체에서 소리를 내는 방식과 비교가 필요하다.
+- **32비트 Windows**: Tauri 문서에 빌드 절차가 있다(`rustup target add i686-pc-windows-msvc`, `tauri build --target i686-pc-windows-msvc`)([Windows Installer](https://v2.tauri.app/distribute/windows-installer/)). WebView2도 x86 설치 파일을 제공한다([WebView2 Distribution](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution)). Edge는 버전 128부터 SSE3가 없는 CPU를 지원하지 않는다([Edge 지원 OS](https://learn.microsoft.com/en-us/deployedge/microsoft-edge-supported-operating-systems)).
+
 ---
 
 ## 4. Next.js 정적 내보내기 (공식 문서)
@@ -242,9 +253,9 @@
 
 | 출처 | `m=65/66` 동작 |
 |---|---|
-| Epson Command Reference (**검색 경유**, [cutting_paper](https://download4.epson.biz/sec_pubs/pos/reference_en/escpos/cutting_paper.html)) | Function B: 용지를 [절단 위치 + n × 세로 이동 단위]만큼 보낸 뒤 절단. 65 = 전체 절단(full cut), 66 = 부분 절단(한 점 남김). Epson 예시 `GS V 66 20` ≈ 절단 위치 + 1.25mm(20/406인치) |
+| Epson Command Reference (**검색 경유**, [cutting_paper](https://download4.epson.biz/sec_pubs/pos/reference_en/escpos/cutting_paper.html)) | Function B: 용지를 [절단 위치 + n × 세로 이동 단위]만큼 보낸 뒤 절단. 65 = 전체 절단(full cut), 66 = 부분 절단(한 점 남김). 단, 커터 하드웨어가 지원하는 경우에 한한다. TM-T88V와 TM-T20IV의 커터는 사양상 부분 절단뿐이다([TM-T88V TRG](https://files.support.epson.com/pdf/pos/bulk/tmt88v_trg_reve.pdf): "uses the partial cutting method", [TM-T20IV TRG](https://files.support.epson.com/pdf/pos/bulk/tm-t20iv_trg_en_rev_d.pdf): "Cutting Method: Partial cut"). Epson 예시 `GS V 66 20` ≈ 절단 위치 + 1.25mm(20/406인치) |
 | [Bixolon SRP-350plusII Rev 1.02](https://www.bixolon.com/_upload/manual/Manual_SRP-350352plusII_Command_Rev_1_02%5B0%5D.pdf) | "Feeds paper to (cutting position + n × vertical motion unit) and executes a partial cut(one point left uncut)". 비고: "**Cutting mode is changed only by setting MSW5-1**"(소프트웨어 명령으로 전체/부분 절단을 바꿀 수 없음). 오토커터가 없으면 용지만 보낸다 |
-| [Bixolon SRP-350plusA&C Rev 1.04](https://www.bixolon.com/_upload/manual/Manual_SRP-350352plusAC_controlcommands_english_Rev_1_04.pdf) | 65/66: "Feeds and cuts paper (one point left uncut, full cut)". **n은 출력 버퍼 데이터 처리 방식**을 지정한다(n=1,49는 출력 후 절단, n=0,48은 버퍼 삭제). "Full cut or one point left uncut cannot be changed by software" |
+| [Bixolon SRP-350plusA&C Rev 1.04](https://www.bixolon.com/_upload/manual/Manual_SRP-350352plusAC_controlcommands_english_Rev_1_04.pdf) | 65/66: "Feeds and cuts paper (one point left uncut, full cut)". **n은 출력 버퍼 데이터 처리 방식**을 지정한다("n specifies how data in the print buffer is processed when this command is executed", 범위 0 ≤ n ≤ 255, 값별 설명 표는 없음. 2026-11-16 정정: 이전 판의 "n=1,49 / n=0,48" 설명은 바로 앞 명령 `GS T`의 것이었다). "Full cut or one point left uncut cannot be changed by software" |
 
 → 같은 바이트열도 모델에 따라 이송 거리나 절단 방식이 달라질 수 있다. 실물 프린터로 확인해야 하는 항목이다(QA 체크리스트 대상).
 
@@ -275,7 +286,7 @@ flowchart LR
 | 경로 | 방법 | 공유 관점의 사실 | 출처 |
 |---|---|---|---|
 | (a) 스풀러 RAW | `OpenPrinter` → `StartDocPrinter`(DOC_INFO_1, `pDatatype="RAW"`) → `StartPagePrinter` → `WritePrinter` → `EndPagePrinter` → `EndDocPrinter` → `ClosePrinter` | 작업이 Windows 출력 대기열로 들어간다. 여러 프로그램의 작업이 같은 대기열을 거친다. 대기열이 동시 작업을 순서대로 처리하는 방식은 MS 문서 원문으로 직접 확인하지 않았다 | [MS – Send Data Directly to a GDI Printer](https://learn.microsoft.com/en-us/windows/win32/printdocs/sending-data-directly-to-a-printer) (ms.date 2018-05-31) |
-| (b) COM 포트 직접 | `CreateFile("COM1")`. "dwShareMode must be zero (exclusive access)" | "If the specified resource is currently being used by another process, **CreateFile fails**." 기존 POS가 그 포트를 열고 있으면 우리 앱은 열 수 없다 | [MS – Communications Resource Handles](https://learn.microsoft.com/en-us/windows/win32/devio/communications-resource-handles), [MS – CreateFileW](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew) |
+| (b) COM 포트 직접 | `CreateFile("COM1")`. "The *fdwShareMode* parameter must be zero, opening the resource for exclusive access." | "If the specified resource is currently being used by another process, **CreateFile fails**." 기존 POS가 그 포트를 열고 있으면 우리 앱은 열 수 없다 | [MS – Communications Resource Handles](https://learn.microsoft.com/en-us/windows/win32/devio/communications-resource-handles), [MS – CreateFileW](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew) |
 | (c) TCP 9100 | 프린터 IP:9100에 소켓으로 ESC/POS 바이트를 보낸다 | Epson TM-T20IV: Port 9100, 양방향, 최대 동시 연결 6, **"Number of connections for which printing is available: 1 (occupied until the connection is released.)"**, 타임아웃 90초(변경 가능). 우리 앱이 연결을 오래 쥐고 있으면 다른 프로그램이 출력하지 못할 수 있다 | [Epson TM-T20IV TRG Rev.D](https://files.support.epson.com/pdf/pos/bulk/tm-t20iv_trg_en_rev_d.pdf) |
 
 - Windows 표준 TCP/IP 포트 모니터(TCPMON)는 RAW TCP와 LPR 프로토콜을 지원하고 포트 번호를 지정할 수 있다(`PROTOCOL_RAWTCP_TYPE`, `dwPortNumber`). 즉 LAN 프린터도 Windows 프린터로 등록하면 (a) 스풀러 경로로 함께 쓸 수 있다([MS – TCPMON Xcv](https://learn.microsoft.com/en-us/windows-hardware/drivers/print/tcpmon-xcv-commands), [PORT_DATA_1](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/tcpxcv/ns-tcpxcv-_port_data_1)). MS 문서에서 9100을 "기본값"으로 명시한 문장은 **확인 불가**.
@@ -291,7 +302,24 @@ flowchart LR
 | ESC/POS 생성 | `escpos` | 0.20.1 (2026-10-07) | 0.x 버전. feature: `serial_port`, `usb`, `native_usb`, `usbprint`(Windows 전용), `graphics` 등. 내장 드라이버 `Network`/`Console`/`File`. **페이지 코드는 PC437 등만 있고 한국어 페이지 코드 없음**. 문서화 커버리지 36.02% | [docs.rs](https://docs.rs/crate/escpos/latest) |
 | (c) TCP | 표준 `std::net::TcpStream` / `tokio::net` | — | 별도 크레이트 불필요(위 `escpos`의 `Network` 드라이버도 있음) | — |
 
-`windows-sys` 크레이트는 이번에 따로 확인하지 않았다.
+`windows-sys` 크레이트 최신 버전은 0.61.2(2025-10-06)다(2026-11-16 확인, crates.io). `escpos` 크레이트에는 스풀러(`OpenPrinter`/`WritePrinter`) 경로를 쓰는 드라이버가 없으므로, 스풀러 출력은 `windows` 크레이트로 직접 구현해야 한다. `escpos`에는 상태 요청 메서드(`real_time_status()` 등)가 있지만 예제는 "not tested"로 표시돼 있다([docs.rs](https://docs.rs/escpos/latest/escpos/)).
+
+### 5.5 출력 실패 감지 (2026-11-16 추가)
+
+> 2026-11-16 문서 검증에서 추가한 절이다. 상세와 판정 근거는 `docs/reviews/2026-11-16-docs-verification.md` H3에 있다. 모든 링크의 접근일은 2026-11-16이다.
+
+파일럿 성공 기준에 출력 실패가 들어가므로, 용지 없음·커버 열림·오프라인을 프로그램이 알 수 있는지가 출력 경로 선택에 영향을 준다.
+
+| 경로 | 알 수 있는 것 | 한계 | 출처 |
+|---|---|---|---|
+| (a) 스풀러 RAW | `GetPrinter`의 `PRINTER_INFO_2.Status`(`PRINTER_STATUS_PAPER_OUT`, `DOOR_OPEN`, `OFFLINE` 등 정의), `GetJob`의 `JOB_INFO.Status`(`JOB_STATUS_PAPEROUT`, `OFFLINE`, `ERROR`) | "The Spooler doesn't query for the state of a physical printer". 대기열이 비어 있으면 프린터가 오프라인이어도 상태를 보고하지 않는다. 대기열에 넣는 데 성공하면 앱에는 성공으로 돌아온다. "the default port monitor for Windows doesn't set more than the `PRINTER_STATUS_ERROR` bit". 어느 비트가 실제로 서는지는 제조사 포트 모니터에 달려 있다 | [MS KB 160129 (보관 문서, ms.date 2020-02-28)](https://learn.microsoft.com/en-us/previous-versions/troubleshoot/windows/win32/printer-print-job-status), [PRINTER_INFO_2](https://learn.microsoft.com/en-us/windows/win32/printdocs/printer-info-2) |
+| (b)(c) 포트 직접 (시리얼/USB/LAN) | ESC/POS 상태 명령. `DLE EOT n`(n=4가 용지 센서), `GS a n`(자동 상태 응답 ASB: 커버 열림, 온라인/오프라인), `GS r` | 포트를 직접 잡아야 하므로 기존 POS와 같은 프린터를 함께 쓸 수 없다(5.3절). 인터페이스마다 응답 방식이 다르다(Bixolon: 시리얼은 1초 간격 연속 전송, USB는 호스트가 읽을 때 전송) | [Bixolon SRP-350plusII Rev 1.02](https://www.bixolon.com/_upload/manual/Manual_SRP-350352plusII_Command_Rev_1_02%5B0%5D.pdf), [세우테크 SLK-TS400 매뉴얼(판매점 호스팅)](https://cdn11.bigcommerce.com/s-9n6cahhe4x/content/brochure/custom/upload/SEWOO%20SLK-TS400_USER%20MANUAL%20ENG.pdf) |
+| 제조사 수단 | Epson Advanced Printer Driver 6의 Status API("monitors printer status and sends ESC/POS commands") | APD6 없이 단독으로 쓸 수 없다. Epson 전용이다. 함수 상세가 적힌 매뉴얼 본문은 공개 URL로 찾지 못했다 | [TM-T20IV TRG Rev.D](https://files.support.epson.com/pdf/pos/bulk/tm-t20iv_trg_en_rev_d.pdf), [APD6 Status API 개요](https://download3.ebz.epson.net/dsc/f/03/00/16/57/69/32a1246e9189d45f95aa1984db38bc03c6941937/ov_APD6_StatusAPI_L_WM.pdf) |
+
+- `WritePrinter` 성공은 "스풀러가 데이터를 받았다"는 뜻이고 "종이에 찍혔다"는 뜻이 아니다(위 KB).
+- Epson TM-T20IV는 용지 끝과 커버 열림에서 프린터가 오프라인이 된다([TM-T20IV TRG](https://files.support.epson.com/pdf/pos/bulk/tm-t20iv_trg_en_rev_d.pdf)).
+- 해석(사실 아님): 기존 POS와 프린터를 함께 쓰는 스풀러 경로로는 용지 없음을 믿을 만하게 알기 어렵다. 전용 프린터에 직접 연결하면 상태 명령을 쓸 수 있다. 어느 경로든 화면에서 재출력할 수 있어야 한다.
+- **확인 불가**: KB 160129는 보관 문서이며, 최신 Windows 기준으로 같은 내용을 다시 서술한 현행 문서는 찾지 못했다. 스풀러의 `ReadPrinter`("returns an error if the device or the printer is not bidirectional")로 ESC/POS 상태 응답을 읽을 수 있는지도 확인하지 못했다. 실제로 어떤 상태가 보고되는지는 실물 프린터와 드라이버로 확인해야 한다(QA 체크리스트 대상).
 
 ---
 
@@ -314,7 +342,7 @@ flowchart LR
 **관리형 브로커: AWS IoT Core**([MQTT 문서](https://docs.aws.amazon.com/iot/latest/developerguide/mqtt.html), [쿼터](https://docs.aws.amazon.com/general/latest/gr/iot-core.html))
 - QoS 0과 1만 지원하고, **QoS 2는 미지원**이다. MQTT DUP 플래그도 미지원이다.
 - 영구 세션은 구독 정보와 **아직 ack되지 않은 QoS 1 메시지**를 저장한다. 재연결하면 최대 초당 10건으로 다시 보낸다.
-- 영구 세션 만료 기본값은 3600초(조정 가능)다. 실제로는 최대 30분까지 더 유지될 수 있다. 만료되면 저장된 메시지는 폐기된다. 최대 조정 한도는 쿼터 문서에 **명시 없음**(확인 불가).
+- 영구 세션 만료 기본값은 3600초(조정 가능)다. 실제로는 최대 30분까지 더 유지될 수 있다. 만료되면 저장된 메시지는 폐기된다. 최대 조정 한도는 **7일**이다("AWS IoT Core supports a maximum of 7 days, with a default maximum of one hour", MQTT 문서의 MQTT 5 속성 표). 세션이 만료되어 버려진 메시지도 과금된다("still billed at the standard messaging rate").
 - 계정당 큐잉 속도는 초당 500건(조정 가능)이다. 한도를 넘는 메시지는 "will be dropped".
 - Keep-alive: 0이거나 1200초를 넘게 요청하면 1200초를 쓰고, 30초 미만은 30초로 취급한다. 1.5×Keep Alive 동안 패킷이 없으면 연결을 끊는다.
 - 연결당 publish는 초당 100건(조정 불가)이다.
@@ -331,6 +359,7 @@ flowchart LR
 | nginx WebSocket 프록시 | `proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade";`. 페이지에는 `proxy_http_version 1.1`이 "before version 1.29.7"에서만 필요하다는 주석이 있다. "By default, the connection will be closed if the proxied server does not transmit any data within 60 seconds"이므로 `proxy_read_timeout`을 늘리거나 서버가 ping을 보내야 한다 | [nginx WebSocket proxying](https://nginx.org/en/docs/http/websocket.html) |
 | nginx SSE 버퍼링 | `proxy_buffering on`이 기본값이다. 응답 헤더 `X-Accel-Buffering: no`로 버퍼링을 끌 수 있다. `proxy_read_timeout` 기본 60초 | [ngx_http_proxy_module](https://nginx.org/en/docs/http/ngx_http_proxy_module.html) |
 | 프록시 일반 | 중간장비가 응답 전체를 버퍼링하는 것도 합법이라 스트리밍이 동작하지 않을 수 있다 | [RFC 6202 §3.2](https://www.rfc-editor.org/rfc/rfc6202.html) |
+| 서버 배포 시 연결 (2026-11-16 추가) | ALB는 등록 해제 중인 타깃에 새 요청을 보내지 않고, 기본 300초(0~3600초) 뒤 등록 해제를 끝낸다. "WebSocket connections are inherently sticky"이므로 타깃이 교체되면 그 타깃의 연결은 끊긴다. nginx는 설정 리로드 시 기존 워커가 기존 연결을 계속 처리하므로 리로드만으로는 바로 끊기지 않는다 | [ALB 타깃 그룹 속성](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-target-group-attributes.html), [nginx 제어](https://nginx.org/en/docs/control.html) |
 
 ### 6.4 서버 수평 확장 시 메시지 분배
 - **Redis Pub/Sub**: "_at-most-once_ message delivery semantics… If the subscriber is unable to handle the message (for example, due to an error or a network disconnect) the message is forever lost." 더 강한 보장이 필요하면 Streams를 권장한다. Redis 7.0부터 Sharded Pub/Sub가 있다([Redis Pub/Sub](https://redis.io/docs/latest/develop/pubsub/)).
@@ -355,11 +384,11 @@ flowchart LR
 
 ## 7. 신뢰성 패턴 (요약)
 
-- **Idempotency-Key 헤더**: `draft-ietf-httpapi-idempotency-key-header-08`. httpapi WG의 Active Internet-Draft이고 **아직 RFC가 아니다**. Standards Track을 목표로 하며 IESG state는 "I-D Exists", 만료일은 2027-04-25다. 주요 내용은 다음과 같다([IETF Datatracker](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/), 페이지 갱신 2026-10-22).
+- **Idempotency-Key 헤더**: `draft-ietf-httpapi-idempotency-key-header-08`. httpapi WG의 Active Internet-Draft이고 **아직 RFC가 아니다**. 초안 본문 머리말은 "Intended status: Standards Track"이라고 쓰지만 Datatracker 페이지의 "Intended RFC status"는 비어 있다(None). IESG state는 "I-D Exists", 만료일은 2027-04-25다. 주요 내용은 다음과 같다([IETF Datatracker](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/), 페이지 갱신 2026-10-22).
   - POST/PATCH를 안전하게 재시도하게 해 준다.
   - 키는 UUID 등 고엔트로피 값을 쓴다.
-  - 같은 키를 다른 내용으로 재사용하면 422, 키가 필수인데 없으면 400, 원래 요청이 처리 중이면 409를 돌려준다.
-  - 서버가 키를 만료시킨다면 그 정책을 공개해야 한다.
+  - 같은 키를 다른 내용으로 재사용하면 422, 키가 필수인데 없으면 400, 원래 요청이 처리 중이면 409를 돌려준다. 셋 다 필수(MUST)가 아니라 권장(SHOULD)이다.
+  - 서버가 키를 만료시킨다면 그 정책을 공개하는 것이 권장된다(SHOULD).
 - **At-least-once + 중복 제거**: MQTT QoS 1은 "assured to arrive but duplicates can occur"([OASIS](https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html)). Redis Streams도 at-least-once를 지원한다([Redis](https://redis.io/docs/latest/develop/pubsub/)). 즉 "최소 한 번 전달"을 택하면 수신 측에서 `orderId`/`eventId`로 중복을 걸러야 한다(설계 원칙 2와 일치).
 - **수신 확인(ack)**: WebSocket과 SSE 표준에는 메시지 단위 ack가 없다([RFC 6455](https://www.rfc-editor.org/rfc/rfc6455.html), [WHATWG](https://html.spec.whatwg.org/multipage/server-sent-events.html)). MQTT QoS 1은 프로토콜 수준의 PUBACK이 있지만, 이것은 "브로커→클라이언트 전달"에 대한 확인이지 "앱이 화면에 띄웠다"는 확인이 아니다. 앱 수준 ack(REST)는 별도로 필요하다는 함의가 있다(해석).
 
@@ -413,7 +442,8 @@ flowchart LR
   - (1)이면 우리 앱도 스풀러로 같이 쓸 수 있는 구조다.
   - (2)이면 기존 POS가 포트를 열고 있는 동안 우리 앱은 열 수 없다.
   - (3)이면 서로 연결을 짧게 쥐어야 한다.
-- **전용 프린터**를 두면 위 충돌은 사라지지만 하드웨어 비용과 설치 공간이 든다.
+- **전용 프린터**를 두면 위 충돌은 사라지지만 하드웨어 비용과 설치 공간이 든다. 포트에 직접 연결할 수 있어 용지 없음·커버 열림 같은 상태를 프로그램이 확인할 수 있다(5.5절).
+- **출력 실패 감지**: 스풀러 경로는 대기열에 넣은 것까지만 성공으로 알려 주므로, 용지 없음을 믿을 만하게 알기 어렵다(5.5절).
 
 ### 10.3 실시간 전달 방식
 - **공통 사실**: 어느 방식이든 매장 PC가 바깥 방향으로 연결해야 한다(NAT). 클라우드 중간장비의 기본 유휴 타임아웃은 60초(ALB, nginx)라 하트비트가 필요하다. 어떤 방식도 "앱 수준 처리 완료"까지 보장하지 않으므로, ack와 재연결 시 미확인 조회가 필요하다(6, 7절).
@@ -456,7 +486,7 @@ flowchart LR
 11. Epson TM Virtual Port Driver의 가상 COM 포트도 실제 COM처럼 독점되는지.
 12. MS 문서에서 RAW TCP 포트 기본값을 9100으로 명시한 문장.
 13. 스풀러가 여러 프로그램의 동시 RAW 작업을 섞지 않고 순서대로 처리한다는 MS 문서상의 명시 문장.
-14. AWS IoT Core 영구 세션 만료 시간의 최대 조정 한도.
+14. ~~AWS IoT Core 영구 세션 만료 시간의 최대 조정 한도.~~ → **해소(2026-11-16)**: 최대 7일(6.2절).
 15. ALB "HTTP client keepalive duration"이 WebSocket 업그레이드 연결에도 적용되는지.
 16. 실제 매장 공유기의 TCP 유휴 타임아웃(장비마다 다름. RFC 5382의 2시간 4분 요구를 지키는지).
 17. A-1(원격 화면)에서 인터넷이 끊겼을 때 WebView2와 Tauri의 동작에 대한 공식 근거.
