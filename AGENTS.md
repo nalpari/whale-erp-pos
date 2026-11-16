@@ -181,7 +181,79 @@
 
 - **스택 (2026-11-16 확정)**: Tauri v2 (Rust) + Vite + React. 화면은 설치 파일에 내장한다.
 - 지원 OS: Windows 10 이상.
-- 프로젝트를 아직 만들지 않았다. 버전, 패키지 매니저, 테스트 도구, 빌드·테스트·실행 명령어와 코드 컨벤션은 프로젝트를 만들 때 정해 여기에 적는다. 그 전까지 명령어를 추측해서 쓰지 않는다.
+- 프로젝트 골격: T00(WHALEERPPO-1)에서 `create-tauri-app` 4.7.5의 `react-ts` 템플릿으로 만들었다 (2026-11-16).
+- 패키지 매니저: **pnpm** (12.10.1에서 확인). Node 22.12 이상의 22.x, 24.x, 26 이상 (Vitest 5.1.0의 `engines`가 `^22.12.0 || ^24.0.0 || >=26.0.0`이라 23.x · 25.x는 지원하지 않는다. 개발 PC는 v24.21.0).
+- 앱 이름(productName): `픽업오더 주문접수`. 식별자(identifier): `com.whale.pickuporder.dev` (**임시값**. 바꾸면 앱 데이터 폴더가 달라진다).
+
+### 주요 버전 (2026-11-16 설치 기준)
+
+| 영역 | 패키지 | 버전 |
+|---|---|---|
+| 데스크톱 | Tauri (Rust crate `tauri`, `@tauri-apps/cli`, `@tauri-apps/api`) | crate 2.12.5 · CLI/API 2.12.4 |
+| 화면 | React · React DOM | 19.3.1 |
+| 빌드 | Vite · `@vitejs/plugin-react` | 8.3.8 · 6.3.0 |
+| 언어 | TypeScript | 6.0.3 (`~6.0.3`로 고정. typescript-eslint 8.72.2의 peer 조건이 `>=4.8.4 <6.1.0`이라 6.1 이상(7.x 포함)은 쓰지 않는다. `^`로 바꾸지 말 것) |
+| 스타일 | Tailwind CSS · `@tailwindcss/vite` | 4.3.5 |
+| 테스트 | Vitest · jsdom · React Testing Library · jest-dom | 5.1.0 · 31.0.1 · 16.3.3 · 7.0.1 |
+| 검사 | ESLint · typescript-eslint · Prettier | 10.15.0 · 8.72.2 · 3.10.1 |
+| Rust | rustup stable 툴체인의 rustc · cargo | 1.100.0 (개발 PC, rustup 1.29.3). **버전을 고정하지 않는다**: `rust-toolchain` 파일 없이 rustup의 최신 stable을 쓴다 (2026-11-16 사용자 결정) |
+
+### 명령어
+
+| 명령 | 하는 일 |
+|---|---|
+| `pnpm install` | 의존성 설치 |
+| `pnpm dev` | 화면만 브라우저로 실행 (http://localhost:1420) |
+| `pnpm tauri dev` | 데스크톱 앱으로 실행 (Linux는 webkit2gtk 등 시스템 패키지 필요) |
+| `pnpm build` | 타입 검사 후 화면 빌드 (`dist/`) |
+| `pnpm tauri build` | 설치 파일 빌드. Windows 설치 파일은 Windows PC에서 만든다 |
+| `pnpm lint` | ESLint (경고도 실패로 본다: `--max-warnings 0`) |
+| `pnpm format` / `pnpm format:check` | Prettier 정리 / 검사 |
+| `pnpm typecheck` | TypeScript 타입 검사 (`tsconfig.json`, `tsconfig.node.json`) |
+| `pnpm test` | Vitest 한 번 실행 |
+| `cd src-tauri && cargo fmt --check` | Rust 서식 검사 |
+| `cd src-tauri && cargo clippy -- -D warnings` | Rust 정적 검사 (경고도 실패) |
+| `cd src-tauri && cargo test` | Rust 테스트 |
+
+- ① 자체 검증 순서: `pnpm lint` → `pnpm typecheck` → `pnpm format:check` → `pnpm test` → `pnpm build` → Rust 검사 3종.
+- Rust 검사 결과 (2026-11-16, Linux 개발 PC, rustc 1.100.0): `cargo check` · `cargo fmt --check` · `cargo clippy -- -D warnings`(경고 0개) · `cargo test`(테스트 0개) 모두 통과. `pnpm tauri dev`로 창 제목과 화면 제목 "픽업오더 주문접수"를 확인했다.
+- `any` 금지는 ESLint `@typescript-eslint/no-explicit-any: error`로 막는다.
+
+### 개발 환경 준비 (Linux)
+
+Ubuntu 26.04.1 LTS에서 확인했다 (2026-11-16). 근거: [Tauri Prerequisites](https://v2.tauri.app/start/prerequisites/) (Linux는 Debian 탭의 명령을 그대로 썼다).
+
+1. 시스템 패키지 설치:
+   ```
+   sudo apt update
+   sudo apt install libwebkit2gtk-4.1-dev \
+     build-essential \
+     curl \
+     wget \
+     file \
+     libxdo-dev \
+     libssl-dev \
+     libayatana-appindicator3-dev \
+     librsvg2-dev
+   ```
+2. rustup으로 Rust 설치 (공식 설치 스크립트, 기본 선택):
+   ```
+   curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh
+   ```
+3. Rust 검사 도구 추가: `rustup component add rustfmt clippy`
+4. `which cargo`가 `~/.cargo/bin/cargo`를 가리키는지 확인한다. 배포판 Rust 패키지(`/usr/bin/cargo`, 1.93.1)는 지우지 않고 남겨 두었으므로, rustup 쪽이 먼저 잡혀야 한다. 셸에서 배포판 쪽이 잡히면 `export PATH="$HOME/.cargo/bin:$PATH"`를 앞에 붙인다.
+5. Node(22.12 이상의 22.x · 24.x · 26 이상)와 pnpm을 준비한 뒤 `pnpm install`.
+
+### 개발 환경 준비 (Windows, 미확인)
+
+> 아래는 공식 문서 기준으로 정리한 것이다. **사용자가 Windows PC에서 아직 확인하지 않았다.** 근거: [Tauri Prerequisites](https://v2.tauri.app/start/prerequisites/)
+
+1. Microsoft C++ Build Tools 설치, "Desktop development with C++" 선택
+2. WebView2: Windows 10(1803 이상)에는 기본으로 들어 있다
+3. Rust: `winget install --id Rustlang.Rustup` 후 `rustup default stable-msvc`
+4. Node · pnpm 설치 후 `pnpm install`
+5. 설치 파일: `pnpm tauri build` (`.msi`는 Windows에서만 만들 수 있다)
+6. 확인할 것: productName이 한글이라 설치 파일 · 실행 파일 · 바로가기 이름도 한글이 된다. 정상 동작하는지 확인이 필요하다.
 
 ## 개발 규칙 (2026-11-16 확정)
 
