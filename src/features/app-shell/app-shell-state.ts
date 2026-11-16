@@ -1,15 +1,13 @@
 // 프로그램 틀의 화면 상태. 라이브러리 없이 useReducer로 관리한다 (스펙 11장 D).
+import type { Session } from "../../shared/api/auth";
 import type { MainTabId, SettingsTabId } from "./tabs";
-
-/** 로그인 상태. T02가 실제 로그인을 만들기 전까지 모의 값으로 채운다. */
-export interface Session {
-  storeName: string;
-}
 
 export type DialogKind = "stop-orders" | "logout" | "shutdown";
 
 export interface AppShellState {
   session: Session | null;
+  /** 시작 시 자동 로그인을 확인하는 중인지. 이 동안 로그인 폼 대신 빈 화면을 보인다 (스펙 4장). */
+  restoring: boolean;
   activeTab: MainTabId;
   settingsTab: SettingsTabId;
   /** 서버가 성공을 돌려준 주문 받기 상태. 요청 중에는 바뀌지 않는다. */
@@ -23,6 +21,7 @@ export interface AppShellState {
 
 export type AppShellAction =
   | { type: "login"; session: Session }
+  | { type: "restore-finished"; session: Session | null }
   | { type: "logout" }
   /** 시스템종료 처리 중의 로그아웃. 종료가 끝날 때까지 팝업(처리 중)을 그대로 둔다. */
   | { type: "logout-for-shutdown" }
@@ -47,7 +46,13 @@ const SIGNED_IN_DEFAULTS = {
 } as const satisfies Partial<AppShellState>;
 
 export function createInitialState(session: Session | null): AppShellState {
-  return { session, ...SIGNED_IN_DEFAULTS, dialog: null, dialogPending: false };
+  return {
+    session,
+    restoring: false,
+    ...SIGNED_IN_DEFAULTS,
+    dialog: null,
+    dialogPending: false,
+  };
 }
 
 export function appShellReducer(
@@ -57,6 +62,16 @@ export function appShellReducer(
   switch (action.type) {
     case "login":
       return createInitialState(action.session);
+    case "restore-finished":
+      // 확인 중이 아니면(이미 끝난 뒤) 늦은 결과는 버린다.
+      if (!state.restoring) return state;
+      if (!action.session) return { ...state, restoring: false };
+      // 열려 있던 팝업(예: 확인 중 Alt+F4)은 그대로 둔다.
+      return {
+        ...createInitialState(action.session),
+        dialog: state.dialog,
+        dialogPending: state.dialogPending,
+      };
     case "logout":
       return createInitialState(null);
     case "logout-for-shutdown":

@@ -1,7 +1,8 @@
 // 로그인 후 탭과 콘텐츠 영역. 탭 안의 기능 화면은 T04 이후에 채운다 (스펙 1장 범위 밖).
 import { useAppShell } from "./AppShellContext";
-import { TabBar } from "./TabBar";
-import { MAIN_TABS, panelId, SETTINGS_TABS, tabId } from "./tabs";
+import { panelId, tabId } from "../../shared/ui/tab-ids";
+import { TabBar } from "../../shared/ui/TabBar";
+import { MAIN_TABS, SETTINGS_TABS } from "./tabs";
 
 function Placeholder({ label }: { label: string }) {
   return (

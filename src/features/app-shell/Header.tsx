@@ -40,7 +40,7 @@ export function Header() {
           <StoreIcon />
         </span>
         <span className="text-lg text-gray-200">
-          {session ? session.storeName : "로그인 후 이용해주세요."}
+          {session ? session.store.name : "로그인 후 이용해주세요."}
         </span>
       </div>
 

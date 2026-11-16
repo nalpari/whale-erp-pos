@@ -9,19 +9,25 @@ import {
   useRef,
   type ReactNode,
 } from "react";
+import type { AuthApi, Session } from "../../shared/api/auth";
 import type { StoreStatusApi } from "../../shared/api/store-status";
+import { errorSummary } from "../../shared/error-summary";
+import type { TokenStore } from "../../shared/session/token-store";
 import type { AppWindow } from "../../shared/platform/window";
 import {
   appShellReducer,
   createInitialState,
   type AppShellState,
   type DialogKind,
-  type Session,
 } from "./app-shell-state";
 import type { MainTabId, SettingsTabId } from "./tabs";
 
 interface AppShellActions {
-  login(session: Session): void;
+  /**
+   * remember: 자동로그인 체크 여부. 참이고 점포번호 계정이며 재발급 토큰이 있으면 저장하고,
+   * 그 밖에는 남은 토큰을 지운다 (스펙 4장).
+   */
+  login(session: Session, remember: boolean): void;
   selectTab(tab: MainTabId): void;
   selectSettingsTab(tab: SettingsTabId): void;
   /** 토글을 눌렀을 때. ON으로는 바로 요청하고, OFF로는 확인 팝업을 연다 (스펙 2.2). */
@@ -39,6 +45,8 @@ interface AppShellActions {
 interface AppShellContextValue {
   state: AppShellState;
   actions: AppShellActions;
+  /** 로그인 화면이 쓰는 로그인 API. */
+  authApi: AuthApi;
 }
 
 const AppShellContext = createContext<AppShellContextValue | null>(null);
@@ -46,8 +54,19 @@ const AppShellContext = createContext<AppShellContextValue | null>(null);
 interface Props {
   windowApi: AppWindow;
   storeStatusApi: StoreStatusApi;
+  authApi: AuthApi;
+  tokenStore: TokenStore;
   initialSession: Session | null;
+  /** 있으면 시작할 때 불러 자동 로그인을 확인한다. 끝날 때까지 로그인 폼 대신 빈 화면을 보인다. */
+  restoreSession?: () => Promise<Session | null>;
   children: ReactNode;
+}
+
+function logTokenError(action: string) {
+  return (error: unknown) => {
+    // 토큰 저장소 오류는 로그인 · 로그아웃을 막지 않는다. 토큰 값은 남기지 않는다.
+    console.error(`[auto-login] 토큰 ${action} 실패`, errorSummary(error));
+  };
 }
 
 function logWindowError(action: string) {
@@ -60,14 +79,45 @@ function logWindowError(action: string) {
 export function AppShellProvider({
   windowApi,
   storeStatusApi,
+  authApi,
+  tokenStore,
   initialSession,
+  restoreSession,
   children,
 }: Props) {
-  const [state, dispatch] = useReducer(
-    appShellReducer,
-    initialSession,
-    createInitialState,
+  const [state, dispatch] = useReducer(appShellReducer, null, () => ({
+    ...createInitialState(initialSession),
+    // 이미 세션을 받았으면 확인할 것이 없다.
+    restoring: restoreSession !== undefined && initialSession === null,
+  }));
+
+  // 시작할 때 한 번만 확인한다. restoreSession은 거절하지 않지만, 혹시 거절해도 빈 화면에 갇히지 않게 null로 끝낸다.
+  // 개발 모드 StrictMode는 effect를 두 번 돌리므로 요청을 ref에 두고 같이 쓴다. 두 번 보내면 토큰을 매번 바꾸는
+  // 서버에서는 두 번째 요청이 폐기된 토큰으로 실패해 토큰이 지워진다.
+  // 이미 세션을 받았으면 확인하지 않는다 (위 restoring 초기값과 같은 조건).
+  const restoreRef = useRef(
+    initialSession === null ? restoreSession : undefined,
   );
+  const restorePromiseRef = useRef<Promise<Session | null> | null>(null);
+  useEffect(() => {
+    const restore = restoreRef.current;
+    if (!restore) return;
+    let disposed = false;
+    restorePromiseRef.current ??= restore().catch((error: unknown) => {
+      // restoreSession은 거절하지 않는다. 여기 오면 버그이므로 기록한다.
+      console.error(
+        "[auto-login] 시작 확인이 예기치 않게 거절됨",
+        errorSummary(error),
+      );
+      return null;
+    });
+    restorePromiseRef.current.then((session) => {
+      if (!disposed) dispatch({ type: "restore-finished", session });
+    });
+    return () => {
+      disposed = true;
+    };
+  }, []);
 
   // 비동기 처리 중에 최신 상태를 읽기 위해 둔다. 렌더 뒤에만 갱신한다.
   const stateRef = useRef(state);
@@ -137,9 +187,11 @@ export function AppShellProvider({
       case "logout":
         dispatch({ type: "dialog-confirmed" });
         // stopOrdersBestEffort는 거절하지 않지만, 어떤 예외가 나도 팝업이 처리 중으로 굳지 않게 finally로 로그아웃한다.
-        void stopOrdersBestEffort("logout").finally(() =>
-          dispatch({ type: "logout" }),
-        );
+        void stopOrdersBestEffort("logout").finally(() => {
+          dispatch({ type: "logout" });
+          // 로그아웃하면 자동 로그인을 끈다 (스펙 3.4-3). 시스템종료는 지우지 않는다(다음 실행 때 자동 로그인).
+          tokenStore.clear().catch(logTokenError("삭제"));
+        });
         return;
       case "shutdown": {
         dispatch({ type: "dialog-confirmed" });
@@ -160,7 +212,7 @@ export function AppShellProvider({
         return;
       }
     }
-  }, [sendAccepting, stopOrdersBestEffort, windowApi]);
+  }, [sendAccepting, stopOrdersBestEffort, windowApi, tokenStore]);
 
   const requestAccepting = useCallback(
     (next: boolean) => {
@@ -204,7 +256,23 @@ export function AppShellProvider({
 
   const actions = useMemo<AppShellActions>(
     () => ({
-      login: (session) => dispatch({ type: "login", session }),
+      login: (session, remember) => {
+        dispatch({ type: "login", session });
+        // 점포번호 계정만 자동 로그인을 쓴다. 휴대폰 번호는 저장하지 않고 재발급 토큰만 저장한다 (스펙 4장).
+        if (
+          remember &&
+          session.accountType === "store" &&
+          session.refreshToken
+        ) {
+          tokenStore.save(session.refreshToken).catch((error: unknown) => {
+            logTokenError("저장")(error);
+            // 이전 계정 토큰이 남아 다음 실행 때 다른 점포로 자동 로그인되지 않게 지운다.
+            return tokenStore.clear().catch(logTokenError("삭제"));
+          });
+        } else {
+          tokenStore.clear().catch(logTokenError("삭제"));
+        }
+      },
       selectTab: (tab) => dispatch({ type: "select-tab", tab }),
       selectSettingsTab: (tab) =>
         dispatch({ type: "select-settings-tab", tab }),
@@ -220,10 +288,13 @@ export function AppShellProvider({
       maximizeWindow: () =>
         void windowApi.maximize().catch(logWindowError("늘리기")),
     }),
-    [requestAccepting, confirmDialog, windowApi],
+    [requestAccepting, confirmDialog, windowApi, tokenStore],
   );
 
-  const value = useMemo(() => ({ state, actions }), [state, actions]);
+  const value = useMemo(
+    () => ({ state, actions, authApi }),
+    [state, actions, authApi],
+  );
   return (
     <AppShellContext.Provider value={value}>
       {children}

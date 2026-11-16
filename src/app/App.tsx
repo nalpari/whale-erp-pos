@@ -2,6 +2,9 @@
 import { useState } from "react";
 import { AppShell } from "../features/app-shell/AppShell";
 import { AppShellProvider } from "../features/app-shell/AppShellContext";
+import { createMockAuthApi } from "../shared/api/auth";
+import { restoreSession } from "../shared/session/restore-session";
+import { createTokenStore } from "../shared/session/token-store";
 import { createMockStoreStatusApi } from "../shared/api/store-status";
 import { createAppWindow } from "../shared/platform/window";
 
@@ -10,11 +13,17 @@ function App() {
   const [windowApi] = useState(createAppWindow);
   // 가정: 백엔드 API가 정해지기 전이라 모의 구현을 쓴다 (스펙 3장).
   const [storeStatusApi] = useState(() => createMockStoreStatusApi());
+  // 가정: 로그인도 모의 구현을 쓴다 (SPEC-login 5장). 실제 서버를 붙이기 전까지는 설치 파일에서도 시험 계정으로만 로그인된다.
+  const [authApi] = useState(() => createMockAuthApi());
+  const [tokenStore] = useState(createTokenStore);
 
   return (
     <AppShellProvider
       windowApi={windowApi}
       storeStatusApi={storeStatusApi}
+      authApi={authApi}
+      tokenStore={tokenStore}
+      restoreSession={() => restoreSession(authApi, tokenStore)}
       initialSession={null}
     >
       <AppShell />

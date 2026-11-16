@@ -1,6 +1,17 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { StrictMode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import {
+  createMockAuthApi,
+  MOCK_ACCOUNTS,
+  type Session,
+} from "../../shared/api/auth";
 import type { StoreStatusApi } from "../../shared/api/store-status";
+import { restoreSession as realRestoreSession } from "../../shared/session/restore-session";
+import {
+  createMemoryTokenStore,
+  type TokenStore,
+} from "../../shared/session/token-store";
 import { createMockStoreStatusApi } from "../../shared/api/store-status";
 import type { AppWindow } from "../../shared/platform/window";
 import {
@@ -9,31 +20,60 @@ import {
 } from "../../test/fakes";
 import { AppShell } from "./AppShell";
 import { AppShellProvider } from "./AppShellContext";
-import type { Session } from "./app-shell-state";
+import { appShellReducer, createInitialState } from "./app-shell-state";
 
-const STORE: Session = { storeName: "힘이나는커피생활 종로점" };
+const STORE: Session = {
+  accountType: "store",
+  store: { id: "s1", name: "힘이나는커피생활 종로점" },
+  accessToken: "t",
+};
 
 function renderShell(
   options: {
     session?: Session | null;
     windowApi?: AppWindow;
     storeStatusApi?: StoreStatusApi;
+    tokenStore?: TokenStore;
+    restoreSession?: () => Promise<Session | null>;
+    strict?: boolean;
   } = {},
 ) {
   const fakeWindow = createFakeWindow();
   const windowApi = options.windowApi ?? fakeWindow.win;
   const storeStatusApi =
     options.storeStatusApi ?? createMockStoreStatusApi({ delayMs: 0 });
-  const { unmount } = render(
+  const tree = (
     <AppShellProvider
       windowApi={windowApi}
       storeStatusApi={storeStatusApi}
+      authApi={createMockAuthApi({ delayMs: 0 })}
+      tokenStore={options.tokenStore ?? createMemoryTokenStore()}
+      restoreSession={options.restoreSession}
       initialSession={options.session ?? null}
     >
       <AppShell />
-    </AppShellProvider>,
+    </AppShellProvider>
+  );
+  const { unmount } = render(
+    options.strict ? <StrictMode>{tree}</StrictMode> : tree,
   );
   return { fakeWindow, unmount };
+}
+
+/** 로그인 화면에서 모의 점포번호 계정으로 로그인한다. */
+async function loginWithForm({ remember = false } = {}) {
+  const { storeCode, phone } = MOCK_ACCOUNTS.store;
+  fireEvent.change(screen.getByLabelText("점포 고유번호"), {
+    target: { value: storeCode },
+  });
+  fireEvent.change(screen.getByLabelText("대표 휴대폰 번호"), {
+    target: { value: phone },
+  });
+  if (remember) {
+    fireEvent.click(screen.getByRole("checkbox", { name: "자동로그인" }));
+  }
+  fireEvent.click(screen.getByRole("button", { name: "로그인" }));
+  await screen.findByRole("tab", { name: "주문접수" });
 }
 
 function openMoreMenu() {
@@ -53,14 +93,16 @@ describe("화면 틀 (스펙 2.1)", () => {
     expect(screen.getByText("로그인 후 이용해주세요.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "더보기" })).toBeInTheDocument();
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
-    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("tablist", { name: "메뉴" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("region", { name: "로그인" })).toBeInTheDocument();
   });
 
   it("로그인 후: 점포명 · 토글 · 탭 5개가 보이고 첫 탭은 주문접수다", () => {
     renderShell({ session: STORE });
 
-    expect(screen.getByText(STORE.storeName)).toBeInTheDocument();
+    expect(screen.getByText(STORE.store.name)).toBeInTheDocument();
     expect(
       screen.queryByText("로그인 후 이용해주세요."),
     ).not.toBeInTheDocument();
@@ -84,11 +126,12 @@ describe("화면 틀 (스펙 2.1)", () => {
     ).toBeInTheDocument();
   });
 
-  it("개발용 모의 로그인으로 로그인 후 화면으로 바꿀 수 있다", () => {
+  it("로그인 화면에서 로그인하면 로그인 후 화면으로 바뀐다", async () => {
     renderShell();
 
-    fireEvent.click(screen.getByRole("button", { name: "개발용 모의 로그인" }));
+    await loginWithForm();
 
+    expect(screen.getByText("모의 점포 (개발용)")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "주문접수" })).toHaveAttribute(
       "aria-selected",
       "true",
@@ -414,7 +457,7 @@ describe("로그아웃 (스펙 2.3)", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "취소" }));
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(server.api.setAcceptingOrders).not.toHaveBeenCalled();
-    expect(screen.getByText(STORE.storeName)).toBeInTheDocument();
+    expect(screen.getByText(STORE.store.name)).toBeInTheDocument();
   });
 
   it("[로그아웃]이면 주문 중단 요청을 보낸 뒤 로그인 화면으로 간다", async () => {
@@ -477,7 +520,7 @@ describe("로그아웃 (스펙 2.3)", () => {
     await act(async () => server.last().resolve());
 
     expect(screen.getByText("로그인 후 이용해주세요.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "개발용 모의 로그인" }));
+    await loginWithForm();
     expect(toggle()).toHaveAttribute("aria-checked", "false");
     expect(toggle()).toBeEnabled();
   });
@@ -515,7 +558,7 @@ describe("로그아웃 (스펙 2.3)", () => {
       }),
     );
     await act(async () => server.last().resolve());
-    fireEvent.click(screen.getByRole("button", { name: "개발용 모의 로그인" }));
+    await loginWithForm();
 
     expect(toggle()).toHaveAttribute("aria-checked", "false");
     expect(screen.getByRole("tab", { name: "주문접수" })).toHaveAttribute(
@@ -727,5 +770,218 @@ describe("시스템종료 (스펙 2.3, 2.4)", () => {
       screen.getByRole("alertdialog", { name: "시스템을 종료하겠습니까?" }),
     ).toBeInTheDocument();
     expect(fakeWindow.win.exit).not.toHaveBeenCalled();
+  });
+});
+
+describe("자동 로그인 저장 (스펙 3.4, 4장)", () => {
+  /** 저장 · 삭제 호출을 기록하는 메모리 저장소. */
+  function spyStore(initial: string | null = null) {
+    const store = createMemoryTokenStore(initial);
+    vi.spyOn(store, "save");
+    vi.spyOn(store, "clear");
+    return store;
+  }
+
+  function logout() {
+    fireEvent.click(
+      within(openMoreMenu()).getByRole("menuitem", { name: "로그아웃" }),
+    );
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "로그아웃",
+      }),
+    );
+  }
+
+  it("자동로그인을 체크하고 로그인하면 재발급 토큰만 저장한다 (휴대폰 번호는 저장 안 함)", async () => {
+    const tokenStore = spyStore();
+    renderShell({ tokenStore });
+
+    await loginWithForm({ remember: true });
+
+    await vi.waitFor(() => expect(tokenStore.save).toHaveBeenCalledTimes(1));
+    const saved = await tokenStore.load();
+    expect(saved).toBe("mock-refresh-token");
+    expect(saved).not.toContain(MOCK_ACCOUNTS.store.phone);
+  });
+
+  it("체크하지 않고 로그인하면 저장하지 않고, 남아 있던 토큰도 지운다", async () => {
+    const tokenStore = spyStore("old-token");
+    renderShell({ tokenStore });
+
+    await loginWithForm();
+
+    await vi.waitFor(() => expect(tokenStore.clear).toHaveBeenCalled());
+    expect(tokenStore.save).not.toHaveBeenCalled();
+    expect(await tokenStore.load()).toBeNull();
+  });
+
+  it("로그아웃하면 토큰을 지운다", async () => {
+    const tokenStore = spyStore("saved-token");
+    renderShell({ session: STORE, tokenStore });
+
+    logout();
+
+    await screen.findByText("로그인 후 이용해주세요.");
+    await vi.waitFor(async () => expect(await tokenStore.load()).toBeNull());
+  });
+
+  it("시스템종료는 토큰을 지우지 않는다 (다음 실행 때 자동 로그인)", async () => {
+    const tokenStore = spyStore("saved-token");
+    const { fakeWindow } = renderShell({ session: STORE, tokenStore });
+
+    fireEvent.click(
+      within(openMoreMenu()).getByRole("menuitem", { name: "시스템종료" }),
+    );
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "시스템 종료",
+      }),
+    );
+
+    await vi.waitFor(() => expect(fakeWindow.win.exit).toHaveBeenCalled());
+    expect(tokenStore.clear).not.toHaveBeenCalled();
+    expect(await tokenStore.load()).toBe("saved-token");
+  });
+
+  it("토큰 저장이 실패해도 로그인은 그대로 된다", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const tokenStore = createMemoryTokenStore();
+    vi.spyOn(tokenStore, "save").mockRejectedValue(new Error("x"));
+    renderShell({ tokenStore });
+
+    await loginWithForm({ remember: true });
+
+    expect(screen.getByRole("tab", { name: "주문접수" })).toBeInTheDocument();
+    await vi.waitFor(() => expect(log).toHaveBeenCalled());
+    expect(JSON.stringify(log.mock.calls)).not.toContain("mock-refresh-token");
+    log.mockRestore();
+  });
+});
+
+describe("시작 시 자동 로그인 (스펙 4장)", () => {
+  it("확인하는 동안 로그인 폼 대신 빈 화면, 헤더는 그대로", async () => {
+    let finish: (session: Session | null) => void = () => {};
+    renderShell({
+      restoreSession: () => new Promise((resolve) => (finish = resolve)),
+    });
+
+    expect(screen.getByText("로그인 후 이용해주세요.")).toBeInTheDocument();
+    expect(screen.queryByLabelText("점포 고유번호")).not.toBeInTheDocument();
+    await act(async () => finish(STORE));
+
+    expect(screen.getByText(STORE.store.name)).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "주문접수" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("확인에 실패(null)하면 로그인 화면을 보인다", async () => {
+    renderShell({ restoreSession: async () => null });
+
+    expect(await screen.findByLabelText("점포 고유번호")).toBeInTheDocument();
+  });
+
+  it("확인이 거절돼도 빈 화면에 갇히지 않고 로그인 화면을 보인다", async () => {
+    renderShell({ restoreSession: () => Promise.reject(new Error("x")) });
+
+    expect(await screen.findByLabelText("점포 고유번호")).toBeInTheDocument();
+  });
+
+  it("확인 중에 Alt+F4로 연 종료 팝업은 확인이 끝나도 그대로 남는다", async () => {
+    let finish: (session: Session | null) => void = () => {};
+    const { fakeWindow } = renderShell({
+      restoreSession: () => new Promise((resolve) => (finish = resolve)),
+    });
+    await act(async () => {}); // 닫기 가로채기 등록을 기다린다
+    act(() => {
+      expect(fakeWindow.requestClose()).toBe(true);
+    });
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+
+    await act(async () => finish(STORE));
+
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    expect(screen.getByText(STORE.store.name)).toBeInTheDocument();
+  });
+});
+
+describe("appShellReducer restore-finished", () => {
+  it("확인이 끝난 뒤 늦게 온 결과는 버린다", () => {
+    const state = createInitialState(null);
+    expect(
+      appShellReducer(state, { type: "restore-finished", session: STORE }),
+    ).toBe(state);
+  });
+});
+
+describe("자동 로그인 전체 흐름 (스펙 9장 4)", () => {
+  it("개발 모드 StrictMode에서도 시작 확인 요청은 한 번만 보낸다", async () => {
+    const restoreSession = vi.fn(async () => STORE);
+    renderShell({ restoreSession, strict: true });
+
+    expect(await screen.findByText(STORE.store.name)).toBeInTheDocument();
+    expect(restoreSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("체크하고 로그인 → 재실행하면 로그인 화면을 건너뛰고, 로그아웃 뒤 재실행하면 로그인 화면", async () => {
+    const authApi = createMockAuthApi({ delayMs: 0 });
+    const tokenStore = createMemoryTokenStore();
+    const restore = () => realRestoreSession(authApi, tokenStore);
+
+    const first = renderShell({ tokenStore });
+    await loginWithForm({ remember: true });
+    await vi.waitFor(async () =>
+      expect(await tokenStore.load()).not.toBeNull(),
+    );
+    first.unmount();
+
+    const second = renderShell({ tokenStore, restoreSession: restore });
+    expect(await screen.findByText("모의 점포 (개발용)")).toBeInTheDocument();
+    fireEvent.click(
+      within(openMoreMenu()).getByRole("menuitem", { name: "로그아웃" }),
+    );
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "로그아웃",
+      }),
+    );
+    await vi.waitFor(async () => expect(await tokenStore.load()).toBeNull());
+    second.unmount();
+
+    renderShell({ tokenStore, restoreSession: restore });
+    expect(await screen.findByLabelText("점포 고유번호")).toBeInTheDocument();
+  });
+
+  it("마스터 계정으로 로그인하면 남아 있던 점포 토큰을 지운다", async () => {
+    const tokenStore = createMemoryTokenStore("old-token");
+    renderShell({ tokenStore });
+
+    fireEvent.click(
+      screen.getByRole("tab", { name: "마스터 계정으로 로그인" }),
+    );
+    fireEvent.change(screen.getByLabelText("마스터 아이디 입력"), {
+      target: { value: MOCK_ACCOUNTS.master.masterId },
+    });
+    fireEvent.change(screen.getByLabelText("마스터 비밀번호 입력"), {
+      target: { value: MOCK_ACCOUNTS.master.password },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "로그인" }));
+
+    await screen.findByRole("tab", { name: "주문접수" });
+    await vi.waitFor(async () => expect(await tokenStore.load()).toBeNull());
+  });
+
+  it("토큰 저장이 실패하면 이전 토큰을 지운다 (다른 점포로 자동 로그인 방지)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const tokenStore = createMemoryTokenStore("other-store-token");
+    vi.spyOn(tokenStore, "save").mockRejectedValue(new Error("x"));
+    renderShell({ tokenStore });
+
+    await loginWithForm({ remember: true });
+
+    await vi.waitFor(async () => expect(await tokenStore.load()).toBeNull());
+    vi.mocked(console.error).mockRestore();
   });
 });
