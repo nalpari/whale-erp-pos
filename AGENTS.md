@@ -38,7 +38,7 @@
 | 프린터 모델·연결 방식, 전용 프린터 여부 | 대표님 확인 대기 | 출력 방식 (드라이버 vs 포트 직접) |
 | 주문 실시간 전달 방식 (WebSocket / SSE / 롱 폴링 / 짧은 폴링 / MQTT)과 서버 측 담당 | 백엔드 PL 회의 대기 (`docs/proposals/realtime-delivery-options.md`) | 수신 모듈 (화면은 무관) |
 | 백엔드 API 형태 (엔드포인트, 상태명) | 백엔드 팀 협의 전 | 통신 계층 |
-| 기술 스택 | **1순위 후보: Tauri(Rust) + Next.js(정적 내보내기)**. 화면 배포 방식(A-1 원격 웹 / A-2 화면 내장)은 협의 대기, 담당자 의견은 A-2 (`docs/proposals/ui-delivery-options.md`). Win7 지원 여부 확정 후 스펙 단계에서 다른 후보와 비교해 결정 | 전부 |
+| 기술 스택 | **1순위 후보: Tauri(Rust) + Next.js**. 화면 배포 방식(A-1 원격 웹 / A-2 화면 내장)은 협의로 정한다. 담당자가 혼자 정하지 않으며, 기능은 두 방식이 같고 운영 책임이 갈린다 (`docs/proposals/ui-delivery-options.md`). A-2로 정해지면 Next.js는 정적 내보내기만 쓰게 되므로 React + Vite와 비교한다 (`docs/reviews/2026-11-16-docs-verification.md` 3.1절). Win7 지원 여부 확정 후 스펙 단계에서 다른 후보와 비교해 결정 | 전부 |
 
 위 항목에 기대는 작업을 할 때는 **가정임을 명시**하고, 확정되면 이 표를 갱신한다.
 
@@ -53,6 +53,7 @@
 | `docs/requests/backend-api-request.md` | 백엔드 팀 API 요청 초안 | 협의 전 초안 |
 | `docs/proposals/ui-delivery-options.md` | 화면 배포 방식(A-1/A-2) 협의 문서 | 협의 전 초안 |
 | `docs/proposals/realtime-delivery-options.md` | 주문 실시간 전달 방식 협의 문서 | 협의 전 초안 |
+| `docs/reviews/2026-11-16-docs-verification.md` | 위 문서 전체에 대한 검증 보고서 (틀린 곳, 빠진 것, 방향 판단) | [확인]은 공식 문서로 확인한 사실, [판단]은 검증자 의견(출처 없음). 반영 현황은 8장 |
 | `docs/specs/` | (예정) 스펙 문서 | |
 
 ## 핵심 설계 원칙
