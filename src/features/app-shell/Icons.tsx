@@ -42,6 +42,12 @@ export const PowerIcon = () => (
   </Icon>
 );
 
+export const LogIcon = () => (
+  <Icon>
+    <path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7" />
+  </Icon>
+);
+
 export const UserIcon = () => (
   <Icon>
     <circle cx="12" cy="8" r="4" />

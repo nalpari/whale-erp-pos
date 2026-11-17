@@ -4,6 +4,8 @@ import type {
   PrinterSlot,
   SlotPatch,
 } from "../../shared/printer/printer-settings";
+import { logInfo } from "../../shared/log/log";
+import { logMessages } from "../../shared/log/log-messages";
 import { PRINTER_TEXTS } from "./printer-texts";
 
 type TestPrintState = "idle" | "sending" | "sent" | "failed";
@@ -119,8 +121,10 @@ export function PrinterSlotCard({
     setTestPrint("sending");
     try {
       await onTestPrint();
+      logInfo(logMessages.testPrint(slot?.printerName ?? "", true));
       setTestPrint("sent");
     } catch (error) {
+      logInfo(logMessages.testPrint(slot?.printerName ?? "", false));
       console.error("[printer] 시험 인쇄 실패", error);
       setTestPrint("failed");
     } finally {

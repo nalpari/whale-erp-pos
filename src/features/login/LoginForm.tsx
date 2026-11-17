@@ -1,6 +1,8 @@
 // 아이디 · 비밀번호 입력 폼. 점포 번호 탭과 마스터 탭이 함께 쓴다 (화면정의서 p.8~9).
 import { useState, type FormEvent } from "react";
 import { errorSummary } from "../../shared/error-summary";
+import { logInfo } from "../../shared/log/log";
+import { logMessages } from "../../shared/log/log-messages";
 import {
   InvalidCredentialsError,
   type AccountType,
@@ -57,6 +59,12 @@ export function LoginForm({ kind, authApi, onLogin, onFindStoreCode }: Props) {
         : await authApi.loginWithMaster(trimmedId, secret);
     } catch (err) {
       const invalid = err instanceof InvalidCredentialsError;
+      logInfo(
+        logMessages.loginFailed(
+          kind,
+          invalid ? "invalid-credentials" : "network",
+        ),
+      );
       if (!invalid) {
         // 아이디 · 비밀번호는 남기지 않는다 (스펙 8장). 계정 종류와 오류 요약만 남긴다.
         // 화면이 사라진 뒤 온 실패도 기록은 남긴다.

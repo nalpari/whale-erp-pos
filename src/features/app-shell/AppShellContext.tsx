@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import type { AuthApi, Session } from "../../shared/api/auth";
+import type { LogApi } from "../../shared/log/log-api";
 import type { StoreStatusApi } from "../../shared/api/store-status";
 import type {
   PrinterApi,
@@ -17,6 +18,8 @@ import type {
 } from "../../shared/printer/printer-api";
 import { errorSummary } from "../../shared/error-summary";
 import type { TokenStore } from "../../shared/session/token-store";
+import { logInfo } from "../../shared/log/log";
+import { logMessages } from "../../shared/log/log-messages";
 import type { AppWindow } from "../../shared/platform/window";
 import {
   appShellReducer,
@@ -44,6 +47,8 @@ interface AppShellActions {
   minimizeWindow(): void;
   restoreWindow(): void;
   maximizeWindow(): void;
+  openLogViewer(): void;
+  closeLogViewer(): void;
 }
 
 interface AppShellContextValue {
@@ -55,6 +60,8 @@ interface AppShellContextValue {
   printerApi: PrinterApi;
   /** 프린터설정 화면이 쓰는 설정 저장소. */
   printerSettingsStore: PrinterSettingsStore;
+  /** 로그 확인 화면이 쓰는 로그 읽기 · 폴더 열기. */
+  logApi: LogApi;
 }
 
 const AppShellContext = createContext<AppShellContextValue | null>(null);
@@ -66,6 +73,7 @@ interface Props {
   tokenStore: TokenStore;
   printerApi: PrinterApi;
   printerSettingsStore: PrinterSettingsStore;
+  logApi: LogApi;
   initialSession: Session | null;
   /** 있으면 시작할 때 불러 자동 로그인을 확인한다. 끝날 때까지 로그인 폼 대신 빈 화면을 보인다. */
   restoreSession?: () => Promise<Session | null>;
@@ -93,6 +101,7 @@ export function AppShellProvider({
   tokenStore,
   printerApi,
   printerSettingsStore,
+  logApi,
   initialSession,
   restoreSession,
   children,
@@ -148,6 +157,7 @@ export function AppShellProvider({
       const request = (async () => {
         try {
           await storeStatusApi.setAcceptingOrders(accepting);
+          logInfo(logMessages.orderAcceptRequested(accepting, true));
           dispatch({ type: "toggle-success", accepting });
         } catch (error) {
           console.error(
@@ -155,6 +165,7 @@ export function AppShellProvider({
             { accepting },
             error,
           );
+          logInfo(logMessages.orderAcceptRequested(accepting, false));
           dispatch({ type: "toggle-failure" });
         } finally {
           toggleInFlightRef.current = null;
@@ -200,6 +211,7 @@ export function AppShellProvider({
         dispatch({ type: "dialog-confirmed" });
         // stopOrdersBestEffort는 거절하지 않지만, 어떤 예외가 나도 팝업이 처리 중으로 굳지 않게 finally로 로그아웃한다.
         void stopOrdersBestEffort("logout").finally(() => {
+          logInfo(logMessages.loggedOut());
           dispatch({ type: "logout" });
           // 로그아웃하면 자동 로그인을 끈다 (스펙 3.4-3). 시스템종료는 지우지 않는다(다음 실행 때 자동 로그인).
           tokenStore.clear().catch(logTokenError("삭제"));
@@ -213,6 +225,11 @@ export function AppShellProvider({
             await stopOrdersBestEffort("shutdown");
             dispatch({ type: "logout-for-shutdown" });
           }
+          // 창을 없애면 프로세스가 끝나므로, "앱 종료" 줄이 전달될 때까지 잠깐 기다린다. 로그가 막혀도 0.5초 뒤 종료한다.
+          await Promise.race([
+            logInfo(logMessages.appExited()),
+            new Promise((resolve) => setTimeout(resolve, 500)),
+          ]);
           try {
             await windowApi.exit();
           } catch (error) {
@@ -269,6 +286,7 @@ export function AppShellProvider({
   const actions = useMemo<AppShellActions>(
     () => ({
       login: (session, remember) => {
+        logInfo(logMessages.loginSucceeded(session.accountType));
         dispatch({ type: "login", session });
         // 점포번호 계정만 자동 로그인을 쓴다. 휴대폰 번호는 저장하지 않고 재발급 토큰만 저장한다 (스펙 4장).
         if (
@@ -299,13 +317,22 @@ export function AppShellProvider({
         void windowApi.restoreDefaultSize().catch(logWindowError("줄이기")),
       maximizeWindow: () =>
         void windowApi.maximize().catch(logWindowError("늘리기")),
+      openLogViewer: () => dispatch({ type: "open-log-viewer" }),
+      closeLogViewer: () => dispatch({ type: "close-log-viewer" }),
     }),
     [requestAccepting, confirmDialog, windowApi, tokenStore],
   );
 
   const value = useMemo(
-    () => ({ state, actions, authApi, printerApi, printerSettingsStore }),
-    [state, actions, authApi, printerApi, printerSettingsStore],
+    () => ({
+      state,
+      actions,
+      authApi,
+      printerApi,
+      printerSettingsStore,
+      logApi,
+    }),
+    [state, actions, authApi, printerApi, printerSettingsStore, logApi],
   );
   return (
     <AppShellContext.Provider value={value}>

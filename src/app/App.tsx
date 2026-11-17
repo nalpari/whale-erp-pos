@@ -6,6 +6,7 @@ import { createMockAuthApi } from "../shared/api/auth";
 import { restoreSession } from "../shared/session/restore-session";
 import { createTokenStore } from "../shared/session/token-store";
 import { createMockStoreStatusApi } from "../shared/api/store-status";
+import { createLogApi } from "../shared/log/log-api";
 import { createAppWindow } from "../shared/platform/window";
 import {
   createPrinterApi,
@@ -22,6 +23,7 @@ function App() {
   const [tokenStore] = useState(createTokenStore);
   const [printerApi] = useState(createPrinterApi);
   const [printerSettingsStore] = useState(createPrinterSettingsStore);
+  const [logApi] = useState(createLogApi);
 
   return (
     <AppShellProvider
@@ -31,6 +33,7 @@ function App() {
       tokenStore={tokenStore}
       printerApi={printerApi}
       printerSettingsStore={printerSettingsStore}
+      logApi={logApi}
       restoreSession={() => restoreSession(authApi, tokenStore)}
       initialSession={null}
     >
