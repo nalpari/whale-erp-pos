@@ -261,6 +261,42 @@ Ubuntu 26.04.1 LTS에서 확인했다 (2026-11-16). 근거: [Tauri Prerequisites
 5. 설치 파일: `pnpm tauri build` (`.msi`는 Windows에서만 만들 수 있다)
 6. 확인할 것: productName이 한글이라 설치 파일 · 실행 파일 · 바로가기 이름도 한글이 된다. 정상 동작하는지 확인이 필요하다.
 
+### 개발 환경 준비 (macOS, 미확인)
+
+> 공식 문서 기준으로 정리했다. **아무도 Mac에서 확인하지 않았다.** 근거: [Tauri Prerequisites](https://v2.tauri.app/start/prerequisites/)
+
+1. 데스크톱 앱만 만들면 Xcode 전체 대신 Xcode Command Line Tools로 된다: `xcode-select --install`
+2. Rust: `curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh` 후 `rustup component add rustfmt clippy`
+3. Node(22.12 이상의 22.x · 24.x · 26 이상)와 pnpm을 준비한 뒤 `pnpm install`
+4. 자동 로그인 토큰은 macOS 키체인에 저장될 것으로 보지만 확인하지 않았다 (`keyring` 크레이트 기본 설정 그대로).
+5. Mac은 개발 · 화면 확인용이다. 배포 대상은 Windows뿐이다.
+
+### Windows 설치 파일 만들기
+
+배포 대상은 Windows 10 이상이다. 어느 PC에서 개발하든 **운영 배포용 설치 파일은 Windows에서 만든다** (`.msi`와 코드 서명은 Windows에서만 정식 지원). Linux · macOS에서 만드는 방법은 테스트용 `-setup.exe`(NSIS)를 빨리 만들 때만 쓴다. Tauri도 이 방법을 "실험적", "VM이나 CI가 안 될 때 마지막 수단"이라고 한다. 근거: [Tauri Windows Installer](https://v2.tauri.app/distribute/windows-installer/)
+
+| 빌드하는 PC | 나오는 것 | 명령 | 확인 |
+|---|---|---|---|
+| Windows | `.msi`, `-setup.exe` | `pnpm tauri build` | 미확인 |
+| Linux | `-setup.exe`만, 서명 없음 | 아래 "Linux에서" | **확인 (2026-11-17)** |
+| macOS | `-setup.exe`만, 서명 없음 | 아래 "macOS에서" | 미확인 |
+
+**Linux에서** (Ubuntu 26.04.1, cargo-xwin 0.23.1, clang 21.1.8에서 확인. 2026-11-17)
+
+1. `sudo apt install nsis lld llvm clang`. clang은 공식 문서상 선택이지만, 이 프로젝트는 Windows 실행 파일에 아이콘 · 앱 정보를 넣는 `embed-resource`(Tauri 기본)가 `clang-cl`을 찾으므로 **필요하다**.
+2. `rustup target add x86_64-pc-windows-msvc`
+3. `cargo install --locked cargo-xwin`. 개발 PC에만 설치되는 도구다. 프로젝트 의존성(`Cargo.toml`, `package.json`)에는 들어가지 않고, 운영 배포에는 쓰지 않는다.
+4. `pnpm tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc`. 처음 빌드할 때 Microsoft Windows SDK를 `~/.cache/cargo-xwin`에 내려받는다.
+5. 결과물: `src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/픽업오더 주문접수_<버전>_x64-setup.exe`
+6. 서명이 없어서 Windows에서 실행하면 "Windows의 PC 보호" 경고가 뜬다. "추가 정보" → "실행".
+
+**macOS에서** (공식 문서 기준, 미확인)
+
+1. Homebrew로 `brew install nsis llvm`. 설치 안내대로 `/opt/homebrew/opt/llvm/bin`을 `PATH`에 더한다 (Apple Silicon 기준. Intel Mac 경로는 문서에 없다).
+2. 3단계부터는 Linux와 같다. 문서에는 macOS용 clang 단계가 따로 없지만, Linux처럼 `clang-cl`을 못 찾으면 Homebrew llvm의 `clang-cl`이 `PATH`에 있는지 본다.
+
+주의: 지금 앱은 모의 서버(`createMockAuthApi`, `createMockStoreStatusApi`)를 항상 쓴다 (`src/app/App.tsx`). 실제 API로 바꾸기 전 설치 파일은 테스트용이다.
+
 ## 개발 규칙 (2026-11-16 확정)
 
 > 사용자와 정한 규칙이다. 바꿀 때는 사용자에게 먼저 묻는다. 도구의 버전과 설정 방법은 프로젝트를 만들 때(T00) 공식 문서로 확인해 "기술 스택 / 명령어"에 적는다.
