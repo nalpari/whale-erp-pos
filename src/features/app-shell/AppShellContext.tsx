@@ -11,6 +11,10 @@ import {
 } from "react";
 import type { AuthApi, Session } from "../../shared/api/auth";
 import type { StoreStatusApi } from "../../shared/api/store-status";
+import type {
+  PrinterApi,
+  PrinterSettingsStore,
+} from "../../shared/printer/printer-api";
 import { errorSummary } from "../../shared/error-summary";
 import type { TokenStore } from "../../shared/session/token-store";
 import type { AppWindow } from "../../shared/platform/window";
@@ -47,6 +51,10 @@ interface AppShellContextValue {
   actions: AppShellActions;
   /** 로그인 화면이 쓰는 로그인 API. */
   authApi: AuthApi;
+  /** 프린터설정 화면이 쓰는 프린터 목록 · 시험 인쇄. */
+  printerApi: PrinterApi;
+  /** 프린터설정 화면이 쓰는 설정 저장소. */
+  printerSettingsStore: PrinterSettingsStore;
 }
 
 const AppShellContext = createContext<AppShellContextValue | null>(null);
@@ -56,6 +64,8 @@ interface Props {
   storeStatusApi: StoreStatusApi;
   authApi: AuthApi;
   tokenStore: TokenStore;
+  printerApi: PrinterApi;
+  printerSettingsStore: PrinterSettingsStore;
   initialSession: Session | null;
   /** 있으면 시작할 때 불러 자동 로그인을 확인한다. 끝날 때까지 로그인 폼 대신 빈 화면을 보인다. */
   restoreSession?: () => Promise<Session | null>;
@@ -81,6 +91,8 @@ export function AppShellProvider({
   storeStatusApi,
   authApi,
   tokenStore,
+  printerApi,
+  printerSettingsStore,
   initialSession,
   restoreSession,
   children,
@@ -292,8 +304,8 @@ export function AppShellProvider({
   );
 
   const value = useMemo(
-    () => ({ state, actions, authApi }),
-    [state, actions, authApi],
+    () => ({ state, actions, authApi, printerApi, printerSettingsStore }),
+    [state, actions, authApi, printerApi, printerSettingsStore],
   );
   return (
     <AppShellContext.Provider value={value}>

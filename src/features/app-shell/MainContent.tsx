@@ -1,5 +1,7 @@
-// 로그인 후 탭과 콘텐츠 영역. 탭 안의 기능 화면은 T04 이후에 채운다 (스펙 1장 범위 밖).
+// 로그인 후 탭과 콘텐츠 영역. 탭 안의 기능 화면은 태스크마다 채우고, 아직 없는 탭은 Placeholder로 둔다.
 import { useAppShell } from "./AppShellContext";
+import { PrinterSettingsScreen } from "../settings-printer/PrinterSettingsScreen";
+import { canEditSettings } from "../../shared/session/permissions";
 import { panelId, tabId } from "../../shared/ui/tab-ids";
 import { TabBar } from "../../shared/ui/TabBar";
 import { MAIN_TABS, SETTINGS_TABS } from "./tabs";
@@ -13,7 +15,7 @@ function Placeholder({ label }: { label: string }) {
 }
 
 export function MainContent() {
-  const { state, actions } = useAppShell();
+  const { state, actions, printerApi, printerSettingsStore } = useAppShell();
   const active =
     MAIN_TABS.find((t) => t.id === state.activeTab) ?? MAIN_TABS[0];
   const settings =
@@ -51,7 +53,16 @@ export function MainContent() {
               aria-labelledby={tabId("settings", settings.id)}
               className="flex min-h-0 flex-1 flex-col"
             >
-              <Placeholder label={settings.label} />
+              {settings.id === "printer" && state.session ? (
+                <PrinterSettingsScreen
+                  printerApi={printerApi}
+                  store={printerSettingsStore}
+                  canEdit={canEditSettings(state.session)}
+                  storeName={state.session.store.name}
+                />
+              ) : (
+                <Placeholder label={settings.label} />
+              )}
             </section>
           </>
         ) : (
