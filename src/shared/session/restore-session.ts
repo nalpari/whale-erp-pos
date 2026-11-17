@@ -1,6 +1,8 @@
 // 프로그램 시작 시 자동 로그인 (스펙 4장). 저장된 재발급 토큰으로 세션을 되살린다.
 import { SessionExpiredError, type AuthApi, type Session } from "../api/auth";
 import { errorSummary } from "../error-summary";
+import { logInfo } from "../log/log";
+import { logMessages } from "../log/log-messages";
 import type { TokenStore } from "./token-store";
 
 /** 되살린 세션. 토큰이 없거나 실패하면 null(로그인 화면). 이 함수는 거절하지 않는다. */
@@ -24,18 +26,23 @@ export async function restoreSession(
           console.error("[auto-login] 새 토큰 저장 실패", errorSummary(error)),
         );
     }
+    logInfo(logMessages.autoLoginResumed("success"));
     return session;
   } catch (error) {
     if (error instanceof SessionExpiredError) {
       // 만료 · 폐기된 토큰은 다시 써도 실패하므로 지운다.
-      await tokenStore
-        .clear()
-        .catch((e: unknown) =>
-          console.error("[auto-login] 만료 토큰 삭제 실패", errorSummary(e)),
-        );
+      let cleared = true;
+      await tokenStore.clear().catch((e: unknown) => {
+        cleared = false;
+        console.error("[auto-login] 만료 토큰 삭제 실패", errorSummary(e));
+      });
+      // 지우지 못했으면 "삭제"라고 남기지 않는다 (위 console.error가 실패를 남긴다).
+      if (cleared)
+        logInfo(logMessages.autoLoginResumed("expired-token-cleared"));
     } else {
       // 네트워크 · 저장소 오류는 일시적일 수 있어 토큰을 남긴다. 다음 실행 때 다시 시도한다 (사용자 결정 2026-11-16).
       // 토큰 값은 남기지 않는다.
+      logInfo(logMessages.autoLoginResumed("network-token-kept"));
       console.error("[auto-login] 자동 로그인 실패, 토큰은 남김", {
         stage,
         ...errorSummary(error),

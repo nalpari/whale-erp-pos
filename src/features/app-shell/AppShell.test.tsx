@@ -22,6 +22,7 @@ import {
   createControlledStoreStatusApi,
   createFakeWindow,
 } from "../../test/fakes";
+import { createFakeLogApi } from "../../shared/log/log-api";
 import { AppShell } from "./AppShell";
 import { AppShellProvider } from "./AppShellContext";
 import { appShellReducer, createInitialState } from "./app-shell-state";
@@ -54,6 +55,7 @@ function renderShell(
       tokenStore={options.tokenStore ?? createMemoryTokenStore()}
       printerApi={createFakePrinterApi()}
       printerSettingsStore={createMemoryPrinterSettingsStore()}
+      logApi={createFakeLogApi()}
       restoreSession={options.restoreSession}
       initialSession={options.session ?? null}
     >
@@ -448,10 +450,16 @@ describe("로그아웃 (스펙 2.3)", () => {
       within(menu)
         .getAllByRole("menuitem")
         .map((m) => m.textContent),
-    ).toEqual(["창 최소화", "창 줄이기", "창 늘리기", "시스템종료"]);
+    ).toEqual([
+      "창 최소화",
+      "창 줄이기",
+      "창 늘리기",
+      "시스템종료",
+      "로그 확인",
+    ]);
   });
 
-  it("로그인 후 메뉴에는 로그아웃까지 5개가 있다", () => {
+  it("로그인 후 메뉴에는 로그 확인 · 로그아웃까지 6개가 있다", () => {
     renderShell({ session: STORE });
 
     const menu = openMoreMenu();
@@ -464,6 +472,7 @@ describe("로그아웃 (스펙 2.3)", () => {
       "창 줄이기",
       "창 늘리기",
       "시스템종료",
+      "로그 확인",
       "로그아웃",
     ]);
   });
@@ -1016,5 +1025,57 @@ describe("자동 로그인 전체 흐름 (스펙 9장 4)", () => {
 
     await vi.waitFor(async () => expect(await tokenStore.load()).toBeNull());
     vi.mocked(console.error).mockRestore();
+  });
+});
+
+describe("로그 확인 (SPEC-logging 3.1)", () => {
+  const MASTER: Session = {
+    accountType: "master",
+    store: { id: "s2", name: "본사" },
+    accessToken: "t",
+  };
+
+  async function openLogViewer() {
+    fireEvent.click(
+      within(openMoreMenu()).getByRole("menuitem", { name: "로그 확인" }),
+    );
+    await screen.findByRole("heading", { name: "로그 확인" });
+  }
+
+  it("로그인 전에도 더보기 메뉴에서 열고, 닫으면 로그인 화면으로 돌아온다", async () => {
+    renderShell();
+    await openLogViewer();
+    expect(screen.getByLabelText("점포 고유번호")).not.toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
+
+    expect(screen.getByLabelText("점포 고유번호")).toBeInTheDocument();
+  });
+
+  it("로그인 전에 열었다 닫아도 입력한 값이 남는다", async () => {
+    renderShell();
+    fireEvent.change(screen.getByLabelText("점포 고유번호"), {
+      target: { value: "S-1" },
+    });
+
+    await openLogViewer();
+    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
+
+    expect(screen.getByLabelText("점포 고유번호")).toHaveValue("S-1");
+  });
+
+  it.each([
+    ["점포번호", STORE],
+    ["마스터", MASTER],
+  ])("%s 계정: 열고 닫으면 탭 화면으로 돌아온다", async (_name, session) => {
+    renderShell({ session });
+    await openLogViewer();
+    expect(
+      screen.queryByRole("tab", { name: "주문접수" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
+
+    expect(screen.getByRole("tab", { name: "주문접수" })).toBeInTheDocument();
   });
 });

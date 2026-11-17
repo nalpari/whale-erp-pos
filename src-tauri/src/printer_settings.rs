@@ -70,10 +70,10 @@ fn load_from(path: &Path) -> Result<PrinterSettings, String> {
         Err(e) => return Err(format!("설정 파일 읽기 실패: {e}")),
     };
     Ok(parse(&text).unwrap_or_else(|e| {
-        eprintln!("[printer-settings] 파일 모양이 달라 빈 설정으로 시작: {e}");
+        log::error!("[printer-settings] 파일 모양이 달라 빈 설정으로 시작: {e}");
         // 다음 저장이 원래 파일을 덮어쓰므로, 원인을 볼 수 있게 사본을 남긴다.
         if let Err(e) = fs::copy(path, path.with_extension("json.broken")) {
-            eprintln!("[printer-settings] 깨진 파일 사본을 남기지 못함: {e}");
+            log::error!("[printer-settings] 깨진 파일 사본을 남기지 못함: {e}");
         }
         PrinterSettings::default()
     }))

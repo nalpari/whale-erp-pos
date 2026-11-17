@@ -17,6 +17,8 @@ export interface AppShellState {
   dialog: DialogKind | null;
   /** 로그아웃 · 시스템종료 팝업에서 확인을 누른 뒤 처리 중인지. */
   dialogPending: boolean;
+  /** "로그 확인" 화면이 탭 · 로그인 화면 대신 보이는 중인지 (개발자 추가 기능, SPEC-logging 3.1). */
+  logViewerOpen: boolean;
 }
 
 export type AppShellAction =
@@ -34,7 +36,9 @@ export type AppShellAction =
   | { type: "open-dialog"; dialog: DialogKind }
   | { type: "close-dialog" }
   | { type: "dialog-confirmed" }
-  | { type: "dialog-finished" };
+  | { type: "dialog-finished" }
+  | { type: "open-log-viewer" }
+  | { type: "close-log-viewer" };
 
 // 로그인할 때마다 이 값으로 되돌린다. 주문받기는 매번 OFF로 시작한다 (스펙 2.2-1, Q03 답변 전).
 const SIGNED_IN_DEFAULTS = {
@@ -52,6 +56,7 @@ export function createInitialState(session: Session | null): AppShellState {
     ...SIGNED_IN_DEFAULTS,
     dialog: null,
     dialogPending: false,
+    logViewerOpen: false,
   };
 }
 
@@ -60,8 +65,16 @@ export function appShellReducer(
   action: AppShellAction,
 ): AppShellState {
   switch (action.type) {
+    case "open-log-viewer":
+      return { ...state, logViewerOpen: true };
+    case "close-log-viewer":
+      return { ...state, logViewerOpen: false };
     case "login":
-      return createInitialState(action.session);
+      // 로그 화면을 열어 둔 채 로그인이 끝나도 점원이 [닫기]를 누르기 전에는 닫지 않는다.
+      return {
+        ...createInitialState(action.session),
+        logViewerOpen: state.logViewerOpen,
+      };
     case "restore-finished":
       // 확인 중이 아니면(이미 끝난 뒤) 늦은 결과는 버린다.
       if (!state.restoring) return state;
@@ -69,6 +82,7 @@ export function appShellReducer(
       // 열려 있던 팝업(예: 확인 중 Alt+F4)은 그대로 둔다.
       return {
         ...createInitialState(action.session),
+        logViewerOpen: state.logViewerOpen,
         dialog: state.dialog,
         dialogPending: state.dialogPending,
       };

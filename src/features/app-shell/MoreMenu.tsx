@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAppShell } from "./AppShellContext";
 import {
+  LogIcon,
   MaximizeIcon,
   MinimizeIcon,
   MoreIcon,
@@ -72,6 +73,12 @@ export function MoreMenu() {
       onSelect: () => actions.openDialog("shutdown"),
     },
   ];
+  // 로그인 전에도 · 두 계정 모두 쓸 수 있다. 로그인 문제를 볼 수 있게 한다 (SPEC-logging 3.1, 개발자 추가 기능).
+  items.push({
+    label: "로그 확인",
+    icon: <LogIcon />,
+    onSelect: actions.openLogViewer,
+  });
   // 로그인 전에는 로그아웃할 대상이 없으므로 숨긴다 (스펙 2.3).
   if (state.session) {
     items.push({

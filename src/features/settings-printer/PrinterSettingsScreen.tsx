@@ -13,6 +13,8 @@ import {
   type PrinterSettings,
   type SlotIndex,
 } from "../../shared/printer/printer-settings";
+import { logInfo } from "../../shared/log/log";
+import { logMessages } from "../../shared/log/log-messages";
 import { PrinterPickerDialog } from "./PrinterPickerDialog";
 import { PrinterSlotCard } from "./PrinterSlotCard";
 import { PRINTER_TEXTS } from "./printer-texts";
@@ -56,6 +58,7 @@ export function PrinterSettingsScreen({
         setSettings(loaded);
       },
       (error: unknown) => {
+        logInfo(logMessages.settingsFailed("load"));
         console.error("[printer-settings] 설정 읽기 실패", error);
         if (disposed) return;
         setLoadFailed(true);
@@ -93,6 +96,7 @@ export function PrinterSettingsScreen({
         savedRef.current = next;
       },
       (error: unknown) => {
+        logInfo(logMessages.settingsFailed("save"));
         console.error("[printer-settings] 설정 저장 실패", error);
         if (seq !== saveSeqRef.current) return;
         setSettings(savedRef.current ?? current);

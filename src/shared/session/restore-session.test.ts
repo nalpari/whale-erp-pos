@@ -4,6 +4,7 @@ import {
   SessionExpiredError,
   type AuthApi,
 } from "../api/auth";
+vi.mock("../log/log", () => ({ logInfo: vi.fn() }));
 import { restoreSession } from "./restore-session";
 import { createMemoryTokenStore } from "./token-store";
 
@@ -89,5 +90,39 @@ describe("restoreSession (스펙 4장 자동 로그인 시작 흐름)", () => {
     expect(await restoreSession(api, store)).toBeNull();
     expect(log).toHaveBeenCalled();
     log.mockRestore();
+  });
+});
+
+describe("restoreSession 로그 (SPEC-logging 2.3-3)", () => {
+  async function run(
+    authApi: AuthApi,
+    store: ReturnType<typeof createMemoryTokenStore>,
+  ) {
+    const { logInfo } = await import("../log/log");
+    vi.mocked(logInfo).mockClear();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await restoreSession(authApi, store);
+    vi.mocked(console.error).mockRestore();
+    return vi.mocked(logInfo).mock.calls.map((c) => c[0]);
+  }
+
+  it("성공 · 만료로 삭제 · 네트워크 오류로 유지를 각각 한 줄 남기고, 토큰이 없으면 남기지 않는다", async () => {
+    expect(
+      await run(api, createMemoryTokenStore("mock-refresh-token")),
+    ).toEqual(["자동 로그인 재개: 성공"]);
+    expect(await run(api, createMemoryTokenStore("expired-token"))).toEqual([
+      "자동 로그인 재개: 토큰 만료로 삭제",
+    ]);
+    const down = createMockAuthApi({ delayMs: 0, networkDown: true });
+    expect(
+      await run(down, createMemoryTokenStore("mock-refresh-token")),
+    ).toEqual(["자동 로그인 재개: 네트워크 · 저장소 오류로 토큰 유지"]);
+    expect(await run(api, createMemoryTokenStore())).toEqual([]);
+  });
+
+  it("토큰을 지우지 못하면 '삭제'라고 남기지 않는다", async () => {
+    const store = createMemoryTokenStore("expired-token");
+    vi.spyOn(store, "clear").mockRejectedValue(new Error("keyring"));
+    expect(await run(api, store)).toEqual([]);
   });
 });
