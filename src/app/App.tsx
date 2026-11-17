@@ -7,6 +7,10 @@ import { restoreSession } from "../shared/session/restore-session";
 import { createTokenStore } from "../shared/session/token-store";
 import { createMockStoreStatusApi } from "../shared/api/store-status";
 import { createAppWindow } from "../shared/platform/window";
+import {
+  createPrinterApi,
+  createPrinterSettingsStore,
+} from "../shared/printer/printer-api";
 
 function App() {
   // 렌더마다 새로 만들면 닫기 가로채기가 다시 등록되므로 한 번만 만든다.
@@ -16,6 +20,8 @@ function App() {
   // 가정: 로그인도 모의 구현을 쓴다 (SPEC-login 5장). 실제 서버를 붙이기 전까지는 설치 파일에서도 시험 계정으로만 로그인된다.
   const [authApi] = useState(() => createMockAuthApi());
   const [tokenStore] = useState(createTokenStore);
+  const [printerApi] = useState(createPrinterApi);
+  const [printerSettingsStore] = useState(createPrinterSettingsStore);
 
   return (
     <AppShellProvider
@@ -23,6 +29,8 @@ function App() {
       storeStatusApi={storeStatusApi}
       authApi={authApi}
       tokenStore={tokenStore}
+      printerApi={printerApi}
+      printerSettingsStore={printerSettingsStore}
       restoreSession={() => restoreSession(authApi, tokenStore)}
       initialSession={null}
     >

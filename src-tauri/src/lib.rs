@@ -1,4 +1,6 @@
 mod auto_login;
+mod printer;
+mod printer_settings;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -9,6 +11,10 @@ pub fn run() {
             auto_login::save_refresh_token,
             auto_login::load_refresh_token,
             auto_login::clear_refresh_token,
+            printer::list_printers,
+            printer::print_test_page,
+            printer_settings::load_printer_settings,
+            printer_settings::save_printer_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

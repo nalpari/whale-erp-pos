@@ -15,6 +15,10 @@ import {
 import { createMockStoreStatusApi } from "../../shared/api/store-status";
 import type { AppWindow } from "../../shared/platform/window";
 import {
+  createFakePrinterApi,
+  createMemoryPrinterSettingsStore,
+} from "../../shared/printer/printer-api";
+import {
   createControlledStoreStatusApi,
   createFakeWindow,
 } from "../../test/fakes";
@@ -48,6 +52,8 @@ function renderShell(
       storeStatusApi={storeStatusApi}
       authApi={createMockAuthApi({ delayMs: 0 })}
       tokenStore={options.tokenStore ?? createMemoryTokenStore()}
+      printerApi={createFakePrinterApi()}
+      printerSettingsStore={createMemoryPrinterSettingsStore()}
       restoreSession={options.restoreSession}
       initialSession={options.session ?? null}
     >
@@ -176,6 +182,33 @@ describe("화면 틀 (스펙 2.1)", () => {
       );
       expect(screen.getByRole("tabpanel", { name })).toBeInTheDocument();
     }
+  });
+
+  it("프린터설정 탭에 프린터 칸 3개를 보인다", async () => {
+    renderShell({ session: STORE });
+    fireEvent.click(screen.getByRole("tab", { name: "환경설정" }));
+    fireEvent.click(screen.getByRole("tab", { name: "프린터설정" }));
+    const panel = screen.getByRole("tabpanel", { name: "프린터설정" });
+    expect(
+      await within(panel).findByRole("heading", {
+        name: "슬롯 1 — 프린터 없음",
+      }),
+    ).toBeInTheDocument();
+    // 점포번호 계정이라 추가는 막힌다 (SPEC-settings-printer 2.4).
+    expect(
+      within(panel).getAllByRole("button", { name: "+ 프린터 추가" })[0],
+    ).toBeDisabled();
+  });
+
+  it("마스터 계정은 프린터설정에서 프린터를 추가할 수 있다", async () => {
+    renderShell({ session: { ...STORE, accountType: "master" } });
+    fireEvent.click(screen.getByRole("tab", { name: "환경설정" }));
+    fireEvent.click(screen.getByRole("tab", { name: "프린터설정" }));
+    const panel = screen.getByRole("tabpanel", { name: "프린터설정" });
+    await within(panel).findByRole("heading", { name: "슬롯 1 — 프린터 없음" });
+    expect(
+      within(panel).getAllByRole("button", { name: "+ 프린터 추가" })[0],
+    ).toBeEnabled();
   });
 });
 
