@@ -43,7 +43,7 @@
 | 항목 | 상태 | 영향 |
 |---|---|---|
 | 프린터 모델·연결 방식, 전용 프린터 여부 | 대표님 확인 대기. 화면정의서는 Windows 드라이버로 설치된 프린터를 목록에서 고르는 방식을 전제한다(p.19). 이 방식은 용지 없음 등을 알기 어려워 출력 실패 처리를 기획자에게 문의 중(Q47) | 출력 방식 (드라이버 vs 포트 직접) |
-| 화면정의서로 확정되지 않는 동작 (주문접수 화면 배치, 주문받기 기본값, 제조시작 단계, 거부/취소 구분, 픽업 상태 등) | 기획자 문의 대기 (`docs/tasks/planner-questions.md`, 52개 중 중요도 상 10개) | 해당 태스크의 화면·상태 흐름 |
+| 화면정의서로 확정되지 않는 동작 (주문접수 화면 배치, 주문받기 기본값, 제조시작 단계, 거부/취소 구분, 픽업 상태 등) | 기획자 문의 대기 (`docs/tasks/planner-questions.md`, 54개 중 중요도 상 12개. Q53 · Q54는 2026-11-17 추가, 기획자에게 따로 전달 필요) | 해당 태스크의 화면·상태 흐름 |
 | 주문 실시간 전달 방식 (WebSocket / SSE / 롱 폴링 / 짧은 폴링 / MQTT)과 서버 측 담당 | 백엔드 PL 회의 대기 (`docs/proposals/realtime-delivery-options.md`) | 수신 모듈 (화면은 무관) |
 | 백엔드 API 형태 (엔드포인트, 상태명) | 백엔드 팀 협의 전. 화면정의서로 요청 범위가 늘었다(`docs/requests/backend-api-request.md` 7장) | 통신 계층 |
 
@@ -75,7 +75,7 @@
 | `docs/meetings/backend-pl-brief.md` | 백엔드 PL 회의 준비 자료 (물을 질문, 담당자 의견, 받아 올 결정) | 담당자 메모. "내 의견" 절은 확정이 아님. 회의 후 6장 기록 칸 확인 |
 | `docs/references/pickup-order-screen-spec-v0.8-260717.pdf` | 기획자가 만든 화면정의서 v0.8 (24쪽) | **화면 구성의 기준.** 설명만으로 확정되지 않는 부분은 문의 목록 참고 |
 | `docs/tasks/README.md` | 화면정의서 기준 태스크 13개(T01~T13), 권장 순서, 기존 문서와 달라진 점 | 스펙 전 단계의 할 일 정리. "가정" 표시 항목은 확정 아님 |
-| `docs/tasks/planner-questions.md` | 기획자 문의 52개 | 답변 기록 표 확인. 답변은 Claude 아티팩트(https://claude.ai/artifact/CeRKJfncV9gJH8LJYzLvrY, 로그인 필요)로 받고, 다 달리면 기획자가 md 파일로 정리해 보내 준다. 상태가 "답변 완료" · "정의서 수정"인 것만 확정 (처음 답변은 AI 초안) |
+| `docs/tasks/planner-questions.md` | 기획자 문의 54개 (처음 보낸 52개 + 2026-11-17 추가 2개) | 답변 기록 표 확인. 답변은 Claude 아티팩트(https://claude.ai/artifact/CeRKJfncV9gJH8LJYzLvrY, 로그인 필요)로 받고, 다 달리면 기획자가 md 파일로 정리해 보내 준다. 상태가 "답변 완료" · "정의서 수정"인 것만 확정 (처음 답변은 AI 초안) |
 | `docs/presentations/` | 대표님·백엔드 팀 발표 자료 | 화면정의서를 받기 전에 만든 초안 |
 | `docs/specs/` | 태스크별 스펙 (`README.md`가 목록). 구현 계획은 `docs/plans/` | 상태가 "승인"인 것만 구현 기준 |
 
