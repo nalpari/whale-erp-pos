@@ -73,7 +73,7 @@
 | `docs/meetings/backend-pl-brief.md` | 백엔드 PL 회의 준비 자료 (물을 질문, 담당자 의견, 받아 올 결정) | 담당자 메모. "내 의견" 절은 확정이 아님. 회의 후 6장 기록 칸 확인 |
 | `docs/references/pickup-order-screen-spec-v0.8-260717.pdf` | 기획자가 만든 화면정의서 v0.8 (24쪽) | **화면 구성의 기준.** 설명만으로 확정되지 않는 부분은 문의 목록 참고 |
 | `docs/tasks/README.md` | 화면정의서 기준 태스크 13개(T01~T13), 권장 순서, 기존 문서와 달라진 점 | 스펙 전 단계의 할 일 정리. "가정" 표시 항목은 확정 아님 |
-| `docs/tasks/planner-questions.md` | 기획자 문의 52개 | 답변 기록 표 확인 |
+| `docs/tasks/planner-questions.md` | 기획자 문의 52개 | 답변 기록 표 확인. 답변은 Claude 아티팩트(https://claude.ai/artifact/CeRKJfncV9gJH8LJYzLvrY, 로그인 필요)로 받고, 다 달리면 기획자가 md 파일로 정리해 보내 준다. 상태가 "답변 완료" · "정의서 수정"인 것만 확정 (처음 답변은 AI 초안) |
 | `docs/presentations/` | 대표님·백엔드 팀 발표 자료 | 화면정의서를 받기 전에 만든 초안 |
 | `docs/specs/` | (예정) 스펙 문서 | |
 
