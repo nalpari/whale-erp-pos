@@ -3,7 +3,7 @@ type: Task Report
 title: T11. 환경설정 — 프린터설정
 description: 프린터 칸 3개 등록 · 해제, PC 파일 저장, Windows 일반 인쇄로 시험 인쇄를 만든다.
 tags: [settings, printer, windows, tauri, react]
-status: draft
+status: stable
 generated:
   by: claude-code/claude-opus-5-5
   at: 2026-11-17T13:07:50+09:00
@@ -20,6 +20,9 @@ sources:
   - id: screen
     resource: /docs/references/pickup-order-screen-spec-v0.8-260717.pdf
     title: 화면정의서 v0.8 p.19
+verified:
+  - by: human:yjnoh
+    at: 2026-11-17T13:47:23+09:00
 ---
 
 # 목표
@@ -103,6 +106,8 @@ sources:
 - 2026-11-17T13:39+09:00 사용자 결정 A-1 · B-2 · C-1: 점포번호 계정이면 화면 맨 위 안내 줄 "프린터 설정은 마스터 계정만 변경할 수 있습니다. 시험 인쇄는 가능합니다." (팝업 아님), T10 위젯설정에도 같은 방식 → pos-boss가 main의 스펙 2.4 · 8장, T10 태스크 문서 수정(커밋 전) → 작업 세션에 전달
 - 2026-11-17T13:40+09:00 안내 줄 반영 보고: printer-texts · PrinterSettingsScreen · 테스트 1개, ② 지적 0건 (보고). pos-boss 직접 확인: lint · typecheck · format:check 통과, `pnpm test` 140 passed, 문구 원문 일치
 - 2026-11-17T13:44+09:00 OKF 본문 작성 (pos-boss). 사용자는 시험 인쇄 버튼 · Windows 확인을 나중에 하기로 함
+- 2026-11-17T13:47+09:00 사용자 "커밋하고 머지해" → 커밋 `ce22e81`(feat) · `d4f01dc`(OKF), main에 fast-forward 머지, main에서 스펙 개정 커밋 `c973557`. 머지된 main에서 `pnpm test` 140 passed, `cargo test` 16 passed
+- 2026-11-17T13:47+09:00 사용자 OKF 승인 ("A-1"), Plane WHALEERPPO-12 Done ("B-1", Windows 확인 체크리스트는 남은 일로 유지)
 
 [^spec]: `docs/specs/SPEC-settings-printer.md`
 [^screen]: 화면정의서 v0.8 p.19
