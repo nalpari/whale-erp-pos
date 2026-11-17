@@ -2,6 +2,7 @@
 
 ## 2026-11-17
 
+- T14 보고서 사용자 승인 (status: stable)
 - T14 공통 로그 보고서 추가 (`2026-11-17-logging.md`)
 - T11 보고서 사용자 승인 (status: stable)
 - T11 프린터설정 보고서 추가 (`2026-11-17-settings-printer.md`)
