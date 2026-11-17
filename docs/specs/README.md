@@ -9,7 +9,8 @@
 | `app-shell` | T01 프로그램 틀 · 헤더 · 창 제어 | WHALEERPPO-2 | [SPEC-app-shell.md](./SPEC-app-shell.md) | 승인 (2026-11-16) |
 | `login` | T02 로그인 · 점포번호 찾기 | WHALEERPPO-3 | [SPEC-login.md](./SPEC-login.md) | 승인 (2026-11-16) |
 | `settings-printer` | T11 환경설정 — 프린터설정 | WHALEERPPO-12 | [SPEC-settings-printer.md](./SPEC-settings-printer.md) | 승인 (2026-11-17) |
+| `logging` | T14 공통 로그 · 오류 기록 | WHALEERPPO-15 | [SPEC-logging.md](./SPEC-logging.md) | 승인 (2026-11-17) |
 
-빌드 순서: `project-skeleton` → `app-shell` → `login` → `settings-printer`
+빌드 순서: `project-skeleton` → `app-shell` → `login` → `settings-printer` → `logging`
 
 구현 계획은 `docs/plans/PLAN-<모듈 id>.md`에 둔다. 단계는 그 문서의 체크리스트로 관리하고, Plane에는 태스크 하나만 둔다.
