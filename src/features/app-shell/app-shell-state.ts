@@ -2,7 +2,7 @@
 import type { Session } from "../../shared/api/auth";
 import type { MainTabId, SettingsTabId } from "./tabs";
 
-export type DialogKind = "stop-orders" | "logout" | "shutdown";
+export type DialogKind = "stop-orders" | "restart" | "logout" | "exit";
 
 export interface AppShellState {
   session: Session | null;
@@ -15,7 +15,7 @@ export interface AppShellState {
   togglePending: boolean;
   toggleError: boolean;
   dialog: DialogKind | null;
-  /** 로그아웃 · 시스템종료 팝업에서 확인을 누른 뒤 처리 중인지. */
+  /** 로그아웃 · 다시시작 · 프로그램 종료 팝업에서 확인을 누른 뒤 처리 중인지. */
   dialogPending: boolean;
   /** "로그 확인" 화면이 탭 · 로그인 화면 대신 보이는 중인지 (개발자 추가 기능, SPEC-logging 3.1). */
   logViewerOpen: boolean;
@@ -25,8 +25,10 @@ export type AppShellAction =
   | { type: "login"; session: Session }
   | { type: "restore-finished"; session: Session | null }
   | { type: "logout" }
-  /** 시스템종료 처리 중의 로그아웃. 종료가 끝날 때까지 팝업(처리 중)을 그대로 둔다. */
+  /** 프로그램 종료 처리 중의 로그아웃. 종료가 끝날 때까지 팝업(처리 중)을 그대로 둔다. */
   | { type: "logout-for-shutdown" }
+  /** 보낸 "주문 중단" 요청에 맞춰 화면 토글도 OFF로 내린다. 다시시작이 실패해도 서버(OFF)와 표시가 맞게. 요청이 실패했으면 서버와 다를 수 있고, 그때는 점원이 다시 켜서 맞춘다. */
+  | { type: "orders-stopped" }
   | { type: "select-tab"; tab: MainTabId }
   | { type: "select-settings-tab"; tab: SettingsTabId }
   | { type: "toggle-request" }
@@ -40,7 +42,7 @@ export type AppShellAction =
   | { type: "open-log-viewer" }
   | { type: "close-log-viewer" };
 
-// 로그인할 때마다 이 값으로 되돌린다. 주문받기는 매번 OFF로 시작한다 (스펙 2.2-1, Q03 답변 전).
+// 로그인할 때마다 이 값으로 되돌린다. 주문받기는 매번 OFF로 시작한다 (스펙 2.2-1, Q03).
 const SIGNED_IN_DEFAULTS = {
   activeTab: "order-board",
   settingsTab: "widget",
@@ -96,6 +98,8 @@ export function appShellReducer(
         dialog: state.dialog,
         dialogPending: state.dialogPending,
       };
+    case "orders-stopped":
+      return { ...state, accepting: false };
     case "select-tab":
       return { ...state, activeTab: action.tab };
     case "select-settings-tab":
