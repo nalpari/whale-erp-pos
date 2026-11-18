@@ -11,7 +11,7 @@
 
 ## 지금 모의 구현인 곳
 
-- 로그인 · 점포번호 찾기 · 자동 로그인 재개: `src/shared/api/auth.ts` (`createMockAuthApi`)
+- 로그인 · 자동 로그인 재개: `src/shared/api/auth.ts` (`createMockAuthApi`)
 - 주문받기 ON/OFF: `src/shared/api/store-status.ts` (`createMockStoreStatusApi`)
 - `src/app/App.tsx`가 개발 · 배포 구분 없이 항상 모의 구현을 쓴다. 그래서 지금 설치 파일은 테스트용이다.
 - 이후 태스크(T03 주문 수신, T08 · T09 · T13 등)도 모의 구현으로 먼저 만든다. 이 태스크에서 함께 바꾸거나, 각 태스크에서 바꾸는지 스펙 단계에서 정한다.
