@@ -11,7 +11,8 @@
 | `settings-printer` | T11 환경설정 — 프린터설정 | WHALEERPPO-12 | [SPEC-settings-printer.md](./SPEC-settings-printer.md) | 승인 (2026-11-18 개정, 기획자 답변 반영) |
 | `logging` | T14 공통 로그 · 오류 기록 | WHALEERPPO-15 | [SPEC-logging.md](./SPEC-logging.md) | 승인 (2026-11-17) |
 | `order-sync` | T03 주문 수신 · 상태 동기화 | WHALEERPPO-4 | [SPEC-order-sync.md](./SPEC-order-sync.md) | 승인 (2026-11-18) |
+| `order-board` | T04 주문접수 화면 | WHALEERPPO-5 | [SPEC-order-board.md](./SPEC-order-board.md) | 승인 (2026-11-18) |
 
-빌드 순서: `project-skeleton` → `app-shell` → `login` → `settings-printer` → `logging` → `order-sync`
+빌드 순서: `project-skeleton` → `app-shell` → `login` → `settings-printer` → `logging` → `order-sync` → `order-board`
 
 구현 계획은 `docs/plans/PLAN-<모듈 id>.md`에 둔다. 단계는 그 문서의 체크리스트로 관리하고, Plane에는 태스크 하나만 둔다.
