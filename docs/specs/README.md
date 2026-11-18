@@ -6,7 +6,7 @@
 | 모듈 id | 태스크 | Plane | 스펙 | 상태 |
 |---|---|---|---|---|
 | `project-skeleton` | T00 프로젝트 골격 | WHALEERPPO-1 | 없음 (지시서로 진행) | 진행 중 |
-| `app-shell` | T01 프로그램 틀 · 헤더 · 창 제어 | WHALEERPPO-2 | [SPEC-app-shell.md](./SPEC-app-shell.md) | 승인 (2026-11-16) |
+| `app-shell` | T01 프로그램 틀 · 헤더 · 창 제어 | WHALEERPPO-2 | [SPEC-app-shell.md](./SPEC-app-shell.md) | 승인 (2026-11-18 개정, 기획자 답변 반영) |
 | `login` | T02 로그인 | WHALEERPPO-3 | [SPEC-login.md](./SPEC-login.md) | 승인 (2026-11-18 개정, 기획자 답변 반영) |
 | `settings-printer` | T11 환경설정 — 프린터설정 | WHALEERPPO-12 | [SPEC-settings-printer.md](./SPEC-settings-printer.md) | 승인 (2026-11-18 개정, 기획자 답변 반영) |
 | `logging` | T14 공통 로그 · 오류 기록 | WHALEERPPO-15 | [SPEC-logging.md](./SPEC-logging.md) | 승인 (2026-11-17) |
