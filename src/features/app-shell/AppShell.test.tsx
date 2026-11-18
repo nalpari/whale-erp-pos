@@ -395,7 +395,7 @@ describe("주문받기 토글 (스펙 2.2)", () => {
     expect(toggle()).toBeEnabled();
     // 공용 Toast (Q51 ②)
     expect(screen.getByRole("status")).toHaveTextContent(
-      "처리하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "처리하지 못했습니다. 잠시 뒤 다시 시도해 주세요.",
     );
   });
 
@@ -414,7 +414,7 @@ describe("주문받기 토글 (스펙 2.2)", () => {
     fireEvent.click(toggle());
 
     const dialog = screen.getByRole("alertdialog", {
-      name: "주문 수신을 중단하시겠습니까?",
+      name: "주문수신을 중단하시겠습니까?",
     });
     expect(dialog).toHaveAccessibleDescription(
       "주문 수신이 중단되면 고객은 앱에서 주문을 할 수 없습니다.",
@@ -493,7 +493,7 @@ describe("주문받기 토글 (스펙 2.2)", () => {
 
     expect(toggle()).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("status")).toHaveTextContent(
-      "처리하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "처리하지 못했습니다. 잠시 뒤 다시 시도해 주세요.",
     );
   });
 });
