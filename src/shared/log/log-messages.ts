@@ -1,18 +1,28 @@
-// 로그에 남기는 문장을 만드는 곳. 개인정보(비밀번호 · 토큰 · 점포 고유번호 · 마스터 아이디)가
-// 문장에 섞이지 않도록, 인자는 정해진 종류만 받고 표에 없는 값은 "알 수 없음"으로 바꾼다 (스펙 2.4).
+// 로그에 남기는 문장을 만드는 곳. 개인정보(비밀번호 · 토큰 · 점포코드 · 웨일ERP 아이디 · PC 이름)가
+// 문장에 섞이지 않도록, 인자는 정해진 종류만 받고 표에 없는 값은 "알 수 없음"으로 바꾼다 (SPEC-logging 2.4).
 import type { AccountType } from "../api/auth";
 import { errorSummary } from "../error-summary";
 
-export type LoginFailReason = "invalid-credentials" | "network";
+export type LoginFailReason =
+  | "invalid-credentials"
+  | "not-subscribed"
+  | "store-not-managed"
+  | "password-not-set"
+  | "locked"
+  | "network";
 export type AutoLoginResult =
   "success" | "expired-token-cleared" | "network-token-kept";
 
 const ACCOUNT: Record<AccountType, string> = {
   store: "점포번호 계정",
-  master: "마스터 계정",
+  master: "웨일ERP 계정",
 };
 const FAIL_REASON: Record<LoginFailReason, string> = {
   "invalid-credentials": "아이디 · 비밀번호 틀림",
+  "not-subscribed": "미구독 점포",
+  "store-not-managed": "관리할 수 없는 점포",
+  "password-not-set": "매장 프로그램 비밀번호 미설정",
+  locked: "로그인 잠김",
   network: "네트워크 등 오류",
 };
 const AUTO_LOGIN: Record<AutoLoginResult, string> = {

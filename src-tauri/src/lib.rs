@@ -2,6 +2,7 @@ mod auto_login;
 mod log_viewer;
 mod printer;
 mod printer_settings;
+mod system;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -20,6 +21,8 @@ pub fn run() {
             printer_settings::save_printer_settings,
             log_viewer::read_recent_logs,
             log_viewer::open_log_dir,
+            system::get_device_name,
+            system::open_whale_erp,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
