@@ -13,6 +13,7 @@ import {
 import type { AuthApi, Session } from "../../shared/api/auth";
 import type { LogApi } from "../../shared/log/log-api";
 import type { StoreStatusApi } from "../../shared/api/store-status";
+import { withTimeout } from "../../shared/api/with-timeout";
 import type {
   PrinterApi,
   PrinterSettingsStore,
@@ -28,7 +29,6 @@ import {
   type AppShellState,
   type DialogKind,
 } from "./app-shell-state";
-import { getPendingOrderCount as defaultPendingOrderCount } from "./pending-orders";
 import type { MainTabId, SettingsTabId } from "./tabs";
 
 interface AppShellActions {
@@ -51,6 +51,8 @@ interface AppShellActions {
   maximizeWindow(): void;
   openLogViewer(): void;
   closeLogViewer(): void;
+  /** 서버가 바꾼 주문받기를 확인창 없이 반영한다. autoOff면 빨간 띠도 띄운다 (T03 스펙 3.5). */
+  applyServerAccepting(accepting: boolean, autoOff?: boolean): void;
 }
 
 interface AppShellContextValue {
@@ -66,8 +68,6 @@ interface AppShellContextValue {
   logApi: LogApi;
   /** 창이 지금 늘어난(최대화) 상태인지. 더보기 메뉴가 늘리기 / 줄이기 중 하나만 보이는 데 쓴다. */
   maximized: boolean;
-  /** 처리할 주문 건수. 확인창 경고 줄에 쓴다 (스펙 2.3). */
-  pendingOrderCount: number;
 }
 
 const AppShellContext = createContext<AppShellContextValue | null>(null);
@@ -80,8 +80,6 @@ interface Props {
   printerApi: PrinterApi;
   printerSettingsStore: PrinterSettingsStore;
   logApi: LogApi;
-  /** 처리할 주문 건수를 돌려준다. 주문 수신(T03) 전에는 0이다. 테스트는 가짜를 넣는다. */
-  getPendingOrderCount?: () => number;
   initialSession: Session | null;
   /** 있으면 시작할 때 불러 자동 로그인을 확인한다. 끝날 때까지 로그인 폼 대신 빈 화면을 보인다. */
   restoreSession?: () => Promise<Session | null>;
@@ -110,7 +108,6 @@ export function AppShellProvider({
   printerApi,
   printerSettingsStore,
   logApi,
-  getPendingOrderCount = defaultPendingOrderCount,
   initialSession,
   restoreSession,
   children,
@@ -198,7 +195,7 @@ export function AppShellProvider({
       dispatch({ type: "toggle-request" });
       const request = (async () => {
         try {
-          await storeStatusApi.setAcceptingOrders(accepting);
+          await withTimeout(storeStatusApi.setAcceptingOrders(accepting));
           logInfo(logMessages.orderAcceptRequested(accepting, true));
           dispatch({ type: "toggle-success", accepting });
         } catch (error) {
@@ -227,7 +224,7 @@ export function AppShellProvider({
       const inFlight = toggleInFlightRef.current;
       if (inFlight) await inFlight;
       try {
-        await storeStatusApi.setAcceptingOrders(false);
+        await withTimeout(storeStatusApi.setAcceptingOrders(false));
       } catch (error) {
         console.error(
           "[store-status] 로그아웃 · 다시시작 · 종료 전 주문 중단 실패, 그대로 진행",
@@ -383,6 +380,8 @@ export function AppShellProvider({
         void windowApi.maximize().catch(logWindowError("늘리기")),
       openLogViewer: () => dispatch({ type: "open-log-viewer" }),
       closeLogViewer: () => dispatch({ type: "close-log-viewer" }),
+      applyServerAccepting: (accepting, autoOff = false) =>
+        dispatch({ type: "server-accepting", accepting, autoOff }),
     }),
     [requestAccepting, confirmDialog, windowApi, tokenStore],
   );
@@ -396,7 +395,6 @@ export function AppShellProvider({
       printerSettingsStore,
       logApi,
       maximized,
-      pendingOrderCount: getPendingOrderCount(),
     }),
     [
       state,
@@ -406,7 +404,6 @@ export function AppShellProvider({
       printerSettingsStore,
       logApi,
       maximized,
-      getPendingOrderCount,
     ],
   );
   return (

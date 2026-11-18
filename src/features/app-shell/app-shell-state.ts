@@ -14,6 +14,8 @@ export interface AppShellState {
   accepting: boolean;
   togglePending: boolean;
   toggleError: boolean;
+  /** 서버가 미접수 연속 2건으로 주문받기를 끈 뒤 빨간 띠를 보이는 중인지. 켤 때까지 남는다 (Q54). */
+  autoOffBanner: boolean;
   dialog: DialogKind | null;
   /** 로그아웃 · 다시시작 · 프로그램 종료 팝업에서 확인을 누른 뒤 처리 중인지. */
   dialogPending: boolean;
@@ -34,6 +36,8 @@ export type AppShellAction =
   | { type: "toggle-request" }
   | { type: "toggle-success"; accepting: boolean }
   | { type: "toggle-failure" }
+  /** 서버(다른 PC · 자동 OFF · 재연결 복구)가 바꾼 주문받기를 확인창 없이 반영한다 (T03 스펙 3.5). */
+  | { type: "server-accepting"; accepting: boolean; autoOff: boolean }
   | { type: "dismiss-toggle-error" }
   | { type: "open-dialog"; dialog: DialogKind }
   | { type: "close-dialog" }
@@ -49,6 +53,7 @@ const SIGNED_IN_DEFAULTS = {
   accepting: false,
   togglePending: false,
   toggleError: false,
+  autoOffBanner: false,
 } as const satisfies Partial<AppShellState>;
 
 export function createInitialState(session: Session | null): AppShellState {
@@ -110,7 +115,23 @@ export function appShellReducer(
     // 지금은 Provider가 토글 요청이 끝난 뒤에 로그아웃하므로 생기지 않지만, 다음 로그인은 반드시 OFF로 시작해야 한다.
     case "toggle-success":
       if (!state.togglePending) return state;
-      return { ...state, togglePending: false, accepting: action.accepting };
+      // 주문받기를 켜면 자동 OFF 띠가 사라진다 (Q54).
+      return {
+        ...state,
+        togglePending: false,
+        accepting: action.accepting,
+        autoOffBanner: action.accepting ? false : state.autoOffBanner,
+      };
+    case "server-accepting":
+      // 로그인 전에 온 사건은 반영할 곳이 없다.
+      if (!state.session) return state;
+      return {
+        ...state,
+        accepting: action.accepting,
+        autoOffBanner: action.accepting
+          ? false
+          : action.autoOff || state.autoOffBanner,
+      };
     case "toggle-failure":
       if (!state.togglePending) return state;
       return { ...state, togglePending: false, toggleError: true };

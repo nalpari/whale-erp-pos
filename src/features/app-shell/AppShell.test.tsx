@@ -30,6 +30,10 @@ import {
   createFakeWindow,
 } from "../../test/fakes";
 import { createFakeLogApi } from "../../shared/log/log-api";
+import {
+  OrdersContext,
+  type OrdersContextValue,
+} from "../../shared/orders/orders-context";
 import { AppShell } from "./AppShell";
 import { AppShellProvider } from "./AppShellContext";
 import { appShellReducer, createInitialState } from "./app-shell-state";
@@ -39,6 +43,20 @@ const STORE: Session = {
   store: { id: "s1", code: "ST000001", name: "힘이나는커피생활 종로점" },
   accessToken: "t",
 };
+
+function fakeOrders(pendingOrderCount: number): OrdersContextValue {
+  return {
+    orders: [],
+    pendingOrderCount,
+    connection: "connected",
+    inFlight: {},
+    changeStatus: async () => ({ ok: true }),
+    refresh: async () => true,
+    pickedUpAt: () => undefined,
+    onNewOrder: () => () => {},
+    onAccepted: () => () => {},
+  };
+}
 
 function renderShell(
   options: {
@@ -64,11 +82,17 @@ function renderShell(
       printerApi={createFakePrinterApi()}
       printerSettingsStore={createMemoryPrinterSettingsStore()}
       logApi={createFakeLogApi()}
-      getPendingOrderCount={() => options.pendingOrderCount ?? 0}
       restoreSession={options.restoreSession}
       initialSession={options.session ?? null}
     >
-      <AppShell />
+      {options.pendingOrderCount === undefined ? (
+        <AppShell />
+      ) : (
+        // 확인창 문구만 보는 테스트라 건수만 정해 준다. 실제 목록에서 세는 것은 OrdersProvider 테스트가 본다.
+        <OrdersContext.Provider value={fakeOrders(options.pendingOrderCount)}>
+          <AppShell />
+        </OrdersContext.Provider>
+      )}
     </AppShellProvider>
   );
   const { unmount } = render(
