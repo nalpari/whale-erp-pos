@@ -3,7 +3,7 @@
 const KEY = "windowBounds";
 
 /** 창을 줄일 수 있는 가장 작은 크기 (논리 픽셀). src-tauri/tauri.conf.json의 minWidth · minHeight와 같게 둔다. */
-export const MIN_WINDOW_SIZE = { width: 1024, height: 700 } as const;
+export const MIN_WINDOW_SIZE = { width: 1024, height: 768 } as const;
 /** "창 줄이기"의 기본 크기 (논리 픽셀). src-tauri/tauri.conf.json의 시작 창 width · height와 같게 둔다. */
 export const DEFAULT_WINDOW_SIZE = { width: 1280, height: 800 } as const;
 
