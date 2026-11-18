@@ -23,6 +23,7 @@ pub fn run() {
             log_viewer::open_log_dir,
             system::get_device_name,
             system::open_whale_erp,
+            system::restart_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

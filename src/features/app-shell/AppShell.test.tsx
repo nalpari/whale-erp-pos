@@ -1,4 +1,11 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { StrictMode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -41,6 +48,7 @@ function renderShell(
     tokenStore?: TokenStore;
     restoreSession?: () => Promise<Session | null>;
     strict?: boolean;
+    pendingOrderCount?: number;
   } = {},
 ) {
   const fakeWindow = createFakeWindow();
@@ -56,6 +64,7 @@ function renderShell(
       printerApi={createFakePrinterApi()}
       printerSettingsStore={createMemoryPrinterSettingsStore()}
       logApi={createFakeLogApi()}
+      getPendingOrderCount={() => options.pendingOrderCount ?? 0}
       restoreSession={options.restoreSession}
       initialSession={options.session ?? null}
     >
@@ -230,18 +239,70 @@ describe("창 제어 (스펙 2.4, 2.3)", () => {
   });
 
   it.each([
-    ["창 최소화", "minimize"],
-    ["창 줄이기", "restoreDefaultSize"],
-    ["창 늘리기", "maximize"],
-  ] as const)("%s → 창 감싸기의 %s를 부르고 메뉴를 닫는다", (label, fn) => {
+    ["창 최소화", "minimize", false],
+    ["창 줄이기", "restoreDefaultSize", true],
+    ["창 늘리기", "maximize", false],
+  ] as const)(
+    "%s → 창 감싸기의 %s를 부르고 메뉴를 닫는다",
+    async (label, fn, maximized) => {
+      const { fakeWindow } = renderShell();
+      await act(async () => {}); // 창 상태 구독이 끝나기를 기다린다
+      if (maximized) await act(async () => fakeWindow.setMaximized(true));
+
+      fireEvent.click(
+        within(openMoreMenu()).getByRole("menuitem", { name: label }),
+      );
+
+      expect(fakeWindow.win[fn]).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    },
+  );
+
+  it("창 늘리기 / 창 줄이기는 지금 상태에 따라 하나만 보인다", async () => {
     const { fakeWindow } = renderShell();
+    await act(async () => {});
+    openMoreMenu();
+    const names = () =>
+      screen.getAllByRole("menuitem").map((m) => m.textContent);
 
-    fireEvent.click(
-      within(openMoreMenu()).getByRole("menuitem", { name: label }),
-    );
+    expect(names()).toContain("창 늘리기");
+    expect(names()).not.toContain("창 줄이기");
+    await act(async () => fakeWindow.setMaximized(true));
+    expect(names()).toContain("창 줄이기");
+    expect(names()).not.toContain("창 늘리기");
+  });
 
-    expect(fakeWindow.win[fn]).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  it("시작할 때 이미 최대화 상태면 창 줄이기가 보인다", async () => {
+    const fakeWindow = createFakeWindow();
+    fakeWindow.setMaximized(true);
+    renderShell({ windowApi: fakeWindow.win });
+    await act(async () => {});
+
+    expect(
+      within(openMoreMenu()).getByRole("menuitem", { name: "창 줄이기" }),
+    ).toBeInTheDocument();
+  });
+
+  it("프로그램을 켜면 마지막 창 크기 · 위치를 되살리고, 화면이 내려가면 멈춘다", async () => {
+    const stop = vi.fn();
+    const fakeWindow = createFakeWindow();
+    fakeWindow.win.manageBounds.mockResolvedValue(stop);
+    const { unmount } = renderShell({ windowApi: fakeWindow.win });
+    await act(async () => {});
+
+    expect(fakeWindow.win.manageBounds).toHaveBeenCalledTimes(1);
+    unmount();
+    expect(stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("프로그램 종료 메뉴 칸 아이콘은 빨간색이다", () => {
+    renderShell();
+    const menu = openMoreMenu();
+
+    const icon = (name: string) =>
+      within(menu).getByRole("menuitem", { name }).querySelector("span");
+    expect(icon("프로그램 종료")).toHaveClass("text-red-500");
+    expect(icon("창 최소화")).not.toHaveClass("text-red-500");
   });
 
   it("더보기 메뉴는 끌기 영역에서 빠진다 (버튼 사이 여백을 눌러도 창이 끌리지 않게)", () => {
@@ -332,11 +393,10 @@ describe("주문받기 토글 (스펙 2.2)", () => {
 
     expect(toggle()).toHaveAttribute("aria-checked", "false");
     expect(toggle()).toBeEnabled();
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+    // 공용 Toast (Q51 ②)
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "처리하지 못했습니다. 잠시 후 다시 시도해 주세요.",
     );
-    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   async function turnOn(
@@ -432,8 +492,8 @@ describe("주문받기 토글 (스펙 2.2)", () => {
     await act(async () => server.last().reject(new Error("x")));
 
     expect(toggle()).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "처리하지 못했습니다. 잠시 후 다시 시도해 주세요.",
     );
   });
 });
@@ -451,15 +511,15 @@ describe("로그아웃 (스펙 2.3)", () => {
         .getAllByRole("menuitem")
         .map((m) => m.textContent),
     ).toEqual([
+      "다시시작",
+      "프로그램 종료",
       "창 최소화",
-      "창 줄이기",
       "창 늘리기",
-      "시스템종료",
       "로그 확인",
     ]);
   });
 
-  it("로그인 후 메뉴에는 로그 확인 · 로그아웃까지 6개가 있다", () => {
+  it("로그인 후 메뉴는 스펙 2.4 순서의 6칸이고 새로고침은 없다", () => {
     renderShell({ session: STORE });
 
     const menu = openMoreMenu();
@@ -468,13 +528,16 @@ describe("로그아웃 (스펙 2.3)", () => {
         .getAllByRole("menuitem")
         .map((m) => m.textContent),
     ).toEqual([
-      "창 최소화",
-      "창 줄이기",
-      "창 늘리기",
-      "시스템종료",
-      "로그 확인",
+      "다시시작",
       "로그아웃",
+      "프로그램 종료",
+      "창 최소화",
+      "창 늘리기",
+      "로그 확인",
     ]);
+    expect(
+      within(menu).queryByRole("menuitem", { name: "새로고침" }),
+    ).toBeNull();
   });
 
   it("화면정의서 문구의 팝업을 띄우고, [취소]면 그대로 둔다", () => {
@@ -610,10 +673,10 @@ describe("로그아웃 (스펙 2.3)", () => {
   });
 });
 
-describe("시스템종료 (스펙 2.3, 2.4)", () => {
+describe("프로그램 종료 (스펙 2.3, 2.4)", () => {
   function clickShutdown() {
     fireEvent.click(
-      within(openMoreMenu()).getByRole("menuitem", { name: "시스템종료" }),
+      within(openMoreMenu()).getByRole("menuitem", { name: "프로그램 종료" }),
     );
   }
 
@@ -623,7 +686,7 @@ describe("시스템종료 (스펙 2.3, 2.4)", () => {
     clickShutdown();
 
     const dialog = screen.getByRole("alertdialog", {
-      name: "시스템을 종료하겠습니까?",
+      name: "프로그램을 종료하시겠습니까?",
     });
     expect(dialog).toHaveAccessibleDescription(
       "주문 수신이 자동으로 중단됩니다.",
@@ -632,12 +695,12 @@ describe("시스템종료 (스펙 2.3, 2.4)", () => {
       within(dialog)
         .getAllByRole("button")
         .map((b) => b.textContent),
-    ).toEqual(["취소", "시스템 종료"]);
+    ).toEqual(["취소", "프로그램 종료"]);
     fireEvent.click(within(dialog).getByRole("button", { name: "취소" }));
     expect(fakeWindow.win.exit).not.toHaveBeenCalled();
   });
 
-  it("[시스템 종료]면 주문 중단 요청 뒤 로그아웃하고 프로그램을 끝낸다", async () => {
+  it("[프로그램 종료]면 주문 중단 요청 뒤 로그아웃하고 프로그램을 끝낸다", async () => {
     const server = createControlledStoreStatusApi();
     const { fakeWindow } = renderShell({
       session: STORE,
@@ -645,7 +708,7 @@ describe("시스템종료 (스펙 2.3, 2.4)", () => {
     });
 
     clickShutdown();
-    fireEvent.click(screen.getByRole("button", { name: "시스템 종료" }));
+    fireEvent.click(screen.getByRole("button", { name: "프로그램 종료" }));
 
     expect(server.api.setAcceptingOrders).toHaveBeenCalledWith(false);
     expect(fakeWindow.win.exit).not.toHaveBeenCalled();
@@ -664,7 +727,7 @@ describe("시스템종료 (스펙 2.3, 2.4)", () => {
     fireEvent.click(toggle());
 
     clickShutdown();
-    fireEvent.click(screen.getByRole("button", { name: "시스템 종료" }));
+    fireEvent.click(screen.getByRole("button", { name: "프로그램 종료" }));
     expect(server.calls.map((c) => c.accepting)).toEqual([true]);
     await act(async () => server.calls[0].resolve());
     expect(server.calls.map((c) => c.accepting)).toEqual([true, false]);
@@ -674,7 +737,7 @@ describe("시스템종료 (스펙 2.3, 2.4)", () => {
     expect(fakeWindow.win.exit).toHaveBeenCalledTimes(1);
   });
 
-  it("시스템종료 팝업도 초점이 [취소]에 있다", () => {
+  it("프로그램 종료 팝업도 초점이 [취소]에 있다", () => {
     renderShell({ session: STORE });
 
     clickShutdown();
@@ -690,7 +753,7 @@ describe("시스템종료 (스펙 2.3, 2.4)", () => {
     });
 
     clickShutdown();
-    fireEvent.click(screen.getByRole("button", { name: "시스템 종료" }));
+    fireEvent.click(screen.getByRole("button", { name: "프로그램 종료" }));
     await act(async () => server.last().reject(new Error("x")));
 
     expect(fakeWindow.win.exit).toHaveBeenCalledTimes(1);
@@ -702,10 +765,10 @@ describe("시스템종료 (스펙 2.3, 2.4)", () => {
 
     clickShutdown();
     expect(
-      screen.getByRole("alertdialog", { name: "시스템을 종료하겠습니까?" }),
+      screen.getByRole("alertdialog", { name: "프로그램을 종료하시겠습니까?" }),
     ).toBeInTheDocument();
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "시스템 종료" }));
+      fireEvent.click(screen.getByRole("button", { name: "프로그램 종료" }));
     });
 
     expect(server.api.setAcceptingOrders).not.toHaveBeenCalled();
@@ -726,7 +789,7 @@ describe("시스템종료 (스펙 2.3, 2.4)", () => {
     });
 
     clickShutdown();
-    fireEvent.click(screen.getByRole("button", { name: "시스템 종료" }));
+    fireEvent.click(screen.getByRole("button", { name: "프로그램 종료" }));
     act(() => {
       fakeWindow.requestClose();
     });
@@ -735,10 +798,10 @@ describe("시스템종료 (스펙 2.3, 2.4)", () => {
     // 로그아웃은 됐지만 종료가 끝날 때까지 팝업은 처리 중으로 남는다
     expect(fakeWindow.win.exit).toHaveBeenCalledTimes(1);
     const dialog = screen.getByRole("alertdialog", {
-      name: "시스템을 종료하겠습니까?",
+      name: "프로그램을 종료하시겠습니까?",
     });
     expect(
-      within(dialog).getByRole("button", { name: "시스템 종료" }),
+      within(dialog).getByRole("button", { name: "프로그램 종료" }),
     ).toBeDisabled();
     act(() => {
       fakeWindow.requestClose();
@@ -755,13 +818,13 @@ describe("시스템종료 (스펙 2.3, 2.4)", () => {
 
     clickShutdown();
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "시스템 종료" }));
+      fireEvent.click(screen.getByRole("button", { name: "프로그램 종료" }));
     });
 
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     clickShutdown();
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "시스템 종료" }));
+      fireEvent.click(screen.getByRole("button", { name: "프로그램 종료" }));
     });
     expect(fakeWindow.win.exit).toHaveBeenCalledTimes(2);
     errorSpy.mockRestore();
@@ -779,14 +842,14 @@ describe("시스템종료 (스펙 2.3, 2.4)", () => {
     });
 
     clickShutdown();
-    fireEvent.click(screen.getByRole("button", { name: "시스템 종료" }));
+    fireEvent.click(screen.getByRole("button", { name: "프로그램 종료" }));
     await act(async () => server.last().resolve());
 
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(screen.getByText("로그인 후 이용해주세요.")).toBeInTheDocument();
     clickShutdown();
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "시스템 종료" }));
+      fireEvent.click(screen.getByRole("button", { name: "프로그램 종료" }));
     });
     expect(fakeWindow.win.exit).toHaveBeenCalledTimes(2);
     errorSpy.mockRestore();
@@ -801,7 +864,7 @@ describe("시스템종료 (스펙 2.3, 2.4)", () => {
     expect(fakeWindow.requestClose()).toBe(false);
   });
 
-  it("운영체제 닫기(Alt+F4)를 받으면 시스템종료 팝업을 띄운다", () => {
+  it("운영체제 닫기(Alt+F4)를 받으면 프로그램 종료 팝업을 띄운다", () => {
     const { fakeWindow } = renderShell({ session: STORE });
 
     act(() => {
@@ -809,7 +872,7 @@ describe("시스템종료 (스펙 2.3, 2.4)", () => {
     });
 
     expect(
-      screen.getByRole("alertdialog", { name: "시스템을 종료하겠습니까?" }),
+      screen.getByRole("alertdialog", { name: "프로그램을 종료하시겠습니까?" }),
     ).toBeInTheDocument();
     expect(fakeWindow.win.exit).not.toHaveBeenCalled();
   });
@@ -868,16 +931,16 @@ describe("자동 로그인 저장 (스펙 3.4, 4장)", () => {
     await vi.waitFor(async () => expect(await tokenStore.load()).toBeNull());
   });
 
-  it("시스템종료는 토큰을 지우지 않는다 (다음 실행 때 자동 로그인)", async () => {
+  it("프로그램 종료는 토큰을 지우지 않는다 (다음 실행 때 자동 로그인)", async () => {
     const tokenStore = spyStore("saved-token");
     const { fakeWindow } = renderShell({ session: STORE, tokenStore });
 
     fireEvent.click(
-      within(openMoreMenu()).getByRole("menuitem", { name: "시스템종료" }),
+      within(openMoreMenu()).getByRole("menuitem", { name: "프로그램 종료" }),
     );
     fireEvent.click(
       within(screen.getByRole("alertdialog")).getByRole("button", {
-        name: "시스템 종료",
+        name: "프로그램 종료",
       }),
     );
 
@@ -1090,5 +1153,179 @@ describe("로그 확인 (SPEC-logging 3.1)", () => {
     fireEvent.click(screen.getByRole("button", { name: "닫기" }));
 
     expect(screen.getByRole("tab", { name: "주문접수" })).toBeInTheDocument();
+  });
+});
+
+describe("처리할 주문 경고 (스펙 2.3, Q04)", () => {
+  const WARN_OFF =
+    "처리할 주문이 3건 있습니다. 주문받기를 꺼도 이 주문은 처리해야 합니다.";
+  const WARN_RESTART =
+    "처리할 주문이 3건 있습니다. 다시 켜도 이 주문은 그대로 처리할 수 있습니다.";
+  const WARN_END =
+    "처리할 주문이 3건 있습니다. 프로그램을 끄면 이 주문을 처리하거나 고객에게 알림을 보낼 수 없습니다.";
+
+  async function openOffDialog() {
+    fireEvent.click(toggle());
+    await waitFor(() =>
+      expect(toggle()).toHaveAttribute("aria-checked", "true"),
+    );
+    fireEvent.click(toggle());
+  }
+
+  it.each([
+    [
+      "다시시작",
+      "다시시작하시겠습니까?",
+      "다시 켜면 주문받기가 꺼집니다.",
+      WARN_RESTART,
+    ],
+    [
+      "로그아웃",
+      "로그아웃 하시겠습니까?",
+      "주문 수신이 자동으로 중단됩니다.",
+      WARN_END,
+    ],
+    [
+      "프로그램 종료",
+      "프로그램을 종료하시겠습니까?",
+      "주문 수신이 자동으로 중단됩니다.",
+      WARN_END,
+    ],
+  ])(
+    "%s 확인창: 3건이면 원래 문구에 경고 줄이 붙는다",
+    (menu, title, message, warning) => {
+      renderShell({ session: STORE, pendingOrderCount: 3 });
+      fireEvent.click(
+        within(openMoreMenu()).getByRole("menuitem", { name: menu }),
+      );
+      const dialog = screen.getByRole("alertdialog", { name: title });
+      expect(within(dialog).getByText(message)).toBeInTheDocument();
+      expect(within(dialog).getByText(warning)).toBeInTheDocument();
+    },
+  );
+
+  it.each([
+    ["다시시작", "다시시작하시겠습니까?"],
+    ["로그아웃", "로그아웃 하시겠습니까?"],
+    ["프로그램 종료", "프로그램을 종료하시겠습니까?"],
+  ])("%s 확인창: 0건이면 경고 줄이 없다", (menu, title) => {
+    renderShell({ session: STORE, pendingOrderCount: 0 });
+    fireEvent.click(
+      within(openMoreMenu()).getByRole("menuitem", { name: menu }),
+    );
+
+    const dialog = screen.getByRole("alertdialog", { name: title });
+    expect(within(dialog).queryByText(/처리할 주문이/)).toBeNull();
+  });
+
+  it("주문받기 OFF 확인창에도 경고 줄이 붙는다", async () => {
+    renderShell({ session: STORE, pendingOrderCount: 3 });
+    await openOffDialog();
+
+    expect(screen.getByText(WARN_OFF)).toBeInTheDocument();
+  });
+
+  it("주문받기 OFF 확인창: 0건이면 줄이 없다", async () => {
+    renderShell({ session: STORE });
+    await openOffDialog();
+
+    expect(screen.queryByText(/처리할 주문이/)).toBeNull();
+  });
+
+  it("Alt+F4(닫기 요청)도 같은 확인창에 경고 줄이 붙는다", () => {
+    const { fakeWindow } = renderShell({
+      session: STORE,
+      pendingOrderCount: 3,
+    });
+
+    act(() => void fakeWindow.requestClose());
+
+    expect(screen.getByText(WARN_END)).toBeInTheDocument();
+  });
+});
+
+describe("다시시작 (스펙 2.4)", () => {
+  function clickRestart() {
+    fireEvent.click(
+      within(openMoreMenu()).getByRole("menuitem", { name: "다시시작" }),
+    );
+  }
+
+  it("[취소]면 다시 켜지 않는다", () => {
+    const { fakeWindow } = renderShell({ session: STORE });
+    clickRestart();
+
+    fireEvent.click(screen.getByRole("button", { name: "취소" }));
+
+    expect(fakeWindow.win.restart).not.toHaveBeenCalled();
+  });
+
+  it("[다시시작]이면 주문 중단을 보낸 뒤 프로그램을 다시 켠다. 자동 로그인 토큰은 지우지 않는다", async () => {
+    const server = createControlledStoreStatusApi();
+    const tokenStore = createMemoryTokenStore();
+    await tokenStore.save("refresh-1");
+    const { fakeWindow } = renderShell({
+      session: STORE,
+      storeStatusApi: server.api,
+      tokenStore,
+    });
+    clickRestart();
+
+    fireEvent.click(screen.getByRole("button", { name: "다시시작" }));
+
+    expect(server.api.setAcceptingOrders).toHaveBeenCalledWith(false);
+    expect(fakeWindow.win.restart).not.toHaveBeenCalled();
+    await act(async () => server.last().resolve());
+    await waitFor(() =>
+      expect(fakeWindow.win.restart).toHaveBeenCalledTimes(1),
+    );
+    expect(await tokenStore.load()).toBe("refresh-1");
+  });
+
+  it("주문 중단이 실패해도 다시 켠다", async () => {
+    const server = createControlledStoreStatusApi();
+    const { fakeWindow } = renderShell({
+      session: STORE,
+      storeStatusApi: server.api,
+    });
+    clickRestart();
+    fireEvent.click(screen.getByRole("button", { name: "다시시작" }));
+
+    await act(async () => server.last().reject(new Error("x")));
+
+    await waitFor(() =>
+      expect(fakeWindow.win.restart).toHaveBeenCalledTimes(1),
+    );
+  });
+
+  it("로그인 전에는 요청 없이 다시 켠다", async () => {
+    const server = createControlledStoreStatusApi();
+    const { fakeWindow } = renderShell({ storeStatusApi: server.api });
+    clickRestart();
+
+    fireEvent.click(screen.getByRole("button", { name: "다시시작" }));
+
+    await waitFor(() =>
+      expect(fakeWindow.win.restart).toHaveBeenCalledTimes(1),
+    );
+    expect(server.api.setAcceptingOrders).not.toHaveBeenCalled();
+  });
+
+  it("다시 켜지 못하면 팝업을 닫고, 서버에 보낸 주문 중단에 맞춰 토글도 OFF로 내린다", async () => {
+    const fakeWindow = createFakeWindow();
+    fakeWindow.win.restart.mockRejectedValue(new Error("x"));
+    renderShell({ windowApi: fakeWindow.win, session: STORE });
+    fireEvent.click(toggle());
+    await waitFor(() =>
+      expect(toggle()).toHaveAttribute("aria-checked", "true"),
+    );
+    clickRestart();
+
+    fireEvent.click(screen.getByRole("button", { name: "다시시작" }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument(),
+    );
+    expect(toggle()).toHaveAttribute("aria-checked", "false");
   });
 });

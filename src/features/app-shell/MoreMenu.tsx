@@ -1,4 +1,4 @@
-// 더보기(⋮) 메뉴. 창 제어 · 시스템종료 · 로그아웃 (화면정의서 p.6).
+// 더보기(⋮) 메뉴: 다시시작 · 로그아웃 · 프로그램 종료 · 창 제어 · 로그 확인을 아이콘 칸으로 둔다 (스펙 2.4, Q05 · Q06).
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAppShell } from "./AppShellContext";
 import {
@@ -7,6 +7,7 @@ import {
   MinimizeIcon,
   MoreIcon,
   PowerIcon,
+  RestartIcon,
   RestoreIcon,
   UserIcon,
 } from "./Icons";
@@ -14,11 +15,13 @@ import {
 interface Item {
   label: string;
   icon: ReactNode;
+  /** 빨간 아이콘 (프로그램 종료). */
+  danger?: boolean;
   onSelect(): void;
 }
 
 export function MoreMenu() {
-  const { state, actions } = useAppShell();
+  const { state, actions, maximized } = useAppShell();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -51,42 +54,52 @@ export function MoreMenu() {
     };
   }, [open]);
 
+  // 스펙 2.4 순서. 새로고침은 주문 목록이 생기는 T03에서 넣는다.
+  // 로그인 전에는 로그아웃할 대상이 없으므로 숨긴다. 로그 확인은 로그인 문제를 볼 수 있게 로그인 전에도 · 두 계정 모두 쓸 수 있다 (개발자 추가 기능, SPEC-logging 3.1).
   const items: Item[] = [
+    {
+      label: "다시시작",
+      icon: <RestartIcon />,
+      onSelect: () => actions.openDialog("restart"),
+    },
+    ...(state.session
+      ? [
+          {
+            label: "로그아웃",
+            icon: <UserIcon />,
+            onSelect: () => actions.openDialog("logout"),
+          },
+        ]
+      : []),
+    {
+      label: "프로그램 종료",
+      icon: <PowerIcon />,
+      danger: true,
+      onSelect: () => actions.openDialog("exit"),
+    },
     {
       label: "창 최소화",
       icon: <MinimizeIcon />,
       onSelect: actions.minimizeWindow,
     },
+    // 지금 상태에 따라 하나만 보인다.
+    maximized
+      ? {
+          label: "창 줄이기",
+          icon: <RestoreIcon />,
+          onSelect: actions.restoreWindow,
+        }
+      : {
+          label: "창 늘리기",
+          icon: <MaximizeIcon />,
+          onSelect: actions.maximizeWindow,
+        },
     {
-      label: "창 줄이기",
-      icon: <RestoreIcon />,
-      onSelect: actions.restoreWindow,
-    },
-    {
-      label: "창 늘리기",
-      icon: <MaximizeIcon />,
-      onSelect: actions.maximizeWindow,
-    },
-    {
-      label: "시스템종료",
-      icon: <PowerIcon />,
-      onSelect: () => actions.openDialog("shutdown"),
+      label: "로그 확인",
+      icon: <LogIcon />,
+      onSelect: actions.openLogViewer,
     },
   ];
-  // 로그인 전에도 · 두 계정 모두 쓸 수 있다. 로그인 문제를 볼 수 있게 한다 (SPEC-logging 3.1, 개발자 추가 기능).
-  items.push({
-    label: "로그 확인",
-    icon: <LogIcon />,
-    onSelect: actions.openLogViewer,
-  });
-  // 로그인 전에는 로그아웃할 대상이 없으므로 숨긴다 (스펙 2.3).
-  if (state.session) {
-    items.push({
-      label: "로그아웃",
-      icon: <UserIcon />,
-      onSelect: () => actions.openDialog("logout"),
-    });
-  }
 
   return (
     <div ref={rootRef} className="relative">
@@ -124,7 +137,7 @@ export function MoreMenu() {
               <span
                 aria-hidden="true"
                 className={`flex size-12 items-center justify-center rounded-xl bg-gray-100 ${
-                  item.label === "시스템종료" ? "text-red-500" : "text-gray-600"
+                  item.danger ? "text-red-500" : "text-gray-600"
                 }`}
               >
                 {item.icon}
