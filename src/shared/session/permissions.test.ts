@@ -1,18 +1,22 @@
 import { describe, expect, it } from "vitest";
 import type { Session } from "../api/auth";
-import { canEditSettings } from "./permissions";
+import { canEditSetting } from "./permissions";
 
 const base: Omit<Session, "accountType"> = {
-  store: { id: "s1", name: "시험 점포" },
+  store: { id: "s1", code: "ST000001", name: "시험 점포" },
   accessToken: "t",
 };
 
-describe("canEditSettings (스펙 9장 2)", () => {
-  it("점포번호 계정은 거짓", () => {
-    expect(canEditSettings({ ...base, accountType: "store" })).toBe(false);
-  });
-
-  it("마스터 계정은 참", () => {
-    expect(canEditSettings({ ...base, accountType: "master" })).toBe(true);
+// 스펙 2장 권한 표 (Q10).
+describe("canEditSetting (스펙 9장 5)", () => {
+  it.each([
+    ["store", "widget", true],
+    ["store", "printer", true],
+    ["store", "aiPopular", false],
+    ["master", "widget", true],
+    ["master", "printer", true],
+    ["master", "aiPopular", true],
+  ] as const)("%s 계정 · %s → %s", (accountType, kind, expected) => {
+    expect(canEditSetting({ ...base, accountType }, kind)).toBe(expected);
   });
 });

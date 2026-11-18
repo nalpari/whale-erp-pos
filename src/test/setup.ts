@@ -7,4 +7,6 @@ import { afterEach } from "vitest";
 // 나중에 `test.globals: true`를 켜면 RTL이 자동으로 정리하므로 이 afterEach는 지운다.
 afterEach(() => {
   cleanup();
+  // 마지막 점포코드(localStorage)가 다음 테스트의 로그인 화면에 채워지지 않게 한다.
+  localStorage.clear();
 });
