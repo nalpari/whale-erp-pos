@@ -48,6 +48,12 @@ export const RestartIcon = () => (
   </Icon>
 );
 
+export const RefreshIcon = () => (
+  <Icon>
+    <path d="M4 12a8 8 0 0 1 14-5M20 4v4h-4M20 12a8 8 0 0 1-14 5M4 20v-4h4" />
+  </Icon>
+);
+
 export const LogIcon = () => (
   <Icon>
     <path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7" />

@@ -38,6 +38,37 @@ function pick<K extends string>(table: Record<K, string>, key: K): string {
     : "알 수 없음";
 }
 
+export type OrderLogAction =
+  "accept" | "cancel" | "complete" | "pickup" | "undo-pickup";
+export type OrderLogResult =
+  "success" | "already-handled" | "customer-cancelled" | "failed" | "timeout";
+/** 서버 요청 종류. 실패 로그에서 어느 요청이었는지만 남긴다. */
+export type SyncRequestKind =
+  "connect" | "fetch" | "heartbeat" | "ack" | "accepting" | "confirm";
+
+const ORDER_ACTION: Record<OrderLogAction, string> = {
+  accept: "접수",
+  cancel: "주문취소",
+  complete: "제조완료",
+  pickup: "픽업완료",
+  "undo-pickup": "완료 취소",
+};
+const ORDER_RESULT: Record<OrderLogResult, string> = {
+  success: "성공",
+  "already-handled": "다른 PC가 먼저 처리",
+  "customer-cancelled": "고객이 먼저 취소",
+  failed: "실패",
+  timeout: "시간 초과",
+};
+const SYNC_REQUEST: Record<SyncRequestKind, string> = {
+  connect: "실시간 연결",
+  fetch: "주문 조회",
+  heartbeat: "연결 신호",
+  ack: "수신 확인",
+  confirm: "접수 결과 확인",
+  accepting: "주문받기 상태",
+};
+
 export const logMessages = {
   appStarted: (version: string) => `앱 시작: ${version}`,
   appExited: () => "앱 종료",
@@ -54,6 +85,23 @@ export const logMessages = {
   // 프린터 이름은 개인정보가 아니라 남긴다 (스펙 2.3).
   testPrint: (printerName: string, ok: boolean) =>
     `시험 인쇄: ${printerName}, ${ok ? "성공" : "실패"}`,
+  ordersStarted: () => "주문 수신 시작",
+  ordersStopped: () => "주문 수신 멈춤",
+  connectionLost: () => "서버 연결 끊김",
+  connectionRestored: (seconds: number) =>
+    `서버 다시 연결됨: ${Math.round(seconds)}초 만에`,
+  // 주문은 orderId로만 남긴다 (개인정보 규칙).
+  orderStatusChanged: (
+    orderId: string,
+    action: OrderLogAction,
+    result: OrderLogResult,
+  ) =>
+    `주문 상태 변경: ${orderId}, ${pick(ORDER_ACTION, action)}, ${pick(ORDER_RESULT, result)}`,
+  syncRequestFailed: (kind: SyncRequestKind, timedOut: boolean) =>
+    `${pick(SYNC_REQUEST, kind)} 요청 ${timedOut ? "시간 초과" : "실패"}`,
+  listenerFailed: (orderId: string) => `주문 신호 처리 중 오류: ${orderId}`,
+  duplicatesDropped: (count: number) =>
+    `중복 · 오래된 주문 사건 ${count}건 버림`,
   settingsFailed: (action: "save" | "load") =>
     action === "save" ? "설정 저장 실패" : "설정 읽기 실패",
 };
