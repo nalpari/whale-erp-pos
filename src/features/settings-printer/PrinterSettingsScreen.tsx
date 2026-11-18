@@ -7,12 +7,14 @@ import type {
 import {
   assignPrinter,
   createEmptyPrinterSettings,
+  hasOrderPrinter,
   isPrinterTaken,
   removePrinter,
   updateSlot,
   type PrinterSettings,
   type SlotIndex,
 } from "../../shared/printer/printer-settings";
+import { Toast } from "../../shared/ui/Toast";
 import { logInfo } from "../../shared/log/log";
 import { logMessages } from "../../shared/log/log-messages";
 import { PrinterPickerDialog } from "./PrinterPickerDialog";
@@ -25,22 +27,18 @@ const SLOT_INDEXES: SlotIndex[] = [0, 1, 2];
 interface Props {
   printerApi: PrinterApi;
   store: PrinterSettingsStore;
-  /** 거짓이면 설정은 못 바꾸고 시험 인쇄만 한다 (스펙 2.4). */
-  canEdit: boolean;
   storeName: string;
 }
 
-export function PrinterSettingsScreen({
-  printerApi,
-  store,
-  canEdit,
-  storeName,
-}: Props) {
+export function PrinterSettingsScreen({ printerApi, store, storeName }: Props) {
   const [settings, setSettings] = useState<PrinterSettings | null>(null);
   // "(찾을 수 없음)" 판단용. 목록을 못 읽었으면 null로 두고 아무것도 표시하지 않는다.
   const [installed, setInstalled] = useState<string[] | null>(null);
   const [picking, setPicking] = useState<SlotIndex | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
+  // 저장 성공 토스트. 0이면 숨김, 번호가 바뀌면 토스트를 새로 그려 2초를 다시 잰다.
+  const [toastNo, setToastNo] = useState(0);
+  const closeToast = useCallback(() => setToastNo(0), []);
   // 설정 파일을 읽지 못했으면 칸을 비운 채 모든 고치기를 막는다. 멀쩡한 파일을 빈 값으로 덮어쓰지 않게 한다 (스펙 2.5).
   // 탭을 다시 열면 이 화면이 새로 그려져 다시 읽는다.
   const [loadFailed, setLoadFailed] = useState(false);
@@ -94,6 +92,7 @@ export function PrinterSettingsScreen({
       () => {
         // printer_settings.rs의 저장이 동기 명령이라 도착 순서대로 처리되므로, 성공할 때마다 파일 내용은 이 값이다.
         savedRef.current = next;
+        setToastNo((n) => n + 1);
       },
       (error: unknown) => {
         logInfo(logMessages.settingsFailed("save"));
@@ -101,21 +100,22 @@ export function PrinterSettingsScreen({
         if (seq !== saveSeqRef.current) return;
         setSettings(savedRef.current ?? current);
         setSaveFailed(true);
+        // 실패 문구와 성공 토스트가 같이 보이지 않게 한다.
+        setToastNo(0);
       },
     );
   }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto bg-gray-50 p-6">
-      {!canEdit && (
-        // 왜 버튼이 흐린지 점원이 알 수 있게 계속 보인다. 누를 것이 없는 안내 글이다 (스펙 2.4).
-        <p className="rounded-xl bg-blue-50 px-4 py-3 text-xl text-blue-800">
-          {PRINTER_TEXTS.storeAccountNotice}
-        </p>
-      )}
       {loadFailed && (
         <p role="alert" className="text-xl text-red-600">
           {PRINTER_TEXTS.loadFailed}
+        </p>
+      )}
+      {!loadFailed && !hasOrderPrinter(current) && (
+        <p className="rounded-xl bg-red-50 px-4 py-3 text-xl text-red-700">
+          {PRINTER_TEXTS.noOrderPrinter}
         </p>
       )}
       {saveFailed && (
@@ -136,7 +136,7 @@ export function PrinterSettingsScreen({
               installed !== null &&
               !installed.includes(slot.printerName)
             }
-            canEdit={canEdit && !loadFailed}
+            disabled={loadFailed}
             onAdd={() => setPicking(index)}
             onRemove={() => apply(removePrinter(current, index))}
             onChange={(patch) => apply(updateSlot(current, index, patch))}
@@ -164,6 +164,13 @@ export function PrinterSettingsScreen({
           </p>
         ))}
       </div>
+      {toastNo > 0 && (
+        <Toast
+          key={toastNo}
+          message={PRINTER_TEXTS.saved}
+          onClose={closeToast}
+        />
+      )}
       {picking !== null && (
         <PrinterPickerDialog
           loadPrinters={loadPrinters}

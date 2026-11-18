@@ -2,6 +2,7 @@
 
 ## 2026-11-18
 
+- T11 프린터설정 개편 보고서 추가 (`2026-11-18-printer-revision.md`)
 - T02 로그인 개편 보고서 사용자 승인 (status: stable)
 - T02 로그인 개편 보고서 추가 (`2026-11-18-login-revision.md`)
 

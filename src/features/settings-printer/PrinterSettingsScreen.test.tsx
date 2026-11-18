@@ -1,6 +1,5 @@
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -35,7 +34,6 @@ async function renderScreen(
   options: {
     printerApi?: PrinterApi;
     store?: PrinterSettingsStore;
-    canEdit?: boolean;
   } = {},
 ) {
   const printerApi =
@@ -45,7 +43,6 @@ async function renderScreen(
     <PrinterSettingsScreen
       printerApi={printerApi}
       store={store}
-      canEdit={options.canEdit ?? true}
       storeName={STORE_NAME}
     />,
   );
@@ -399,33 +396,178 @@ describe("프린터설정 화면", () => {
     });
   });
 
-  it("점포번호 계정이면 안내 줄을 보이고, 마스터면 보이지 않는다", async () => {
-    const notice =
-      "프린터 설정은 마스터 계정만 변경할 수 있습니다. 시험 인쇄는 가능합니다.";
-    await renderScreen({ canEdit: false });
-    expect(screen.getByText(notice)).toBeInTheDocument();
-    cleanup();
-    await renderScreen({ canEdit: true });
-    expect(screen.queryByText(notice)).not.toBeInTheDocument();
-  });
-
-  it("점포번호 계정은 설정을 바꿀 수 없고 시험 인쇄만 할 수 있다", async () => {
+  it("안내 줄 없이 모든 입력이 켜져 있다", async () => {
     await renderScreen({
-      canEdit: false,
       store: createMemoryPrinterSettingsStore(settingsWith("A")),
     });
+    expect(screen.queryByText(/마스터 계정만/)).not.toBeInTheDocument();
     const filled = within(slot(1));
     expect(
       filled.getByRole("button", { name: "용도 이름 고치기" }),
-    ).toBeDisabled();
-    expect(filled.getByRole("checkbox", { name: "주문서" })).toBeDisabled();
-    expect(
-      filled.getByRole("checkbox", { name: "영수증 (고객 요청 시)" }),
-    ).toBeDisabled();
-    expect(filled.getByRole("button", { name: "연결 해제" })).toBeDisabled();
-    expect(filled.getByRole("button", { name: "시험 인쇄" })).toBeEnabled();
+    ).toBeEnabled();
+    expect(filled.getByRole("checkbox", { name: "주문서" })).toBeEnabled();
+    expect(filled.getByRole("button", { name: "연결 해제" })).toBeEnabled();
     expect(
       within(slot(2)).getByRole("button", { name: "+ 프린터 추가" }),
-    ).toBeDisabled();
+    ).toBeEnabled();
+  });
+
+  it("용지 폭 라디오는 기본 80mm이고 바꾸면 저장한다", async () => {
+    const store = createMemoryPrinterSettingsStore(settingsWith("A"));
+    await renderScreen({ store });
+    const card = within(slot(1));
+    expect(card.getByRole("radio", { name: "80mm" })).toBeChecked();
+    expect(card.getByRole("radio", { name: "58mm" })).not.toBeChecked();
+    fireEvent.click(card.getByRole("radio", { name: "58mm" }));
+    expect(card.getByRole("radio", { name: "58mm" })).toBeChecked();
+    await waitFor(async () =>
+      expect((await store.load()).slots[0]?.paperWidth).toBe(58),
+    );
+  });
+
+  it("용지 폭은 칸마다 따로 고른다", async () => {
+    await renderScreen({
+      store: createMemoryPrinterSettingsStore(settingsWith("A", "B")),
+    });
+    fireEvent.click(within(slot(2)).getByRole("radio", { name: "58mm" }));
+    expect(within(slot(2)).getByRole("radio", { name: "58mm" })).toBeChecked();
+    expect(within(slot(1)).getByRole("radio", { name: "80mm" })).toBeChecked();
+    expect(
+      within(slot(1)).getByRole("radiogroup", { name: "용지 폭" }),
+    ).toBeInTheDocument();
+  });
+
+  describe("저장 성공 토스트", () => {
+    it("저장되면 보이고 2초 뒤 사라진다", async () => {
+      await renderScreen({
+        store: createMemoryPrinterSettingsStore(settingsWith("A")),
+      });
+      vi.useFakeTimers();
+      try {
+        fireEvent.click(
+          within(slot(1)).getByRole("checkbox", {
+            name: "영수증 (고객 요청 시)",
+          }),
+        );
+        await act(async () => {});
+        expect(screen.getByText("저장되었습니다")).toBeInTheDocument();
+        act(() => vi.advanceTimersByTime(2000));
+        expect(screen.queryByText("저장되었습니다")).not.toBeInTheDocument();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("연달아 저장하면 마지막 저장부터 2초 뒤에 사라진다", async () => {
+      await renderScreen({
+        store: createMemoryPrinterSettingsStore(settingsWith("A")),
+      });
+      vi.useFakeTimers();
+      try {
+        const receipt = within(slot(1)).getByRole("checkbox", {
+          name: "영수증 (고객 요청 시)",
+        });
+        fireEvent.click(receipt);
+        await act(async () => {});
+        act(() => vi.advanceTimersByTime(1500));
+        fireEvent.click(receipt);
+        await act(async () => {});
+        act(() => vi.advanceTimersByTime(1500));
+        expect(screen.getByText("저장되었습니다")).toBeInTheDocument();
+        act(() => vi.advanceTimersByTime(500));
+        expect(screen.queryByText("저장되었습니다")).not.toBeInTheDocument();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("토스트가 떠 있는 중 다음 저장이 실패하면 토스트를 지우고 실패 문구만 보인다", async () => {
+      const results = [Promise.resolve(), Promise.reject(new Error("disk"))];
+      results[1].catch(() => {});
+      let call = 0;
+      await renderScreen({
+        store: {
+          load: async () => settingsWith("A", "B"),
+          save: () => results[call++],
+        },
+      });
+      fireEvent.click(
+        within(slot(1)).getByRole("button", { name: "연결 해제" }),
+      );
+      expect(await screen.findByText("저장되었습니다")).toBeInTheDocument();
+      fireEvent.click(
+        within(slot(2)).getByRole("button", { name: "연결 해제" }),
+      );
+      expect(
+        await screen.findByText("설정을 저장하지 못했습니다."),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("저장되었습니다")).not.toBeInTheDocument();
+    });
+
+    it("저장에 실패하면 보이지 않는다", async () => {
+      await renderScreen({
+        store: {
+          load: async () => settingsWith("A"),
+          save: vi.fn().mockRejectedValue(new Error("disk")),
+        },
+      });
+      fireEvent.click(
+        within(slot(1)).getByRole("button", { name: "연결 해제" }),
+      );
+      await screen.findByText("설정을 저장하지 못했습니다.");
+      expect(screen.queryByText("저장되었습니다")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("주문서 프린터 없음 안내", () => {
+    const notice =
+      "주문서를 출력할 프린터가 없습니다. 주문을 접수해도 주문서가 출력되지 않습니다.";
+
+    it("프린터가 하나도 없으면 보인다", async () => {
+      await renderScreen();
+      expect(screen.getByText(notice)).toBeInTheDocument();
+    });
+
+    it("주문서 체크가 하나라도 있으면 사라지고, 모두 풀면 다시 보인다", async () => {
+      await renderScreen({
+        store: createMemoryPrinterSettingsStore(settingsWith("A")),
+      });
+      expect(screen.queryByText(notice)).not.toBeInTheDocument();
+      fireEvent.click(
+        within(slot(1)).getByRole("checkbox", { name: "주문서" }),
+      );
+      expect(screen.getByText(notice)).toBeInTheDocument();
+    });
+
+    it("슬롯 2에만 주문서가 있어도 안내는 없고, 모두 풀어야 보인다", async () => {
+      await renderScreen({
+        store: createMemoryPrinterSettingsStore(settingsWith("A", "B")),
+      });
+      fireEvent.click(
+        within(slot(1)).getByRole("checkbox", { name: "주문서" }),
+      );
+      expect(screen.queryByText(notice)).not.toBeInTheDocument();
+      fireEvent.click(
+        within(slot(2)).getByRole("checkbox", { name: "주문서" }),
+      );
+      expect(screen.getByText(notice)).toBeInTheDocument();
+    });
+
+    it("프린터를 등록하면 사라진다", async () => {
+      await renderScreen();
+      expect(screen.getByText(notice)).toBeInTheDocument();
+      await addPrinter(1, "A");
+      expect(screen.queryByText(notice)).not.toBeInTheDocument();
+    });
+
+    it("설정을 불러오지 못했을 때는 보이지 않는다", async () => {
+      await renderScreen({
+        store: {
+          load: vi.fn().mockRejectedValue(new Error("locked")),
+          save: vi.fn(),
+        },
+      });
+      expect(screen.queryByText(notice)).not.toBeInTheDocument();
+    });
   });
 });

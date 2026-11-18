@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assignPrinter,
   createEmptyPrinterSettings,
+  hasOrderPrinter,
   isPrinterTaken,
   removePrinter,
   updateSlot,
@@ -28,9 +29,34 @@ describe("프린터 설정", () => {
         purpose: "",
         printOrder: true,
         printReceipt: false,
+        paperWidth: 80,
       },
       null,
     ]);
+  });
+
+  it("주문서가 체크된 칸이 하나도 없으면 주문서 프린터 없음", () => {
+    expect(hasOrderPrinter(createEmptyPrinterSettings())).toBe(false);
+    const one = withPrinter("A", 0);
+    expect(hasOrderPrinter(one)).toBe(true);
+    expect(hasOrderPrinter(updateSlot(one, 0, { printOrder: false }))).toBe(
+      false,
+    );
+  });
+
+  it("주문서 프린터 판단은 어느 칸이든 하나라도 체크됐는지 본다", () => {
+    expect(hasOrderPrinter(withPrinter("B", 1))).toBe(true);
+    const mixed = updateSlot(assignPrinter(withPrinter("A", 0), 1, "B"), 0, {
+      printOrder: false,
+    });
+    expect(hasOrderPrinter(mixed)).toBe(true);
+  });
+
+  it("용지 폭을 바꾼다", () => {
+    expect(
+      updateSlot(withPrinter("A", 0), 0, { paperWidth: 58 }).slots[0]
+        ?.paperWidth,
+    ).toBe(58);
   });
 
   it("다른 칸에 있는 프린터는 등록하지 않는다", () => {
@@ -60,6 +86,7 @@ describe("프린터 설정", () => {
       purpose: "카운터 영수증",
       printOrder: true,
       printReceipt: true,
+      paperWidth: 80,
     });
     expect(before.slots[0]?.purpose).toBe("");
   });
