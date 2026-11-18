@@ -1,5 +1,7 @@
 # 스펙: 프로그램 틀 · 헤더 · 창 제어 (`app-shell`)
 
+> **개정 필요 (2026-11-18).** 기획자 답변(`docs/tasks/planner-answers.md`)과 다른 부분이 있다. T01을 다시 열 때 개정하고 다시 승인받는다. 그전까지 답변과 다른 부분은 구현 기준이 아니다. 바꿀 것은 `docs/tasks/README.md`의 "기획자 답변 반영 (2026-11-18)" 표.
+
 - **태스크**: T01 (Plane WHALEERPPO-2), 태스크 문서 `docs/tasks/T01-app-shell-header.md`
 - **근거**: 화면정의서 v0.8 p.4~6 (`docs/references/pickup-order-screen-spec-v0.8-260717.pdf`)
 - **선행**: T00 프로젝트 골격

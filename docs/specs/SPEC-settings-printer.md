@@ -1,5 +1,7 @@
 # 스펙: 환경설정 — 프린터설정 (`settings-printer`)
 
+> **개정 필요 (2026-11-18).** 기획자 답변(`docs/tasks/planner-answers.md`)과 다른 부분이 있다. T11을 다시 열 때 개정하고 다시 승인받는다. 그전까지 답변과 다른 부분은 구현 기준이 아니다. 바꿀 것은 `docs/tasks/README.md`의 "기획자 답변 반영 (2026-11-18)" 표.
+
 - **태스크**: T11 (Plane WHALEERPPO-12), 태스크 문서 `docs/tasks/T11-settings-printer.md`
 - **근거**: 화면정의서 v0.8 p.19 (`docs/references/pickup-order-screen-spec-v0.8-260717.pdf`)
 - **선행**: T01 프로그램 틀, T02 로그인 (`canEditSettings`)
