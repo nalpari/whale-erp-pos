@@ -16,6 +16,24 @@ export type OrderStatus =
 export type OrderAction =
   "accept" | "cancel" | "complete" | "pickup" | "undo-pickup";
 
+/**
+ * 고객이 고른 픽업 값 (Q26, T04 11장 B). 값 이름은 모두 가정이다. 백엔드 요청 문서(협의 전 초안) 3.6의 예시 "20min"에 맞춰 두었다.
+ * 매장은 결제 시각 + 이 값으로 픽업 예정 시각을 계산한다.
+ */
+export type PickupChoice =
+  "now" | "5min" | "10min" | "20min" | "30min" | "40min" | "1hour-plus";
+
+/** 고른 값이 결제 시각에 더하는 분. "1시간 이상"은 1시간으로 계산한다 (Q26). */
+export const PICKUP_CHOICE_MINUTES: Readonly<Record<PickupChoice, number>> = {
+  now: 0,
+  "5min": 5,
+  "10min": 10,
+  "20min": 20,
+  "30min": 30,
+  "40min": 40,
+  "1hour-plus": 60,
+};
+
 export interface OrderItem {
   name: string;
   quantity: number;
@@ -33,8 +51,8 @@ export interface Order {
   /** 마지막 변경 시각(ms). 순서가 바뀐 이벤트를 거르는 기준이다. */
   updatedAt: number;
   paidAt: number;
-  /** 고객이 고른 픽업 예정 시각 (Q26). */
-  pickupAt: number;
+  /** 고객이 고른 픽업 값 (Q26). 예정 시각 = paidAt + 고른 분. */
+  pickupChoice: PickupChoice;
   items: OrderItem[];
   note?: string;
   /** 서버가 가려서 준다고 가정한 값 (개인정보 규칙). */
@@ -115,9 +133,12 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
   }
   const nextEventId = () => `mock-event-${++eventSeq}`;
 
+  // 개발용 화면 확인을 위해 값이 고르게 돌고, 세 번에 한 번은 긴 메뉴 · 옵션 · 요청사항을 넣는다.
+  const PICKUP_CHOICES = Object.keys(PICKUP_CHOICE_MINUTES) as PickupChoice[];
   function newOrder(): Order {
     orderSeq += 1;
     const at = stamp();
+    const long = orderSeq % 3 === 0;
     const order: Order = {
       orderId: `mock-order-${orderSeq}`,
       orderNumber: `261118000001${String(orderSeq).padStart(4, "0")}`,
@@ -125,8 +146,28 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
       status: "pending",
       updatedAt: at,
       paidAt: at,
-      pickupAt: at + 10 * 60_000,
-      items: [{ name: "아이스 아메리카노(시험)", quantity: 1 }],
+      pickupChoice: PICKUP_CHOICES[(orderSeq - 1) % PICKUP_CHOICES.length],
+      items: long
+        ? [
+            {
+              name: "아이스 아메리카노(시험)",
+              quantity: 2,
+              options: [
+                "샷 추가",
+                "시럽 빼기",
+                "얼음 적게",
+                "컵 두 개로 나눠 담기",
+              ],
+            },
+            { name: "카페라떼(시험)", quantity: 1 },
+            { name: "딸기 스무디(시험)", quantity: 1 },
+            { name: "치즈 케이크(시험)", quantity: 1 },
+            { name: "초코 쿠키(시험)", quantity: 3 },
+          ]
+        : [{ name: "아이스 아메리카노(시험)", quantity: 1 }],
+      note: long
+        ? "얼음 조금만 넣어 주세요. 빨대는 필요 없습니다. 케이크는 따로 포장해 주세요."
+        : undefined,
       customerName: "홍*동",
       phoneLast4: "0000",
     };
@@ -223,6 +264,11 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
           lastCreated = order;
           emit({ eventId: nextEventId(), type: "order-created", order });
         }
+      },
+      /** 주문 하나를 고객이 취소한다 (접수대기가 아닌 주문의 경로 확인용). */
+      customerCancels(orderId: string) {
+        const order = orders.get(orderId);
+        if (order) update(order, "customer-cancelled");
       },
       /** 가장 오래된 접수대기 주문을 고객이 취소한다. */
       customerCancelsOldestPending() {

@@ -1,6 +1,7 @@
 // 주문 목록 Context와 읽는 훅. Provider(OrdersProvider.tsx)와 파일을 나눠 두어야 화면 새로고침(fast refresh)이 된다.
 import { createContext, useContext } from "react";
 import type { Order } from "../api/orders";
+import type { SoundPlayer } from "../sound/sound-player";
 import type { ChangeStatus, ConnectionState } from "./order-sync";
 
 export interface OrdersContextValue {
@@ -9,6 +10,8 @@ export interface OrdersContextValue {
   /** 처리할 주문(접수대기 · 제조중 · 제조완료) 건수 (Q04). */
   pendingOrderCount: number;
   connection: ConnectionState;
+  /** 알림음 · 경고음. 화면이 알림음을 직접 내야 할 때(예: 고객 취소 배너) 쓴다. */
+  sound: SoundPlayer;
   /** 요청이 진행 중인 주문. 화면이 버튼을 막고 "요청 중"을 보이는 데 쓴다. */
   inFlight: Record<string, true>;
   /** 상태 변경 요청. 서버 성공 뒤에만 목록이 바뀐다. 실패하면 화면이 보일 문구를 돌려준다. */
