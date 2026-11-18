@@ -16,6 +16,13 @@ pub struct PrinterSlot {
     pub purpose: String,
     pub print_order: bool,
     pub print_receipt: bool,
+    /// 용지 폭 mm (58 또는 80). 2026-11-17 판 파일에는 없으므로 80으로 채워 읽는다.
+    #[serde(default = "default_paper_width")]
+    pub paper_width: u8,
+}
+
+fn default_paper_width() -> u8 {
+    80
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -34,11 +41,19 @@ impl Default for PrinterSettings {
     }
 }
 
-/// 버전 1이고, 같은 프린터가 두 칸에 없어야 한다. 중복이면 T12가 주문서를 두 번 낸다 (스펙 2.2-2).
+/// 버전 1이고, 용지 폭이 58 · 80이고, 같은 프린터가 두 칸에 없어야 한다. 중복이면 T12가 주문서를 두 번 낸다 (스펙 2.2-2).
 /// 화면도 막지만, 손으로 고친 파일이나 화면 버그까지 여기서 한 번 더 막는다.
 fn validate(settings: &PrinterSettings) -> Result<(), String> {
     if settings.version != 1 {
         return Err(format!("모르는 버전 {}", settings.version));
+    }
+    for (i, slot) in settings.slots.iter().enumerate() {
+        if let Some(slot) = slot
+            && slot.paper_width != 58
+            && slot.paper_width != 80
+        {
+            return Err(format!("{}번 칸 용지 폭은 58 또는 80이어야 합니다.", i + 1));
+        }
     }
     let names: Vec<&str> = settings
         .slots
@@ -53,7 +68,16 @@ fn validate(settings: &PrinterSettings) -> Result<(), String> {
 }
 
 fn parse(text: &str) -> Result<PrinterSettings, String> {
-    let settings: PrinterSettings = serde_json::from_str(text).map_err(|e| e.to_string())?;
+    // serde 오류 원문에는 파일 안의 값(프린터 이름, 모르는 필드 이름 등)이 섞인다. 이 문구는 그대로
+    // app.log에 남으므로 오류 분류와 위치만 쓴다 (AGENTS.md 개인정보 · 로그).
+    let settings: PrinterSettings = serde_json::from_str(text).map_err(|e| {
+        format!(
+            "JSON 해석 실패({:?}, {}줄 {}열)",
+            e.classify(),
+            e.line(),
+            e.column()
+        )
+    })?;
     validate(&settings)?;
     Ok(settings)
 }
@@ -72,7 +96,11 @@ fn load_from(path: &Path) -> Result<PrinterSettings, String> {
     Ok(parse(&text).unwrap_or_else(|e| {
         log::error!("[printer-settings] 파일 모양이 달라 빈 설정으로 시작: {e}");
         // 다음 저장이 원래 파일을 덮어쓰므로, 원인을 볼 수 있게 사본을 남긴다.
-        if let Err(e) = fs::copy(path, path.with_extension("json.broken")) {
+        // 사본이 이미 있으면 덮어쓰지 않는다. 처음 깨졌을 때의 원인을 지키려는 것이다.
+        let broken = path.with_extension("json.broken");
+        if broken.exists() {
+            log::error!("[printer-settings] 깨진 파일 사본이 이미 있어 새로 남기지 않음");
+        } else if let Err(e) = fs::copy(path, &broken) {
             log::error!("[printer-settings] 깨진 파일 사본을 남기지 못함: {e}");
         }
         PrinterSettings::default()
@@ -145,6 +173,7 @@ mod tests {
                     purpose: "카운터 영수증".into(),
                     print_order: true,
                     print_receipt: false,
+                    paper_width: 80,
                 }),
                 None,
             ],
@@ -184,8 +213,12 @@ mod tests {
             "{ not json",
             r#"{"version":2,"slots":[null,null,null]}"#,
             r#"{"version":1,"slots":[null,null]}"#,
-            r#"{"version":1,"slots":[{"printerName":"A","purpose":"","printOrder":true,"printReceipt":false},{"printerName":"A","purpose":"","printOrder":false,"printReceipt":true},null]}"#,
+            r#"{"version":1,"slots":[{"printerName":"A","purpose":"","printOrder":true,"printReceipt":false,"paperWidth":80},{"printerName":"A","purpose":"","printOrder":false,"printReceipt":true,"paperWidth":80},null]}"#,
+            r#"{"version":1,"slots":[{"printerName":"A","purpose":"","printOrder":true,"printReceipt":false,"paperWidth":72},null,null]}"#,
+            r#"{"version":1,"slots":[{"printerName":"A","purpose":"","printOrder":true,"printReceipt":false,"paperWidth":"80"},null,null]}"#,
         ] {
+            // 사본이 이미 있으면 덮어쓰지 않으므로, 경우마다 지우고 시작한다.
+            let _ = fs::remove_file(path.with_extension("json.broken"));
             fs::write(&path, broken).unwrap();
             assert_eq!(load_from(&path), Ok(PrinterSettings::default()));
             assert_eq!(fs::read_to_string(&path).unwrap(), broken);
@@ -193,6 +226,35 @@ mod tests {
                 fs::read_to_string(path.with_extension("json.broken")).unwrap(),
                 broken
             );
+        }
+    }
+
+    #[test]
+    fn 깨진_사본이_이미_있으면_덮어쓰지_않는다() {
+        let path = temp_path("keep-broken");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let broken_path = path.with_extension("json.broken");
+        fs::write(&broken_path, "처음 깨진 내용").unwrap();
+        fs::write(&path, "{ 또 깨짐").unwrap();
+        assert_eq!(load_from(&path), Ok(PrinterSettings::default()));
+        assert_eq!(fs::read_to_string(&broken_path).unwrap(), "처음 깨진 내용");
+    }
+
+    #[test]
+    fn 깨진_파일의_오류_문구에는_파일_안의_값이_들어가지_않는다() {
+        const SECRET: &str = "비밀프린터SECRET";
+        for broken in [
+            // 자료형이 틀린 값 (serde 원문이면 invalid type: string "..." 이 된다)
+            format!(
+                r#"{{"version":1,"slots":[{{"printerName":"A","purpose":"","printOrder":true,"printReceipt":false,"paperWidth":"{SECRET}"}},null,null]}}"#
+            ),
+            // 모르는 필드 이름 (deny_unknown_fields 원문에 필드 이름이 들어간다)
+            format!(r#"{{"version":1,"slots":[null,null,null],"{SECRET}":1}}"#),
+            // 자료형이 틀린 버전 (u32 자리에 문자열)
+            format!(r#"{{"version":"{SECRET}","slots":[null,null,null]}}"#),
+        ] {
+            let err = parse(&broken).unwrap_err();
+            assert!(!err.contains(SECRET), "오류 문구에 파일 값이 들어감: {err}");
         }
     }
 
@@ -206,8 +268,19 @@ mod tests {
     #[test]
     fn 화면이_보내는_json을_그대로_읽는다() {
         // src/shared/printer/printer-settings.ts 모양 그대로 (JSON.stringify 결과).
-        let text = r#"{"version":1,"slots":[null,{"printerName":"Microsoft Print to PDF","purpose":"카운터 영수증","printOrder":true,"printReceipt":false},null]}"#;
+        let text = r#"{"version":1,"slots":[null,{"printerName":"Microsoft Print to PDF","purpose":"카운터 영수증","printOrder":true,"printReceipt":false,"paperWidth":80},null]}"#;
         assert_eq!(parse(text), Ok(sample()));
+    }
+
+    #[test]
+    fn 용지_폭이_없는_옛_파일은_80으로_채워_읽고_깨진_파일로_보지_않는다() {
+        let path = temp_path("legacy");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        // 2026-11-17 판: 칸에 paperWidth가 없다.
+        let old = r#"{"version":1,"slots":[null,{"printerName":"Microsoft Print to PDF","purpose":"카운터 영수증","printOrder":true,"printReceipt":false},null]}"#;
+        fs::write(&path, old).unwrap();
+        assert_eq!(load_from(&path), Ok(sample()));
+        assert!(!path.with_extension("json.broken").exists());
     }
 
     #[test]
@@ -216,6 +289,22 @@ mod tests {
         let path = temp_path("unreadable");
         fs::create_dir_all(&path).unwrap();
         assert!(load_from(&path).is_err());
+    }
+
+    #[test]
+    fn 용지_폭_58도_저장하고_다시_읽는다() {
+        let path = temp_path("width58");
+        let mut settings = sample();
+        settings.slots[1].as_mut().unwrap().paper_width = 58;
+        save_to(&path, &settings).unwrap();
+        assert_eq!(load_from(&path), Ok(settings));
+    }
+
+    #[test]
+    fn 용지_폭이_58_80이_아니면_저장하지_않는다() {
+        let mut settings = sample();
+        settings.slots[1].as_mut().unwrap().paper_width = 72;
+        assert!(save_to(&temp_path("width"), &settings).is_err());
     }
 
     #[test]
