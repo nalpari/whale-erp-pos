@@ -3,7 +3,7 @@ type: Task Report
 title: T11. 프린터설정 개편 (기획자 답변 반영)
 description: 두 계정 모두 프린터 설정 변경, 용지 폭 58/80mm, 저장 토스트, 주문서 프린터 없음 안내로 프린터설정을 고친다.
 tags: [printer, settings, tauri, react]
-status: draft
+status: stable
 generated:
   by: claude-code/claude-opus-5-5
   at: 2026-11-18T11:08:35+09:00
@@ -20,6 +20,9 @@ sources:
   - id: prev
     resource: /docs/okf/2026-11-17-settings-printer.md
     title: 처음 구현 보고서
+verified:
+  - by: human:yjnoh
+    at: 2026-11-18T11:31:42+09:00
 ---
 
 # 목표
@@ -82,5 +85,8 @@ sources:
 - 2026-11-18T11:23+09:00 작업 세션 보고: B-2 반영, ① 통과, ② 재리뷰 지적 3건 → 보류 3. pos-boss 직접 확인: ① 전부 통과(test 203개, cargo test 33개). 스펙 3.1에 사본 규칙 추가(main)
 - 2026-11-18T11:24+09:00 사용자 C-1: 깨진 설정 파일 로그에서 파일 값을 빼기로 함 → 작업 세션에 지시
 - 2026-11-18T11:27+09:00 작업 세션 보고: C-1 반영, ② 재리뷰 지적 5건 → 고침 1(가짜 통과 테스트 교체) · 보류 4. pos-boss 직접 확인: ① 전부 통과(test 203개, cargo test 34개)
+- 2026-11-18T11:30+09:00 사용자 "커밋하고 머지해" → 커밋 `0ef1f2f`(코드) · `137c0c6`(OKF), main 스펙 `1eaecfa`
+- 2026-11-18T11:30+09:00 머지 `17f8c99`, main에서 test 203개 통과
+- 2026-11-18T11:31+09:00 사용자 OKF 승인 (status: stable)
 
 [^spec]: SPEC-settings-printer.md 12장
