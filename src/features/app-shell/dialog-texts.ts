@@ -6,7 +6,7 @@ export const DIALOG_TEXTS: Record<
   { title: string; message: string; confirmLabel: string }
 > = {
   "stop-orders": {
-    title: "주문 수신을 중단하시겠습니까?",
+    title: "주문수신을 중단하시겠습니까?",
     message: "주문 수신이 중단되면 고객은 앱에서 주문을 할 수 없습니다.",
     confirmLabel: "주문 중단",
   },
@@ -46,6 +46,6 @@ export function pendingOrdersWarning(
   return `처리할 주문이 ${count}건 있습니다. ${WARNING_TAILS[kind]}`;
 }
 
-/** 서버 요청이 실패했을 때 토스트 문구 (스펙 2.2-5. Q51 ②의 "잠시 뒤"를 스펙이 "잠시 후"로 정했다). */
+/** 서버 요청이 실패했을 때 토스트 문구 (스펙 2.2-5. Q51 ② 원문대로 "잠시 뒤"). */
 export const TOGGLE_ERROR_MESSAGE =
-  "처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+  "처리하지 못했습니다. 잠시 뒤 다시 시도해 주세요.";
