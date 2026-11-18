@@ -141,20 +141,20 @@ describe("createTauriWindow", () => {
   });
 
   it("줄이기: 작업표시줄을 뺀 화면이 기본 크기보다 작으면 그 크기에 맞춘다", async () => {
-    monitor.workArea.size = { width: 1024, height: 728 };
-    fakeWin.outerSize.mockResolvedValueOnce({ width: 1024, height: 728 });
+    monitor.workArea.size = { width: 1024, height: 780 };
+    fakeWin.outerSize.mockResolvedValueOnce({ width: 1024, height: 780 });
 
     await createTauriWindow().restoreDefaultSize();
     monitor.workArea.size = { width: 1920, height: 1040 };
 
-    expect(fakeWin.setSize).toHaveBeenCalledWith({ width: 1024, height: 728 });
+    expect(fakeWin.setSize).toHaveBeenCalledWith({ width: 1024, height: 780 });
     // 작업 영역 왼쪽 위에 맞는다 (작업표시줄 뒤로 가리지 않는다)
     expect(fakeWin.setPosition).toHaveBeenCalledWith({ x: 0, y: 0 });
   });
 
   it("줄이기: 배율 150%면 작업 영역(물리)을 논리로 바꿔 비교하고, 작업 영역 가운데에 둔다", async () => {
     monitor.scaleFactor = 1.5;
-    monitor.workArea.size = { width: 1920, height: 1040 }; // 논리 1280 × 693 → 최소 높이 700으로 올린다
+    monitor.workArea.size = { width: 1920, height: 1040 }; // 논리 1280 × 693 → 최소 높이 768으로 올린다
     fakeWin.outerSize.mockResolvedValueOnce({ width: 1920, height: 1040 });
 
     await createTauriWindow().restoreDefaultSize();
@@ -162,7 +162,7 @@ describe("createTauriWindow", () => {
 
     expect(fakeWin.setSize).toHaveBeenCalledWith({
       width: 1280,
-      height: 700,
+      height: 768,
     });
     expect(fakeWin.setPosition).toHaveBeenCalledWith({ x: 0, y: 0 });
   });
