@@ -3,7 +3,7 @@ type: Task Report
 title: T01. 프로그램 틀 개편 (기획자 답변 반영)
 description: 더보기 메뉴(다시시작 · 프로그램 종료 · 아이콘 칸), 처리할 주문 경고, 창 최소 크기 · 첫 실행 · 크기 기억, 토글 실패 토스트로 프로그램 틀을 고친다.
 tags: [app-shell, window, tauri, react]
-status: draft
+status: stable
 generated:
   by: claude-code/claude-opus-5-5
   at: 2026-11-18T12:49:29+09:00
@@ -20,6 +20,9 @@ sources:
   - id: prev
     resource: /docs/okf/2026-11-16-app-shell.md
     title: 처음 구현 보고서
+verified:
+  - by: human:yjnoh
+    at: 2026-11-18T13:13:00+09:00
 ---
 
 # 목표
@@ -87,5 +90,7 @@ sources:
 - 2026-11-18 작업 세션 질문에 대한 사용자 답: 지원하는 가장 작은 화면은 1024 × 700, 이보다 작은 화면은 지원하지 않는다 (스펙 2.4 · 2.5에 반영)
 - 2026-11-18 작업 세션 반영: `defaultWindowSize`에 1024 × 700 하한 추가, 테스트 2개 수정 · 추가, ① 통과 (수정이 작아 ② · ③ 생략)
 - 2026-11-18T13:11+09:00 지휘 세션 확인: ① 재실행 통과 (화면 테스트 248개, cargo test 34개)
+- 2026-11-18 사용자 "A-1, B-1" → 커밋 `28ce5db`, 스펙 `c6fa44f`, main 머지 `bf0febf`
+- 2026-11-18T13:13+09:00 사용자 OKF 승인 (status: stable)
 
 [^spec]: SPEC-app-shell.md 13장
