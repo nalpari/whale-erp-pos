@@ -143,7 +143,7 @@ describe("받기 (스펙 3.1 · 3.2)", () => {
       status: "pending",
       updatedAt: 100 + i,
       paidAt: 100 + i,
-      pickupAt: 100 + i,
+      pickupChoice: "10min",
       items: [{ name: "시험", quantity: 1 }],
       customerName: "홍*동",
       phoneLast4: "0000",

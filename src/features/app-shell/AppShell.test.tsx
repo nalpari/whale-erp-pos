@@ -34,6 +34,7 @@ import {
   OrdersContext,
   type OrdersContextValue,
 } from "../../shared/orders/orders-context";
+import { createNoopSoundPlayer } from "../../shared/sound/sound-player";
 import { AppShell } from "./AppShell";
 import { AppShellProvider } from "./AppShellContext";
 import { appShellReducer, createInitialState } from "./app-shell-state";
@@ -49,6 +50,7 @@ function fakeOrders(pendingOrderCount: number): OrdersContextValue {
     orders: [],
     pendingOrderCount,
     connection: "connected",
+    sound: createNoopSoundPlayer(),
     inFlight: {},
     changeStatus: async () => ({ ok: true }),
     refresh: async () => true,
