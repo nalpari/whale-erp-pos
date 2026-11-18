@@ -25,19 +25,19 @@ describe("pickRestorableBounds (스펙 2.5)", () => {
     expect(pickRestorableBounds(OK, MONITORS, 1)).toEqual(OK);
   });
 
-  it("논리 크기가 최소(1024 × 700)보다 작으면 버린다 (배율 고려)", () => {
+  it("논리 크기가 최소(1024 × 768)보다 작으면 버린다 (배율 고려)", () => {
     expect(
       pickRestorableBounds({ ...OK, width: 1000 }, MONITORS, 1),
     ).toBeNull();
     expect(
-      pickRestorableBounds({ ...OK, height: 699 }, MONITORS, 1),
+      pickRestorableBounds({ ...OK, height: 767 }, MONITORS, 1),
     ).toBeNull();
     // 배율 1.5: 물리 1500px = 논리 1000px
     expect(
-      pickRestorableBounds({ ...OK, width: 1500 }, MONITORS, 1.5),
+      pickRestorableBounds({ ...OK, width: 1500, height: 1200 }, MONITORS, 1.5),
     ).toBeNull();
     expect(
-      pickRestorableBounds({ ...OK, width: 1536, height: 1100 }, MONITORS, 1.5),
+      pickRestorableBounds({ ...OK, width: 1536, height: 1200 }, MONITORS, 1.5),
     ).not.toBeNull();
   });
 
@@ -67,17 +67,17 @@ describe("defaultWindowSize (스펙 2.4)", () => {
     });
   });
 
-  it("화면이 최소 크기보다 작아도 1024 × 700보다 작게 하지 않는다", () => {
+  it("화면이 최소 크기보다 작아도 1024 × 768보다 작게 하지 않는다", () => {
     expect(defaultWindowSize({ width: 900, height: 500 })).toEqual({
       width: 1024,
-      height: 700,
+      height: 768,
     });
   });
 
   it("화면이 작으면 작업표시줄을 뺀 화면 크기", () => {
-    expect(defaultWindowSize({ width: 1024, height: 728 })).toEqual({
+    expect(defaultWindowSize({ width: 1024, height: 780 })).toEqual({
       width: 1024,
-      height: 728,
+      height: 780,
     });
   });
 });
