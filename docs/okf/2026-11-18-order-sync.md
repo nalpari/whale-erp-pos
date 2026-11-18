@@ -3,7 +3,7 @@ type: Task Report
 title: T03. 주문 수신 · 상태 동기화
 description: 서버 주문을 빠짐 · 중복 없이 받아 보관하고, 상태 변경을 서버 성공 뒤에만 반영하며, 연결 끊김 · 서버 자동 OFF를 화면에 알린다.
 tags: [order-sync, realtime, react, mock-server]
-status: draft
+status: stable
 generated:
   by: claude-code/claude-opus-5-5
   at: 2026-11-18T14:55:06+09:00
@@ -17,6 +17,9 @@ sources:
   - id: task
     resource: plane:WHALEERPPO-4
     title: T03. 주문 수신 · 상태 동기화 (화면 아님)
+verified:
+  - by: human:yjnoh
+    at: 2026-11-18T16:00:00+09:00
 ---
 
 # 목표
@@ -84,5 +87,6 @@ sources:
 - 2026-11-18 사용자 결정 A~F(스펙 K~O) → 작업 세션 반영, ① 통과, 바뀐 부분 ② 지적 7건 → 고침 6 · 넘김 1
 - 2026-11-18T15:53+09:00 지휘 세션 확인: ① 재실행 통과 (화면 테스트 364개, cargo test 34개), 운영 빌드 모의 버튼 문구 0건
 - 2026-11-18 사용자 "A-1" → 커밋 · main 머지
+- 2026-11-18T16:00+09:00 사용자 OKF 승인 (status: stable)
 
 [^spec]: SPEC-order-sync.md
