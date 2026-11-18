@@ -97,3 +97,44 @@ describe("formatConsoleArgs", () => {
     expect(formatConsoleArgs([1n])).toBe("[변환 불가]");
   });
 });
+
+describe("주문 수신 로그 (T03 스펙 7장)", () => {
+  it("상태 변경은 orderId · 동작 · 결과만 남긴다", () => {
+    expect(logMessages.orderStatusChanged("o-1", "accept", "success")).toBe(
+      "주문 상태 변경: o-1, 접수, 성공",
+    );
+    expect(logMessages.orderStatusChanged("o-1", "pickup", "timeout")).toBe(
+      "주문 상태 변경: o-1, 픽업완료, 시간 초과",
+    );
+  });
+
+  it("표에 없는 동작 · 결과는 값을 찍지 않고 알 수 없음으로 둔다", () => {
+    const text = logMessages.orderStatusChanged(
+      "o-1",
+      "홍길동 010-0000-0000" as never,
+      "토큰=abc" as never,
+    );
+    expect(text).toBe("주문 상태 변경: o-1, 알 수 없음, 알 수 없음");
+  });
+
+  it("요청 실패는 종류와 시간 초과 여부만 남긴다", () => {
+    expect(logMessages.syncRequestFailed("heartbeat", true)).toBe(
+      "연결 신호 요청 시간 초과",
+    );
+    expect(logMessages.syncRequestFailed("fetch", false)).toBe(
+      "주문 조회 요청 실패",
+    );
+  });
+
+  it("수신 시작 · 멈춤 · 끊김 · 다시 연결 · 중복 문구", () => {
+    expect(logMessages.ordersStarted()).toBe("주문 수신 시작");
+    expect(logMessages.ordersStopped()).toBe("주문 수신 멈춤");
+    expect(logMessages.connectionLost()).toBe("서버 연결 끊김");
+    expect(logMessages.connectionRestored(12.4)).toBe(
+      "서버 다시 연결됨: 12초 만에",
+    );
+    expect(logMessages.duplicatesDropped(3)).toBe(
+      "중복 · 오래된 주문 사건 3건 버림",
+    );
+  });
+});

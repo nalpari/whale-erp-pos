@@ -3,6 +3,7 @@ import { ConfirmDialog } from "../../shared/ui/ConfirmDialog";
 import { Toast } from "../../shared/ui/Toast";
 import { LogViewerScreen } from "../log-viewer/LogViewerScreen";
 import { LoginScreen } from "../login/LoginScreen";
+import { useOrdersOptional } from "../../shared/orders/orders-context";
 import { useAppShell } from "./AppShellContext";
 import {
   DIALOG_TEXTS,
@@ -11,9 +12,11 @@ import {
 } from "./dialog-texts";
 import { Header } from "./Header";
 import { MainContent } from "./MainContent";
+import { StatusBanners } from "./StatusBanners";
 
 export function AppShell() {
-  const { state, actions, authApi, logApi, pendingOrderCount } = useAppShell();
+  const { state, actions, authApi, logApi } = useAppShell();
+  const pendingOrderCount = useOrdersOptional()?.pendingOrderCount ?? 0;
   const dialogKind = state.dialog;
   const dialog = dialogKind ? DIALOG_TEXTS[dialogKind] : null;
 
@@ -22,6 +25,7 @@ export function AppShell() {
       {/* 팝업이 떠 있는 동안 뒤 화면은 Tab 키로도 닿지 않게 막는다. */}
       <div inert={dialog !== null} className="flex min-h-0 flex-1 flex-col">
         <Header />
+        <StatusBanners />
         <main className="flex min-h-0 flex-1 flex-col">
           {state.logViewerOpen && (
             <LogViewerScreen logApi={logApi} onClose={actions.closeLogViewer} />

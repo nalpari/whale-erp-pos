@@ -1,5 +1,6 @@
 // 프로그램 시작 시 자동 로그인 (스펙 4장). 저장된 재발급 토큰으로 세션을 되살린다.
 import { SessionExpiredError, type AuthApi, type Session } from "../api/auth";
+import { withTimeout } from "../api/with-timeout";
 import { errorSummary } from "../error-summary";
 import { logInfo } from "../log/log";
 import { logMessages } from "../log/log-messages";
@@ -16,7 +17,7 @@ export async function restoreSession(
     const token = await tokenStore.load();
     if (!token) return null;
     stage = "resume";
-    const session = await authApi.resume(token);
+    const session = await withTimeout(authApi.resume(token));
     // 서버가 재발급 토큰을 쓸 때마다 새로 바꿔 주면, 옛 토큰은 다음 실행 때 폐기돼 있다. 새 토큰으로 바꿔 둔다.
     // 바꾸지 못해도 이번 로그인은 진행한다.
     if (session.refreshToken && session.refreshToken !== token) {

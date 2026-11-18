@@ -1,5 +1,6 @@
 // 로그인 입력 폼. 점포번호 탭과 웨일ERP 계정 탭이 함께 쓴다 (화면정의서 p.8~9, 기획자 Q09~Q15).
 import { useState, type FormEvent } from "react";
+import { withTimeout } from "../../shared/api/with-timeout";
 import { errorSummary } from "../../shared/error-summary";
 import { logInfo } from "../../shared/log/log";
 import {
@@ -107,12 +108,16 @@ export function LoginForm({
     try {
       const deviceName = await getDeviceName();
       session = isStore
-        ? await authApi.loginWithStoreCode(storeCode, secret, deviceName)
-        : await authApi.loginWithMaster(
-            trimmedErpId,
-            secret,
-            storeCode,
-            deviceName,
+        ? await withTimeout(
+            authApi.loginWithStoreCode(storeCode, secret, deviceName),
+          )
+        : await withTimeout(
+            authApi.loginWithMaster(
+              trimmedErpId,
+              secret,
+              storeCode,
+              deviceName,
+            ),
           );
     } catch (err) {
       const { reason, message } = classify(err);

@@ -1,5 +1,8 @@
-// 더보기(⋮) 메뉴: 다시시작 · 로그아웃 · 프로그램 종료 · 창 제어 · 로그 확인을 아이콘 칸으로 둔다 (스펙 2.4, Q05 · Q06).
+// 더보기(⋮) 메뉴: 새로고침 · 다시시작 · 로그아웃 · 프로그램 종료 · 창 제어 · 로그 확인을 아이콘 칸으로 둔다 (스펙 2.4, Q05 · Q06).
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Toast } from "../../shared/ui/Toast";
+import { ORDER_MESSAGES } from "../../shared/orders/order-texts";
+import { useOrdersOptional } from "../../shared/orders/orders-context";
 import { useAppShell } from "./AppShellContext";
 import {
   LogIcon,
@@ -7,6 +10,7 @@ import {
   MinimizeIcon,
   MoreIcon,
   PowerIcon,
+  RefreshIcon,
   RestartIcon,
   RestoreIcon,
   UserIcon,
@@ -22,6 +26,10 @@ interface Item {
 
 export function MoreMenu() {
   const { state, actions, maximized } = useAppShell();
+  // OrdersProvider가 없는 테스트에서는 null이다. 그때는 새로고침을 보이지 않는다.
+  const orders = useOrdersOptional();
+  // [새로고침] 실패 문구 (T03 사용자 결정 C-1). 공용 Toast가 2초 뒤 스스로 닫는다.
+  const [refreshFailed, setRefreshFailed] = useState(false);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -54,9 +62,22 @@ export function MoreMenu() {
     };
   }, [open]);
 
-  // 스펙 2.4 순서. 새로고침은 주문 목록이 생기는 T03에서 넣는다.
+  // 스펙 2.4 순서. 새로고침은 로그인한 뒤 주문 수신(OrdersProvider)이 있을 때만 있다 (T03 스펙 4장, Q05).
   // 로그인 전에는 로그아웃할 대상이 없으므로 숨긴다. 로그 확인은 로그인 문제를 볼 수 있게 로그인 전에도 · 두 계정 모두 쓸 수 있다 (개발자 추가 기능, SPEC-logging 3.1).
   const items: Item[] = [
+    ...(state.session && orders
+      ? [
+          {
+            label: "새로고침",
+            icon: <RefreshIcon />,
+            // 주문 목록을 서버에서 다시 받는다. 로그인 · 창 · 주문받기는 그대로다 (Q05). 연결이 끊겨 있으면 바로 다시 연결을 시도하고, 그때는 주문받기가 서버 값으로 맞춰질 수 있다.
+            onSelect: () =>
+              void orders.refresh().then((ok) => {
+                if (!ok) setRefreshFailed(true);
+              }),
+          },
+        ]
+      : []),
     {
       label: "다시시작",
       icon: <RestartIcon />,
@@ -103,6 +124,12 @@ export function MoreMenu() {
 
   return (
     <div ref={rootRef} className="relative">
+      {refreshFailed && (
+        <Toast
+          message={ORDER_MESSAGES.failed}
+          onClose={() => setRefreshFailed(false)}
+        />
+      )}
       <button
         ref={buttonRef}
         type="button"
