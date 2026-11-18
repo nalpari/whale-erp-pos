@@ -3,7 +3,7 @@ type: Task Report
 title: T02. 로그인 개편 (기획자 답변 반영)
 description: 점포코드 + 매장 프로그램 비밀번호 로그인, 웨일ERP 계정 탭, 점포번호 찾기 삭제, 오류 문구 6개, 점포코드 기억, 설정별 권한으로 로그인을 고친다.
 tags: [login, session, auth, tauri, react]
-status: draft
+status: stable
 generated:
   by: claude-code/claude-opus-5-5
   at: 2026-11-18T10:14:10+09:00
@@ -20,6 +20,9 @@ sources:
   - id: prev
     resource: /docs/okf/2026-11-16-login.md
     title: 처음 구현 보고서
+verified:
+  - by: human:yjnoh
+    at: 2026-11-18T10:59:00+09:00
 ---
 
 # 목표
@@ -82,6 +85,9 @@ sources:
 - 2026-11-18T10:25+09:00 pos-boss 직접 확인: lint · typecheck · format 통과, test 20파일 186개 통과, build 통과, cargo fmt · clippy 통과, cargo test 29개 통과
 - 2026-11-18T10:38+09:00 사용자 답: A-2(탭 전환 시 입력 중 점포코드 유지), B-1([웨일ERP 열기] 실패는 로그만), C-2(로그 문장 "웨일ERP 계정"). pos-boss 추가 지시: normalizeStoreCode를 shared로 옮김(shared → features 참조 제거)
 - 2026-11-18T10:41+09:00 작업 세션 보고: A-2 · C-2 · 구조 정리 반영, ① 통과, ② 재리뷰(Opus) 지적 4건 → 고침 1 · 보류 3. pos-boss 직접 확인: ① 전부 통과(test 187개, cargo test 29개). 스펙 3.2-4 문구는 pos-boss가 main에서 고침
+- 2026-11-18T10:52+09:00 사용자 "커밋해" → 커밋 `723755a`(코드) · `8549004`(OKF), main에 스펙 `97f62a7` · 백엔드 문서 `ea046d6`
+- 2026-11-18T10:55+09:00 사용자 "머지해" → `93614c9`, main에서 test 187개 통과
+- 2026-11-18T10:59+09:00 사용자 OKF 승인 (status: stable)
 
 [^spec]: SPEC-login.md 13장
 [^answers]: planner-answers.md 머리말
