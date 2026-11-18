@@ -3,27 +3,30 @@ export type AccountType = "store" | "master";
 
 export interface Session {
   accountType: AccountType;
-  store: { id: string; name: string };
+  store: { id: string; code: string; name: string };
   accessToken: string;
   /** 자동 로그인용. 점포번호 계정에서만 받는다고 가정한다. */
   refreshToken?: string;
 }
 
-export interface FoundStoreCode {
-  storeName: string;
-  /** 서버가 가려서 준 점포번호 (예: HC-1***4-PO). */
-  maskedStoreCode: string;
-}
-
 export interface AuthApi {
-  loginWithStoreCode(storeCode: string, phone: string): Promise<Session>;
-  loginWithMaster(masterId: string, password: string): Promise<Session>;
+  loginWithStoreCode(
+    storeCode: string,
+    password: string,
+    deviceName: string,
+  ): Promise<Session>;
+  loginWithMaster(
+    erpId: string,
+    password: string,
+    storeCode: string,
+    deviceName: string,
+  ): Promise<Session>;
   /** 저장된 재발급 토큰으로 다시 로그인한다 (자동 로그인). */
   resume(refreshToken: string): Promise<Session>;
-  findStoreCode(ownerName: string, email: string): Promise<FoundStoreCode>;
 }
 
-/** 로그인(loginWithStoreCode · loginWithMaster)에서 아이디 · 비밀번호가 틀렸을 때. 네트워크 등 원인을 알 수 없는 실패는 일반 Error다. */
+// 로그인 오류 (가정, 스펙 5장). 네트워크 등 원인을 알 수 없는 실패는 일반 Error다.
+/** 아이디 · 비밀번호(또는 점포코드 · 비밀번호)가 틀렸을 때. */
 export class InvalidCredentialsError extends Error {
   constructor() {
     super("아이디 또는 비밀번호 불일치");
@@ -31,11 +34,35 @@ export class InvalidCredentialsError extends Error {
   }
 }
 
-/** 점포번호 찾기에서 일치하는 정보가 없을 때. */
-export class StoreNotFoundError extends Error {
+/** 픽업오더를 구독하지 않은 점포. */
+export class NotSubscribedError extends Error {
   constructor() {
-    super("일치하는 점포 없음");
-    this.name = "StoreNotFoundError";
+    super("픽업오더 미구독 점포");
+    this.name = "NotSubscribedError";
+  }
+}
+
+/** 웨일ERP 계정이 관리하지 않는 점포 (웨일ERP 탭). */
+export class StoreNotManagedError extends Error {
+  constructor() {
+    super("계정이 관리하지 않는 점포");
+    this.name = "StoreNotManagedError";
+  }
+}
+
+/** 매장 프로그램 비밀번호가 설정되지 않은 점포 (점포번호 탭). */
+export class PasswordNotSetError extends Error {
+  constructor() {
+    super("매장 프로그램 비밀번호 미설정");
+    this.name = "PasswordNotSetError";
+  }
+}
+
+/** 연속 실패로 서버가 잠근 상태. 잠금은 서버가 판단하고 화면은 문구만 보인다 (스펙 3.4). */
+export class LoginLockedError extends Error {
+  constructor() {
+    super("로그인 잠김");
+    this.name = "LoginLockedError";
   }
 }
 
@@ -48,14 +75,28 @@ export class SessionExpiredError extends Error {
 }
 
 // 모의 데이터: 개발 · 테스트용 시험 계정이다. 실제 고객 · 점포 정보가 아니다.
+// codes: 오류 경우마다 하나씩 둔 시험용 점포코드 (스펙 5장).
 export const MOCK_ACCOUNTS = {
-  store: { storeCode: "HC-10004-PO", phone: "01000000000" },
-  master: { masterId: "master-demo", password: "demo1234!" },
-  owner: { name: "홍길동", email: "owner@example.com" },
+  store: { storeCode: "ST000001", password: "1234" },
+  master: {
+    masterId: "master-demo",
+    password: "demo1234!",
+    storeCode: "ST000001",
+  },
+  codes: {
+    notSubscribed: "ST000002",
+    notManaged: "ST000003",
+    passwordNotSet: "ST000004",
+    locked: "ST000005",
+  },
 } as const;
 
 // 모의 데이터: 시험 점포.
-const MOCK_STORE = { id: "mock-store-1", name: "모의 점포 (개발용)" };
+const MOCK_STORE = {
+  id: "mock-store-1",
+  code: MOCK_ACCOUNTS.store.storeCode,
+  name: "모의 점포 (개발용)",
+};
 const MOCK_REFRESH_TOKEN = "mock-refresh-token";
 
 export interface MockAuthOptions {
@@ -91,19 +132,37 @@ export function createMockAuthApi(options: MockAuthOptions = {}): AuthApi {
     refreshToken: MOCK_REFRESH_TOKEN,
   });
 
+  // 점포코드로 정해지는 오류. 두 탭이 같이 쓴다. 웨일ERP 탭만 StoreNotManagedError가 난다.
+  function checkStoreCode(storeCode: string, kind: AccountType) {
+    const { codes } = MOCK_ACCOUNTS;
+    if (storeCode === codes.notSubscribed) throw new NotSubscribedError();
+    if (storeCode === codes.locked) throw new LoginLockedError();
+    if (kind === "master" && storeCode === codes.notManaged)
+      throw new StoreNotManagedError();
+    if (kind === "store" && storeCode === codes.passwordNotSet)
+      throw new PasswordNotSetError();
+  }
+
   return {
-    loginWithStoreCode: (storeCode, phone) =>
+    // deviceName은 서버가 새 PC 알림 · PC별 잠금에 쓴다고 가정한다 (모의 구현은 쓰지 않는다).
+    loginWithStoreCode: (storeCode, password) =>
       respond(() => {
+        checkStoreCode(storeCode, "store");
         const { store } = MOCK_ACCOUNTS;
-        if (storeCode !== store.storeCode || phone !== store.phone) {
+        if (storeCode !== store.storeCode || password !== store.password) {
           throw new InvalidCredentialsError();
         }
         return storeSession();
       }),
-    loginWithMaster: (masterId, password) =>
+    loginWithMaster: (erpId, password, storeCode) =>
       respond(() => {
+        checkStoreCode(storeCode, "master");
         const { master } = MOCK_ACCOUNTS;
-        if (masterId !== master.masterId || password !== master.password) {
+        if (
+          erpId !== master.masterId ||
+          password !== master.password ||
+          storeCode !== master.storeCode
+        ) {
           throw new InvalidCredentialsError();
         }
         return {
@@ -117,14 +176,6 @@ export function createMockAuthApi(options: MockAuthOptions = {}): AuthApi {
         if (refreshToken !== MOCK_REFRESH_TOKEN)
           throw new SessionExpiredError();
         return storeSession();
-      }),
-    findStoreCode: (ownerName, email) =>
-      respond(() => {
-        const { owner } = MOCK_ACCOUNTS;
-        if (ownerName !== owner.name || email !== owner.email) {
-          throw new StoreNotFoundError();
-        }
-        return { storeName: MOCK_STORE.name, maskedStoreCode: "HC-1***4-PO" };
       }),
   };
 }

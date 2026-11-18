@@ -27,8 +27,13 @@ vi.mock("@tauri-apps/plugin-log", () => {
   return { info: push, warn: push, error: push };
 });
 
-const { storeCode, phone } = MOCK_ACCOUNTS.store;
-const SECRETS = [storeCode, phone, "mock-refresh-token", "mock-access-token"];
+const { storeCode, password } = MOCK_ACCOUNTS.store;
+const SECRETS = [
+  storeCode,
+  password,
+  "mock-refresh-token",
+  "mock-access-token",
+];
 
 function renderShell(authApi: AuthApi) {
   render(
@@ -48,10 +53,10 @@ function renderShell(authApi: AuthApi) {
 }
 
 async function submit(code: string, secret: string) {
-  fireEvent.change(screen.getByLabelText("점포 고유번호"), {
+  fireEvent.change(screen.getByLabelText("점포코드 (예: ST000001)"), {
     target: { value: code },
   });
-  fireEvent.change(screen.getByLabelText("대표 휴대폰 번호"), {
+  fireEvent.change(screen.getByLabelText("매장 프로그램 비밀번호"), {
     target: { value: secret },
   });
   fireEvent.click(screen.getByRole("button", { name: "로그인" }));
@@ -77,13 +82,13 @@ describe("주요 사건 로그", () => {
   it("로그인 실패 · 성공 · 주문받기 · 로그아웃을 남기고 개인정보는 남기지 않는다", async () => {
     renderShell(createMockAuthApi({ delayMs: 0 }));
 
-    await submit(storeCode, "01099999999");
+    await submit(storeCode, "wrong");
     await screen.findByText(INVALID_CREDENTIALS_MESSAGE);
     expect(sent.lines).toContain(
       "로그인 실패: 점포번호 계정, 아이디 · 비밀번호 틀림",
     );
 
-    await submit(storeCode, phone);
+    await submit(storeCode, password);
     await screen.findByRole("tab", { name: "주문접수" });
     expect(sent.lines).toContain("로그인 성공: 점포번호 계정");
 
@@ -109,7 +114,7 @@ describe("주요 사건 로그", () => {
 
   it("네트워크 오류에 요청 본문이 붙어 있어도 로그에는 남지 않는다", async () => {
     const leaky = Object.assign(new Error("연결 실패"), {
-      config: { data: JSON.stringify({ storeCode, phone }) },
+      config: { data: JSON.stringify({ storeCode, password }) },
     });
     renderShell({
       ...createMockAuthApi({ delayMs: 0 }),
@@ -118,7 +123,7 @@ describe("주요 사건 로그", () => {
       },
     });
 
-    await submit(storeCode, phone);
+    await submit(storeCode, password);
     await vi.waitFor(() =>
       expect(sent.lines).toContain(
         "로그인 실패: 점포번호 계정, 네트워크 등 오류",
@@ -130,7 +135,7 @@ describe("주요 사건 로그", () => {
 
   it("로그 화면을 연 채 로그인이 끝나도 [닫기] 전에는 닫히지 않는다", async () => {
     renderShell(createMockAuthApi({ delayMs: 0 }));
-    await submit(storeCode, phone);
+    await submit(storeCode, password);
     fireEvent.click(screen.getByRole("button", { name: "더보기" }));
     fireEvent.click(
       within(screen.getByRole("menu")).getByRole("menuitem", {

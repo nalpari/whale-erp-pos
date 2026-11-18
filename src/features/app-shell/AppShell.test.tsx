@@ -29,7 +29,7 @@ import { appShellReducer, createInitialState } from "./app-shell-state";
 
 const STORE: Session = {
   accountType: "store",
-  store: { id: "s1", name: "힘이나는커피생활 종로점" },
+  store: { id: "s1", code: "ST000001", name: "힘이나는커피생활 종로점" },
   accessToken: "t",
 };
 
@@ -70,12 +70,12 @@ function renderShell(
 
 /** 로그인 화면에서 모의 점포번호 계정으로 로그인한다. */
 async function loginWithForm({ remember = false } = {}) {
-  const { storeCode, phone } = MOCK_ACCOUNTS.store;
-  fireEvent.change(screen.getByLabelText("점포 고유번호"), {
+  const { storeCode, password } = MOCK_ACCOUNTS.store;
+  fireEvent.change(screen.getByLabelText("점포코드 (예: ST000001)"), {
     target: { value: storeCode },
   });
-  fireEvent.change(screen.getByLabelText("대표 휴대폰 번호"), {
-    target: { value: phone },
+  fireEvent.change(screen.getByLabelText("매장 프로그램 비밀번호"), {
+    target: { value: password },
   });
   if (remember) {
     fireEvent.click(screen.getByRole("checkbox", { name: "자동로그인" }));
@@ -196,13 +196,13 @@ describe("화면 틀 (스펙 2.1)", () => {
         name: "슬롯 1 — 프린터 없음",
       }),
     ).toBeInTheDocument();
-    // 점포번호 계정이라 추가는 막힌다 (SPEC-settings-printer 2.4).
+    // 점포번호 계정도 프린터 설정을 바꿀 수 있다 (SPEC-login 2장 권한 표, Q10).
     expect(
       within(panel).getAllByRole("button", { name: "+ 프린터 추가" })[0],
-    ).toBeDisabled();
+    ).toBeEnabled();
   });
 
-  it("마스터 계정은 프린터설정에서 프린터를 추가할 수 있다", async () => {
+  it("웨일ERP 계정도 프린터설정에서 프린터를 추가할 수 있다", async () => {
     renderShell({ session: { ...STORE, accountType: "master" } });
     fireEvent.click(screen.getByRole("tab", { name: "환경설정" }));
     fireEvent.click(screen.getByRole("tab", { name: "프린터설정" }));
@@ -835,7 +835,7 @@ describe("자동 로그인 저장 (스펙 3.4, 4장)", () => {
     );
   }
 
-  it("자동로그인을 체크하고 로그인하면 재발급 토큰만 저장한다 (휴대폰 번호는 저장 안 함)", async () => {
+  it("자동로그인을 체크하고 로그인하면 재발급 토큰만 저장한다 (비밀번호는 저장 안 함)", async () => {
     const tokenStore = spyStore();
     renderShell({ tokenStore });
 
@@ -844,7 +844,7 @@ describe("자동 로그인 저장 (스펙 3.4, 4장)", () => {
     await vi.waitFor(() => expect(tokenStore.save).toHaveBeenCalledTimes(1));
     const saved = await tokenStore.load();
     expect(saved).toBe("mock-refresh-token");
-    expect(saved).not.toContain(MOCK_ACCOUNTS.store.phone);
+    expect(saved).not.toContain(MOCK_ACCOUNTS.store.password);
   });
 
   it("체크하지 않고 로그인하면 저장하지 않고, 남아 있던 토큰도 지운다", async () => {
@@ -909,7 +909,9 @@ describe("시작 시 자동 로그인 (스펙 4장)", () => {
     });
 
     expect(screen.getByText("로그인 후 이용해주세요.")).toBeInTheDocument();
-    expect(screen.queryByLabelText("점포 고유번호")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("점포코드 (예: ST000001)"),
+    ).not.toBeInTheDocument();
     await act(async () => finish(STORE));
 
     expect(screen.getByText(STORE.store.name)).toBeInTheDocument();
@@ -922,13 +924,17 @@ describe("시작 시 자동 로그인 (스펙 4장)", () => {
   it("확인에 실패(null)하면 로그인 화면을 보인다", async () => {
     renderShell({ restoreSession: async () => null });
 
-    expect(await screen.findByLabelText("점포 고유번호")).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText("점포코드 (예: ST000001)"),
+    ).toBeInTheDocument();
   });
 
   it("확인이 거절돼도 빈 화면에 갇히지 않고 로그인 화면을 보인다", async () => {
     renderShell({ restoreSession: () => Promise.reject(new Error("x")) });
 
-    expect(await screen.findByLabelText("점포 고유번호")).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText("점포코드 (예: ST000001)"),
+    ).toBeInTheDocument();
   });
 
   it("확인 중에 Alt+F4로 연 종료 팝업은 확인이 끝나도 그대로 남는다", async () => {
@@ -993,7 +999,9 @@ describe("자동 로그인 전체 흐름 (스펙 9장 4)", () => {
     second.unmount();
 
     renderShell({ tokenStore, restoreSession: restore });
-    expect(await screen.findByLabelText("점포 고유번호")).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText("점포코드 (예: ST000001)"),
+    ).toBeInTheDocument();
   });
 
   it("마스터 계정으로 로그인하면 남아 있던 점포 토큰을 지운다", async () => {
@@ -1001,13 +1009,16 @@ describe("자동 로그인 전체 흐름 (스펙 9장 4)", () => {
     renderShell({ tokenStore });
 
     fireEvent.click(
-      screen.getByRole("tab", { name: "마스터 계정으로 로그인" }),
+      screen.getByRole("tab", { name: "웨일ERP 계정으로 로그인" }),
     );
-    fireEvent.change(screen.getByLabelText("마스터 아이디 입력"), {
+    fireEvent.change(screen.getByLabelText("웨일ERP 아이디 입력"), {
       target: { value: MOCK_ACCOUNTS.master.masterId },
     });
-    fireEvent.change(screen.getByLabelText("마스터 비밀번호 입력"), {
+    fireEvent.change(screen.getByLabelText("웨일ERP 비밀번호 입력"), {
       target: { value: MOCK_ACCOUNTS.master.password },
+    });
+    fireEvent.change(screen.getByLabelText("점포코드 (예: ST000001)"), {
+      target: { value: MOCK_ACCOUNTS.master.storeCode },
     });
     fireEvent.click(screen.getByRole("button", { name: "로그인" }));
 
@@ -1031,7 +1042,7 @@ describe("자동 로그인 전체 흐름 (스펙 9장 4)", () => {
 describe("로그 확인 (SPEC-logging 3.1)", () => {
   const MASTER: Session = {
     accountType: "master",
-    store: { id: "s2", name: "본사" },
+    store: { id: "s2", code: "ST000002", name: "본사" },
     accessToken: "t",
   };
 
@@ -1045,23 +1056,25 @@ describe("로그 확인 (SPEC-logging 3.1)", () => {
   it("로그인 전에도 더보기 메뉴에서 열고, 닫으면 로그인 화면으로 돌아온다", async () => {
     renderShell();
     await openLogViewer();
-    expect(screen.getByLabelText("점포 고유번호")).not.toBeVisible();
+    expect(screen.getByLabelText("점포코드 (예: ST000001)")).not.toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "닫기" }));
 
-    expect(screen.getByLabelText("점포 고유번호")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("점포코드 (예: ST000001)"),
+    ).toBeInTheDocument();
   });
 
   it("로그인 전에 열었다 닫아도 입력한 값이 남는다", async () => {
     renderShell();
-    fireEvent.change(screen.getByLabelText("점포 고유번호"), {
+    fireEvent.change(screen.getByLabelText("점포코드 (예: ST000001)"), {
       target: { value: "S-1" },
     });
 
     await openLogViewer();
     fireEvent.click(screen.getByRole("button", { name: "닫기" }));
 
-    expect(screen.getByLabelText("점포 고유번호")).toHaveValue("S-1");
+    expect(screen.getByLabelText("점포코드 (예: ST000001)")).toHaveValue("S-1");
   });
 
   it.each([

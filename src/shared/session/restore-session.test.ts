@@ -57,7 +57,7 @@ describe("restoreSession (스펙 4장 자동 로그인 시작 흐름)", () => {
       ...api,
       resume: async () => ({
         accountType: "store",
-        store: { id: "s1", name: "시험 점포" },
+        store: { id: "s1", code: "ST000001", name: "시험 점포" },
         accessToken: "a",
         refreshToken: "new-token",
       }),
@@ -74,7 +74,7 @@ describe("restoreSession (스펙 4장 자동 로그인 시작 흐름)", () => {
       ...api,
       resume: async () => ({
         accountType: "store",
-        store: { id: "s1", name: "시험 점포" },
+        store: { id: "s1", code: "ST000001", name: "시험 점포" },
         accessToken: "a",
         refreshToken: "new-token",
       }),
