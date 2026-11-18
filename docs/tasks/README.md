@@ -3,7 +3,7 @@
 - **기준 문서**: `13. 웨일ERP_픽업오더매장프로그램_화면정의서_v0.8_260717_Lite.pdf` (문서번호 HC-HSB-01, 개정 V0.8, 24쪽). 사본: `docs/references/pickup-order-screen-spec-v0.8-260717.pdf`
 - **작성일**: 2026-11-16
 - **성격**: 화면정의서를 읽고 할 일을 기능 단위로 나눈 문서다. 스펙이 아니다. 화면 구성은 화면정의서를 그대로 따르고, v0.8이라 내용이 더해질 수 있다.
-- **Plane**: 워크스페이스 `whale-erp`, 프로젝트 **WhaleErpPos**(`WHALEERPPO`). 모듈 10개는 화면정의서 순서다. 기획자 답을 기다리는 항목(T03~T07, T13)에는 "결정 대기" 라벨을 붙였다 (2026-11-18 답을 모두 받았다. 라벨은 아직 떼지 않았다). OKF 보고서의 `sources`에는 `plane:WHALEERPPO-N`으로 적는다.
+- **Plane**: 워크스페이스 `whale-erp`, 프로젝트 **WhaleErpPos**(`WHALEERPPO`). 모듈 10개는 화면정의서 순서다. 기획자 답을 기다리는 항목(T03~T07, T13)에는 "결정 대기" 라벨을 붙였다 (2026-11-18 답을 모두 받아 라벨을 뗐다). OKF 보고서의 `sources`에는 `plane:WHALEERPPO-N`으로 적는다.
 - **쓰는 법**: 태스크 하나가 Plane 작업 항목 하나에 해당한다. 태스크 문서의 "관련 문의"가 풀려야 그 부분을 확정할 수 있다.
 
 ## 태스크 목록
@@ -12,7 +12,7 @@
 |---|---|---|---|---|---|---|
 | T00 | WHALEERPPO-1 | 프로젝트 골격 (Tauri v2 + Vite + React). 문서 없음, Plane에만 있음 | — | 소 | 없음 | 없음 |
 | [T01](./T01-app-shell-header.md) | WHALEERPPO-2 | 프로그램 틀 · 헤더 · 창 제어 | p.4~6 | 중 | T00 | Q02, Q03 |
-| [T02](./T02-login.md) | WHALEERPPO-3 | 로그인 · 점포번호 찾기 | p.8~10 | 중 | T01 | Q09 |
+| [T02](./T02-login.md) | WHALEERPPO-3 | 로그인 (점포번호 찾기는 Q12로 삭제) | p.8~10 | 중 | T01 | Q09 |
 | [T03](./T03-order-sync.md) | WHALEERPPO-4 | 주문 수신 · 상태 동기화 (화면 아님) | p.24 | 대 | T02 | Q16, Q17, Q19, Q20 |
 | [T04](./T04-order-board.md) | WHALEERPPO-5 | 주문접수 화면 | p.11 | 대 | T01, T03 | Q01, Q19 |
 | [T05](./T05-order-summary-cancel.md) | WHALEERPPO-6 | 주문 요약 팝업 · 거부/취소 팝업 | p.12, p.7 | 중 | T04 | Q16, Q17 |
