@@ -288,7 +288,7 @@ export function AppShellProvider({
       login: (session, remember) => {
         logInfo(logMessages.loginSucceeded(session.accountType));
         dispatch({ type: "login", session });
-        // 점포번호 계정만 자동 로그인을 쓴다. 휴대폰 번호는 저장하지 않고 재발급 토큰만 저장한다 (스펙 4장).
+        // 점포번호 계정만 자동 로그인을 쓴다. 매장 프로그램 비밀번호는 저장하지 않고 재발급 토큰만 저장한다 (스펙 4장).
         if (
           remember &&
           session.accountType === "store" &&

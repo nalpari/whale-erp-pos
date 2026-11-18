@@ -13,10 +13,10 @@ describe("logMessages", () => {
       "로그인 성공: 점포번호 계정",
     );
     expect(logMessages.loginSucceeded("master")).toBe(
-      "로그인 성공: 마스터 계정",
+      "로그인 성공: 웨일ERP 계정",
     );
     expect(logMessages.loginFailed("master", "invalid-credentials")).toBe(
-      "로그인 실패: 마스터 계정, 아이디 · 비밀번호 틀림",
+      "로그인 실패: 웨일ERP 계정, 아이디 · 비밀번호 틀림",
     );
     expect(logMessages.loginFailed("store", "network")).toBe(
       "로그인 실패: 점포번호 계정, 네트워크 등 오류",
