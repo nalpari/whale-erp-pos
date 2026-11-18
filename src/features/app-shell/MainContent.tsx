@@ -1,7 +1,6 @@
 // 로그인 후 탭과 콘텐츠 영역. 탭 안의 기능 화면은 태스크마다 채우고, 아직 없는 탭은 Placeholder로 둔다.
 import { useAppShell } from "./AppShellContext";
 import { PrinterSettingsScreen } from "../settings-printer/PrinterSettingsScreen";
-import { canEditSetting } from "../../shared/session/permissions";
 import { panelId, tabId } from "../../shared/ui/tab-ids";
 import { TabBar } from "../../shared/ui/TabBar";
 import { MAIN_TABS, SETTINGS_TABS } from "./tabs";
@@ -57,7 +56,6 @@ export function MainContent() {
                 <PrinterSettingsScreen
                   printerApi={printerApi}
                   store={printerSettingsStore}
-                  canEdit={canEditSetting(state.session, "printer")}
                   storeName={state.session.store.name}
                 />
               ) : (

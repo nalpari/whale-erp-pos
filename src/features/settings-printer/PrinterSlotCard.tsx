@@ -1,8 +1,9 @@
 // 프린터 칸 하나 (스펙 2.1). 저장은 하지 않고 바뀐 값만 위로 올린다.
 import { useId, useRef, useState } from "react";
-import type {
-  PrinterSlot,
-  SlotPatch,
+import {
+  PAPER_WIDTHS,
+  type PrinterSlot,
+  type SlotPatch,
 } from "../../shared/printer/printer-settings";
 import { logInfo } from "../../shared/log/log";
 import { logMessages } from "../../shared/log/log-messages";
@@ -15,7 +16,8 @@ interface Props {
   slot: PrinterSlot | null;
   /** 지금 Windows 목록에 없는 프린터인지 (스펙 2.5). */
   notFound: boolean;
-  canEdit: boolean;
+  /** 설정을 못 읽었을 때 고치기를 막는다 (스펙 2.5). 권한 때문이 아니다. */
+  disabled: boolean;
   onAdd(): void;
   onRemove(): void;
   onChange(patch: SlotPatch): void;
@@ -35,11 +37,11 @@ function PencilIcon() {
 
 function PurposeField({
   purpose,
-  canEdit,
+  disabled,
   onSave,
 }: {
   purpose: string;
-  canEdit: boolean;
+  disabled: boolean;
   onSave(purpose: string): void;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
@@ -86,7 +88,7 @@ function PurposeField({
       <button
         type="button"
         aria-label="용도 이름 고치기"
-        disabled={!canEdit || draft !== null}
+        disabled={disabled || draft !== null}
         onClick={start}
         className="flex size-14 items-center justify-center rounded-lg border border-gray-300 text-gray-600 active:bg-gray-100 disabled:opacity-40"
       >
@@ -100,7 +102,7 @@ export function PrinterSlotCard({
   number,
   slot,
   notFound,
-  canEdit,
+  disabled,
   onAdd,
   onRemove,
   onChange,
@@ -145,7 +147,7 @@ export function PrinterSlotCard({
         <>
           <PurposeField
             purpose={slot.purpose}
-            canEdit={canEdit}
+            disabled={disabled}
             onSave={(purpose) => onChange({ purpose })}
           />
           <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-xl text-gray-800">
@@ -155,7 +157,7 @@ export function PrinterSlotCard({
                 type="checkbox"
                 className="size-7"
                 checked={slot.printOrder}
-                disabled={!canEdit}
+                disabled={disabled}
                 onChange={(e) => onChange({ printOrder: e.target.checked })}
               />
               {PRINTER_TEXTS.printOrder}
@@ -165,11 +167,36 @@ export function PrinterSlotCard({
                 type="checkbox"
                 className="size-7"
                 checked={slot.printReceipt}
-                disabled={!canEdit}
+                disabled={disabled}
                 onChange={(e) => onChange({ printReceipt: e.target.checked })}
               />
               {PRINTER_TEXTS.printReceipt}
             </label>
+          </div>
+          <div
+            role="radiogroup"
+            aria-labelledby={`${headingId}-paper-width-label`}
+            className="flex flex-wrap items-center gap-x-8 gap-y-3 text-xl text-gray-800"
+          >
+            <span
+              id={`${headingId}-paper-width-label`}
+              className="text-gray-500"
+            >
+              {PRINTER_TEXTS.paperWidth}
+            </span>
+            {PAPER_WIDTHS.map((width) => (
+              <label key={width} className="flex min-h-12 items-center gap-3">
+                <input
+                  type="radio"
+                  className="size-7"
+                  name={`${headingId}-paper-width`}
+                  checked={slot.paperWidth === width}
+                  disabled={disabled}
+                  onChange={() => onChange({ paperWidth: width })}
+                />
+                {width}mm
+              </label>
+            ))}
           </div>
           <div className="flex flex-wrap items-center gap-4">
             <button
@@ -182,7 +209,7 @@ export function PrinterSlotCard({
             </button>
             <button
               type="button"
-              disabled={!canEdit}
+              disabled={disabled}
               onClick={onRemove}
               className="h-14 rounded-xl border-2 border-red-500 px-6 text-xl text-red-600 active:bg-red-50 disabled:opacity-40"
             >
@@ -205,7 +232,7 @@ export function PrinterSlotCard({
       ) : (
         <button
           type="button"
-          disabled={!canEdit}
+          disabled={disabled}
           onClick={onAdd}
           className="h-16 rounded-xl border-2 border-blue-500 text-xl font-bold text-blue-600 active:bg-blue-50 disabled:opacity-40"
         >
