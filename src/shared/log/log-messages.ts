@@ -41,6 +41,7 @@ function pick<K extends string>(table: Record<K, string>, key: K): string {
 export const logMessages = {
   appStarted: (version: string) => `앱 시작: ${version}`,
   appExited: () => "앱 종료",
+  appRestarting: () => "앱 다시시작",
   loginSucceeded: (account: AccountType) =>
     `로그인 성공: ${pick(ACCOUNT, account)}`,
   loginFailed: (account: AccountType, reason: LoginFailReason) =>

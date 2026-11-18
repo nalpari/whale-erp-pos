@@ -42,6 +42,12 @@ export const PowerIcon = () => (
   </Icon>
 );
 
+export const RestartIcon = () => (
+  <Icon>
+    <path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" />
+  </Icon>
+);
+
 export const LogIcon = () => (
   <Icon>
     <path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7" />

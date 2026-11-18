@@ -24,6 +24,23 @@ pub fn get_device_name() -> String {
     )
 }
 
+/// 프로그램을 껐다 다시 켠다 (스펙 2.4 다시시작). 새 플러그인 없이 Tauri 기본 기능만 쓴다.
+/// `AppHandle::restart`는 새 프로세스를 못 띄워도 이 프로세스를 끝내 프로그램이 그냥 꺼지므로,
+/// 새 프로세스를 먼저 띄워 보고 성공했을 때만 끝낸다. 실패하면 화면이 다시 시도할 수 있게 오류를 돌려준다.
+/// 오류 문구에는 실행 파일 경로 · 인자를 넣지 않는다.
+#[tauri::command]
+pub fn restart_app(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    let binary = tauri::process::current_binary(&app.env())
+        .map_err(|_| "실행 파일 위치를 찾지 못했습니다.".to_string())?;
+    std::process::Command::new(binary)
+        .args(std::env::args_os().skip(1))
+        .spawn()
+        .map_err(|_| "새 프로그램을 시작하지 못했습니다.".to_string())?;
+    app.exit(0);
+    Ok(())
+}
+
 /// 운영체제가 정한 기본 브라우저로 웨일ERP를 연다. 여는 방식은 `open_log_dir`과 같다.
 #[tauri::command]
 pub fn open_whale_erp() -> Result<(), String> {
