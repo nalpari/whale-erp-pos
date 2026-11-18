@@ -1,6 +1,9 @@
 // 로그인 후 탭과 콘텐츠 영역. 탭 안의 기능 화면은 태스크마다 채우고, 아직 없는 탭은 Placeholder로 둔다.
 import { useAppShell } from "./AppShellContext";
+import { CustomerCancelSound } from "../order-board/CustomerCancelSound";
+import { OrderBoardScreen } from "../order-board/OrderBoardScreen";
 import { PrinterSettingsScreen } from "../settings-printer/PrinterSettingsScreen";
+import { useOrdersOptional } from "../../shared/orders/orders-context";
 import { panelId, tabId } from "../../shared/ui/tab-ids";
 import { TabBar } from "../../shared/ui/TabBar";
 import { MAIN_TABS, SETTINGS_TABS } from "./tabs";
@@ -14,6 +17,8 @@ function Placeholder({ label }: { label: string }) {
 }
 
 export function MainContent() {
+  // 주문 수신(OrdersProvider)이 없는 곳(일부 테스트)에서는 주문접수 화면 대신 자리표시를 둔다.
+  const hasOrders = useOrdersOptional() !== null;
   const { state, actions, printerApi, printerSettingsStore } = useAppShell();
   const active =
     MAIN_TABS.find((t) => t.id === state.activeTab) ?? MAIN_TABS[0];
@@ -22,6 +27,7 @@ export function MainContent() {
 
   return (
     <>
+      {hasOrders && <CustomerCancelSound />}
       <TabBar
         label="메뉴"
         tabs={MAIN_TABS}
@@ -63,6 +69,8 @@ export function MainContent() {
               )}
             </section>
           </>
+        ) : active.id === "order-board" && hasOrders ? (
+          <OrderBoardScreen />
         ) : (
           <Placeholder label={active.label} />
         )}

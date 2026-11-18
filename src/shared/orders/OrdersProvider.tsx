@@ -123,6 +123,7 @@ export function OrdersProvider({
       orders,
       pendingOrderCount: countPendingOrders(state),
       connection,
+      sound,
       inFlight: state.inFlight,
       changeStatus: ((orderId, action, reason) =>
         syncRef.current
@@ -146,7 +147,7 @@ export function OrdersProvider({
         return () => acceptedListeners.current.delete(listener);
       },
     }),
-    [orders, state, connection],
+    [orders, state, connection, sound],
   );
 
   return (
