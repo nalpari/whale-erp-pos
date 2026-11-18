@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createMockAuthApi,
@@ -195,6 +201,55 @@ describe("오류 문구 6가지 (스펙 3.4)", () => {
     expect(logged).not.toContain(store.password);
     expect(logged).not.toContain(store.storeCode);
     log.mockRestore();
+  });
+
+  it("서버가 10초 동안 응답하지 않으면 네트워크 오류 문구를 보인다 (T03 스펙 3.6)", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const hanging = new Promise<never>(() => {});
+      renderLogin({
+        ...createMockAuthApi({ delayMs: 0 }),
+        loginWithStoreCode: () => hanging,
+        loginWithMaster: () => hanging,
+      });
+
+      storeLogin(store.storeCode, store.password);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(9_999);
+      });
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+
+      expect(screen.getByRole("alert")).toHaveTextContent(NETWORK);
+      expect(loginButton()).toBeEnabled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("웨일ERP 계정도 10초 동안 응답이 없으면 같은 문구를 보인다", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const hanging = new Promise<never>(() => {});
+      renderLogin({
+        ...createMockAuthApi({ delayMs: 0 }),
+        loginWithStoreCode: () => hanging,
+        loginWithMaster: () => hanging,
+      });
+
+      erpLogin(master.masterId, master.password, master.storeCode);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000);
+      });
+
+      expect(screen.getByRole("alert")).toHaveTextContent(NETWORK);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("입력을 고치면 오류 문구가 사라진다", async () => {

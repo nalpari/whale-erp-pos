@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createMockAuthApi,
   SessionExpiredError,
@@ -124,5 +124,23 @@ describe("restoreSession 로그 (SPEC-logging 2.3-3)", () => {
     const store = createMemoryTokenStore("expired-token");
     vi.spyOn(store, "clear").mockRejectedValue(new Error("keyring"));
     expect(await run(api, store)).toEqual([]);
+  });
+
+  describe("서버 요청 10초 제한 (T03 스펙 3.6)", () => {
+    afterEach(() => vi.useRealTimers());
+
+    it("재발급 요청이 10초 동안 응답이 없으면 토큰을 남기고 null (네트워크 오류와 같은 처리)", async () => {
+      vi.useFakeTimers();
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const store = createMemoryTokenStore("mock-refresh-token");
+      const hanging: AuthApi = { ...api, resume: () => new Promise(() => {}) };
+
+      const result = restoreSession(hanging, store);
+      await vi.advanceTimersByTimeAsync(10_000);
+
+      expect(await result).toBeNull();
+      expect(await store.load()).toBe("mock-refresh-token");
+      vi.mocked(console.error).mockRestore();
+    });
   });
 });
