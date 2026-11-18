@@ -236,7 +236,10 @@ describe("확인창의 처리할 주문 건수 (Q04, 완료 기준 7)", () => {
       }),
     );
 
-    expect(screen.queryByText(/처리할 주문이/)).toBeNull();
+    // 주문접수 화면의 빈 문구(「처리할 주문이 없습니다.」)와 겹치지 않게 확인창 안에서만 찾는다.
+    expect(
+      within(screen.getByRole("alertdialog")).queryByText(/처리할 주문이/),
+    ).toBeNull();
   });
 });
 

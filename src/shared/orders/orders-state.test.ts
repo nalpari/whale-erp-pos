@@ -26,7 +26,7 @@ function order(
     status,
     updatedAt,
     paidAt: updatedAt,
-    pickupAt: updatedAt,
+    pickupChoice: "10min",
     items: [{ name: "시험 음료", quantity: 1 }],
     customerName: "홍*동",
     phoneLast4: "0000",
