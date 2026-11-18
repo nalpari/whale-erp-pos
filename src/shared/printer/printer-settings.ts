@@ -1,6 +1,10 @@
 // 프린터 칸 3개의 설정 (스펙 3.1). T12가 주문서 · 영수증을 낼 때 이 모양을 그대로 읽는다.
 // 저장 파일 모양(Rust src-tauri/src/printer_settings.rs)과 같게 둔다.
 
+// Rust(printer_settings.rs validate)도 같은 값만 받는다. 옛 파일에 없으면 Rust가 80으로 채워 읽는다.
+export const PAPER_WIDTHS = [58, 80] as const;
+export type PaperWidth = (typeof PAPER_WIDTHS)[number];
+
 export interface PrinterSlot {
   /** Windows 프린터 이름. 식별자로도 쓴다. */
   printerName: string;
@@ -10,6 +14,8 @@ export interface PrinterSlot {
   printOrder: boolean;
   /** 영수증 (고객 요청 시) (T12). */
   printReceipt: boolean;
+  /** 용지 폭 mm. 저장만 하고 T12 출력 양식이 쓴다 (Q45 ⑤, 스펙 12장 C). */
+  paperWidth: PaperWidth;
 }
 
 export type SlotIndex = 0 | 1 | 2;
@@ -43,7 +49,12 @@ function withSlot(
   return { ...settings, slots };
 }
 
-/** 새 칸 기본값: 주문서 자동 출력이 기본 용도라 주문서만 체크한다 (스펙 2.2-5). */
+/** 「주문서」가 체크된 칸이 하나라도 있는지. 없으면 주문을 접수해도 주문서가 안 나온다 (Q45). */
+export function hasOrderPrinter(settings: PrinterSettings): boolean {
+  return settings.slots.some((slot) => slot?.printOrder);
+}
+
+/** 새 칸 기본값: 주문서 자동 출력이 기본 용도라 주문서만 체크하고, 용지 폭은 80mm (스펙 2.2-5). */
 export function assignPrinter(
   settings: PrinterSettings,
   index: SlotIndex,
@@ -57,6 +68,7 @@ export function assignPrinter(
     purpose: "",
     printOrder: true,
     printReceipt: false,
+    paperWidth: 80,
   });
 }
 
