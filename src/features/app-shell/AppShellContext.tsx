@@ -7,6 +7,7 @@ import {
   useMemo,
   useReducer,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
 import type { AuthApi, Session } from "../../shared/api/auth";
@@ -27,6 +28,7 @@ import {
   type AppShellState,
   type DialogKind,
 } from "./app-shell-state";
+import { getPendingOrderCount as defaultPendingOrderCount } from "./pending-orders";
 import type { MainTabId, SettingsTabId } from "./tabs";
 
 interface AppShellActions {
@@ -62,6 +64,10 @@ interface AppShellContextValue {
   printerSettingsStore: PrinterSettingsStore;
   /** 로그 확인 화면이 쓰는 로그 읽기 · 폴더 열기. */
   logApi: LogApi;
+  /** 창이 지금 늘어난(최대화) 상태인지. 더보기 메뉴가 늘리기 / 줄이기 중 하나만 보이는 데 쓴다. */
+  maximized: boolean;
+  /** 처리할 주문 건수. 확인창 경고 줄에 쓴다 (스펙 2.3). */
+  pendingOrderCount: number;
 }
 
 const AppShellContext = createContext<AppShellContextValue | null>(null);
@@ -74,6 +80,8 @@ interface Props {
   printerApi: PrinterApi;
   printerSettingsStore: PrinterSettingsStore;
   logApi: LogApi;
+  /** 처리할 주문 건수를 돌려준다. 주문 수신(T03) 전에는 0이다. 테스트는 가짜를 넣는다. */
+  getPendingOrderCount?: () => number;
   initialSession: Session | null;
   /** 있으면 시작할 때 불러 자동 로그인을 확인한다. 끝날 때까지 로그인 폼 대신 빈 화면을 보인다. */
   restoreSession?: () => Promise<Session | null>;
@@ -90,7 +98,7 @@ function logTokenError(action: string) {
 function logWindowError(action: string) {
   return (error: unknown) => {
     // 창 권한 누락 등은 점원이 고칠 수 없으므로 화면에 띄우지 않고 기록만 남긴다.
-    console.error(`[window] ${action} 실패`, error);
+    console.error(`[window] ${action} 실패`, errorSummary(error));
   };
 }
 
@@ -102,6 +110,7 @@ export function AppShellProvider({
   printerApi,
   printerSettingsStore,
   logApi,
+  getPendingOrderCount = defaultPendingOrderCount,
   initialSession,
   restoreSession,
   children,
@@ -140,6 +149,39 @@ export function AppShellProvider({
     };
   }, []);
 
+  // 창 상태: 최대화 여부를 따라가고, 마지막 크기 · 위치를 되살리며 저장한다 (스펙 2.5).
+  const [maximized, setMaximized] = useState(false);
+  useEffect(() => {
+    let disposed = false;
+    const cleanups: Array<() => void> = [];
+    const keep = (fn: () => void) => {
+      if (disposed) fn();
+      else cleanups.push(fn);
+    };
+    windowApi
+      .isMaximized()
+      .then((value) => !disposed && setMaximized(value))
+      .catch(logWindowError("최대화 상태 읽기"));
+    windowApi
+      .onMaximizedChange(setMaximized)
+      .then(keep)
+      .catch(logWindowError("최대화 상태 구독"));
+    windowApi
+      .manageBounds()
+      .then((stop) => {
+        keep(stop);
+        // 시작할 때 최대화한 결과를 놓치지 않게 한 번 더 읽는다.
+        return windowApi
+          .isMaximized()
+          .then((v) => !disposed && setMaximized(v));
+      })
+      .catch(logWindowError("크기 기억"));
+    return () => {
+      disposed = true;
+      cleanups.forEach((fn) => fn());
+    };
+  }, [windowApi]);
+
   // 비동기 처리 중에 최신 상태를 읽기 위해 둔다. 렌더 뒤에만 갱신한다.
   const stateRef = useRef(state);
   useEffect(() => {
@@ -176,9 +218,9 @@ export function AppShellProvider({
     [storeStatusApi],
   );
 
-  // 로그아웃 · 시스템종료 전에 주문 중단을 보낸다. 실패해도 진행한다 (스펙 2.3, 프로그램을 못 끄는 상황 방지).
+  // 로그아웃 · 다시시작 · 프로그램 종료 전에 주문 중단을 보낸다. 실패해도 진행한다 (스펙 2.4, 프로그램을 못 끄는 상황 방지).
   const stopOrdersBestEffort = useCallback(
-    async (reason: "logout" | "shutdown") => {
+    async (reason: Exclude<DialogKind, "stop-orders">) => {
       // "주문 받음" 요청이 아직 가는 중이면 그 뒤에 보낸다. 먼저 보내면 늦게 도착한
       // "주문 받음"이 서버에 남아, 로그아웃했는데도 고객 주문이 들어올 수 있다.
       // 진행 중인 요청이 없으면 기다리지 않고 바로 보낸다 (`await null`도 한 박자 늦춘다).
@@ -188,7 +230,7 @@ export function AppShellProvider({
         await storeStatusApi.setAcceptingOrders(false);
       } catch (error) {
         console.error(
-          "[store-status] 로그아웃 · 종료 전 주문 중단 실패, 그대로 진행",
+          "[store-status] 로그아웃 · 다시시작 · 종료 전 주문 중단 실패, 그대로 진행",
           { reason },
           error,
         );
@@ -213,16 +255,40 @@ export function AppShellProvider({
         void stopOrdersBestEffort("logout").finally(() => {
           logInfo(logMessages.loggedOut());
           dispatch({ type: "logout" });
-          // 로그아웃하면 자동 로그인을 끈다 (스펙 3.4-3). 시스템종료는 지우지 않는다(다음 실행 때 자동 로그인).
+          // 로그아웃하면 자동 로그인을 끈다 (스펙 3.4-3). 다시시작 · 프로그램 종료는 지우지 않는다(다음 실행 때 자동 로그인).
           tokenStore.clear().catch(logTokenError("삭제"));
         });
         return;
-      case "shutdown": {
+      case "restart": {
         dispatch({ type: "dialog-confirmed" });
         const loggedIn = current.session !== null;
         void (async () => {
           if (loggedIn) {
-            await stopOrdersBestEffort("shutdown");
+            await stopOrdersBestEffort("restart");
+            dispatch({ type: "orders-stopped" });
+          }
+          // 다시 켜지면 이 프로세스는 끝나므로 "다시시작" 줄이 전달될 때까지 잠깐 기다린다. 토큰은 지우지 않는다.
+          await Promise.race([
+            logInfo(logMessages.appRestarting()),
+            new Promise((resolve) => setTimeout(resolve, 500)),
+          ]);
+          try {
+            await windowApi.restart();
+          } catch (error) {
+            // 명령 자체가 실패한 경우만 여기 온다. 팝업이 처리 중으로 굳지 않게 닫아서 다시 시도할 수 있게 한다.
+            // (명령이 닿은 뒤 새로 켜기에 실패하면 프로그램이 그냥 꺼진다 — Rust restart_app 참고.)
+            logWindowError("다시시작")(error);
+            dispatch({ type: "dialog-finished" });
+          }
+        })();
+        return;
+      }
+      case "exit": {
+        dispatch({ type: "dialog-confirmed" });
+        const loggedIn = current.session !== null;
+        void (async () => {
+          if (loggedIn) {
+            await stopOrdersBestEffort("exit");
             dispatch({ type: "logout-for-shutdown" });
           }
           // 창을 없애면 프로세스가 끝나므로, "앱 종료" 줄이 전달될 때까지 잠깐 기다린다. 로그가 막혀도 0.5초 뒤 종료한다.
@@ -258,14 +324,12 @@ export function AppShellProvider({
     [sendAccepting],
   );
 
-  // 운영체제 닫기(Alt+F4 등)는 시스템종료와 같은 확인 팝업으로 돌린다 (스펙 2.4).
+  // 운영체제 닫기(Alt+F4 · 작업표시줄 [창 닫기])는 프로그램 종료와 같은 확인 팝업으로 돌린다 (스펙 2.4).
   useEffect(() => {
     let unlisten: (() => void) | null = null;
     let disposed = false;
     windowApi
-      .onCloseRequested(() =>
-        dispatch({ type: "open-dialog", dialog: "shutdown" }),
-      )
+      .onCloseRequested(() => dispatch({ type: "open-dialog", dialog: "exit" }))
       .then((fn) => {
         if (disposed) fn();
         else unlisten = fn;
@@ -331,8 +395,19 @@ export function AppShellProvider({
       printerApi,
       printerSettingsStore,
       logApi,
+      maximized,
+      pendingOrderCount: getPendingOrderCount(),
     }),
-    [state, actions, authApi, printerApi, printerSettingsStore, logApi],
+    [
+      state,
+      actions,
+      authApi,
+      printerApi,
+      printerSettingsStore,
+      logApi,
+      maximized,
+      getPendingOrderCount,
+    ],
   );
   return (
     <AppShellContext.Provider value={value}>

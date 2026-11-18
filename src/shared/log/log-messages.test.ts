@@ -54,6 +54,7 @@ describe("logMessages", () => {
     expect(logMessages.settingsFailed("load")).toBe("설정 읽기 실패");
     expect(logMessages.appStarted("0.1.0")).toBe("앱 시작: 0.1.0");
     expect(logMessages.appExited()).toBe("앱 종료");
+    expect(logMessages.appRestarting()).toBe("앱 다시시작");
     expect(logMessages.loggedOut()).toBe("로그아웃");
   });
 });

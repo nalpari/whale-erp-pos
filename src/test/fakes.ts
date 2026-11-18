@@ -5,11 +5,22 @@ import type { AppWindow } from "../shared/platform/window";
 
 export function createFakeWindow() {
   let closeHandler: (() => void) | null = null;
+  let maximizedHandler: ((maximized: boolean) => void) | null = null;
+  let maximized = false;
   const win = {
     minimize: vi.fn(async () => {}),
     restoreDefaultSize: vi.fn(async () => {}),
     maximize: vi.fn(async () => {}),
     exit: vi.fn(async () => {}),
+    restart: vi.fn(async () => {}),
+    isMaximized: vi.fn(async () => maximized),
+    onMaximizedChange: vi.fn(async (handler: (m: boolean) => void) => {
+      maximizedHandler = handler;
+      return () => {
+        if (maximizedHandler === handler) maximizedHandler = null;
+      };
+    }),
+    manageBounds: vi.fn(async () => () => {}),
     onCloseRequested: vi.fn(async (handler: () => void) => {
       closeHandler = handler;
       return () => {
@@ -19,6 +30,11 @@ export function createFakeWindow() {
   } satisfies AppWindow;
   return {
     win,
+    /** 창이 최대화됐다 풀렸다고 알린다. */
+    setMaximized(next: boolean) {
+      maximized = next;
+      maximizedHandler?.(next);
+    },
     /** 운영체제 닫기(Alt+F4)를 흉내 낸다. 등록된 핸들러가 없으면 false. */
     requestClose(): boolean {
       if (!closeHandler) return false;
