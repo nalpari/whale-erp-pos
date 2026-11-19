@@ -19,7 +19,8 @@
 | `store-info` | T08 매장정보 | WHALEERPPO-9 | [SPEC-store-info.md](./SPEC-store-info.md) | 승인 (2026-11-19) |
 | `soldout` | T09 메뉴품절 · 품절상품 추가 팝업 | WHALEERPPO-10 | [SPEC-soldout.md](./SPEC-soldout.md) | 승인 (2026-11-19) |
 | `settings-ai-popular` | T13 환경설정 — AI챗봇 인기메뉴 설정 | WHALEERPPO-14 | [SPEC-settings-ai-popular.md](./SPEC-settings-ai-popular.md) | 승인 (2026-11-19) |
+| `print-forms` | T12 출력 — 주문서 · 영수증 | WHALEERPPO-13 | [SPEC-print-forms.md](./SPEC-print-forms.md) | 승인 (2026-11-19) |
 
-빌드 순서: `project-skeleton` → `app-shell` → `login` → `settings-printer` → `logging` → `order-sync` → `order-board` → `order-summary` → `desktop-widget` → `settings-widget` → `order-history` → `store-info` → `soldout` → `settings-ai-popular`
+빌드 순서: `project-skeleton` → `app-shell` → `login` → `settings-printer` → `logging` → `order-sync` → `order-board` → `order-summary` → `desktop-widget` → `settings-widget` → `order-history` → `store-info` → `soldout` → `settings-ai-popular` → `print-forms`
 
 구현 계획은 `docs/plans/PLAN-<모듈 id>.md`에 둔다. 단계는 그 문서의 체크리스트로 관리하고, Plane에는 태스크 하나만 둔다.
