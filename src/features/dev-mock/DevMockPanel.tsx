@@ -12,6 +12,12 @@ export function DevMockPanel({ dev }: Props) {
   const buttons: Array<[string, () => void]> = [
     ["주문 1건", () => dev.addOrders(1)],
     ["주문 10건", () => dev.addOrders(10)],
+    // 본 창을 최소화하거나 다른 창을 앞에 둘 시간을 준다 (위젯 시험, T06).
+    ["5초 뒤 주문 1건", () => void setTimeout(() => dev.addOrders(1), 5000)],
+    [
+      "5초 뒤 주문 3건(같은 순간)",
+      () => void setTimeout(() => dev.addOrders(3), 5000),
+    ],
     ["고객 취소(가장 오래된 접수대기)", dev.customerCancelsOldestPending],
     ["다른 PC가 접수", dev.otherPcAcceptsOldestPending],
     [

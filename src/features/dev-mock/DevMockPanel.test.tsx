@@ -44,4 +44,23 @@ describe("DevMockPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "연결 잇기" }));
     expect(backend.dev.isConnected()).toBe(true);
   });
+
+  it("「5초 뒤 주문」은 5초가 지나야 주문을 만든다 (본 창을 최소화할 시간, T06)", () => {
+    vi.useFakeTimers();
+    try {
+      const backend = createMockOrderBackend({ delayMs: 0 });
+      const add = vi.spyOn(backend.dev, "addOrders");
+      render(<DevMockPanel dev={backend.dev} />);
+      fireEvent.click(screen.getByRole("button", { name: "5초 뒤 주문 1건" }));
+      fireEvent.click(
+        screen.getByRole("button", { name: "5초 뒤 주문 3건(같은 순간)" }),
+      );
+      expect(add).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(5000);
+      expect(add).toHaveBeenNthCalledWith(1, 1);
+      expect(add).toHaveBeenNthCalledWith(2, 3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

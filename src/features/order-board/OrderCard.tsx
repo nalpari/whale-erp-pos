@@ -1,6 +1,7 @@
 // 주문 카드 하나 (SPEC-order-board 2.3 · 2.4). 개인정보는 서버가 가린 값만 보인다.
 import { memo } from "react";
 import type { Order, OrderAction } from "../../shared/api/orders";
+import { BUTTON_COLORS, CARD_COLORS } from "./card-colors";
 import { ACTION_BUTTONS, BOARD_TEXTS, STATUS_LABELS } from "./board-texts";
 import {
   formatClock,
@@ -12,23 +13,12 @@ import { useNow } from "./use-now";
 
 const MINUTE_MS = 60_000;
 
-/** 색(p.11 그림) + 상태 글자. 색만으로 구분하지 않는다. */
-const CARD_COLORS = {
-  pending: "border-yellow-400 bg-yellow-50",
-  preparing: "border-blue-400 bg-blue-50",
-  ready: "border-green-500 bg-green-50",
-  "picked-up": "border-gray-400 bg-gray-100",
-  "store-cancelled": "border-gray-400 bg-gray-100",
-  "customer-cancelled": "border-gray-400 bg-gray-100",
-} as const;
-const BUTTON_COLORS = {
-  pending: "bg-yellow-500 text-gray-900",
-  preparing: "bg-blue-600 text-white",
-  ready: "bg-green-600 text-white",
-} as const;
-
 /** 1분마다 이 글자만 다시 그린다. */
-export function PickupText({ order }: { order: Order }) {
+export function PickupText({
+  order,
+}: {
+  order: Pick<Order, "pickupChoice" | "paidAt">;
+}) {
   const { label, note } = pickupSchedule(order, useNow(MINUTE_MS));
   return (
     <span>
@@ -81,6 +71,8 @@ export const OrderCard = memo(function OrderCard({
   return (
     <article
       aria-label={`픽업번호 ${order.pickupNumber}`}
+      // 위젯에서 카드를 눌러 팝업을 닫은 뒤 이 카드가 보이게 화면을 옮기는 기준이다.
+      data-order-id={order.orderId}
       // 터치 · 마우스 · 키보드(Enter · Space) 모두 요약 팝업을 연다. 팝업이 닫히면 초점이 이 카드로 돌아온다.
       tabIndex={onOpen ? 0 : undefined}
       onClick={() => onOpen?.(order.orderId)}
