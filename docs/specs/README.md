@@ -12,7 +12,8 @@
 | `logging` | T14 공통 로그 · 오류 기록 | WHALEERPPO-15 | [SPEC-logging.md](./SPEC-logging.md) | 승인 (2026-11-17) |
 | `order-sync` | T03 주문 수신 · 상태 동기화 | WHALEERPPO-4 | [SPEC-order-sync.md](./SPEC-order-sync.md) | 승인 (2026-11-18) |
 | `order-board` | T04 주문접수 화면 | WHALEERPPO-5 | [SPEC-order-board.md](./SPEC-order-board.md) | 승인 (2026-11-18) |
+| `order-summary` | T05 주문 요약 팝업 · 주문취소 팝업 | WHALEERPPO-6 | [SPEC-order-summary.md](./SPEC-order-summary.md) | 승인 (2026-11-19) |
 
-빌드 순서: `project-skeleton` → `app-shell` → `login` → `settings-printer` → `logging` → `order-sync` → `order-board`
+빌드 순서: `project-skeleton` → `app-shell` → `login` → `settings-printer` → `logging` → `order-sync` → `order-board` → `order-summary`
 
 구현 계획은 `docs/plans/PLAN-<모듈 id>.md`에 둔다. 단계는 그 문서의 체크리스트로 관리하고, Plane에는 태스크 하나만 둔다.

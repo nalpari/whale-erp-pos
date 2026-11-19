@@ -216,6 +216,7 @@ Idempotency-Key: 7c1e...           # 같은 요청 재전송 시 중복 처리 �
   ],
   "customerRequest": "얼음 조금만 주세요",
   "pickupChoice": "20min",
+  "statusTimes": { "preparingAt": "2026-11-17T09:23:00+09:00", "readyAt": null, "pickedUpAt": null },
   "payment": { "totalAmount": 12600, "discountAmount": 0, "paidAmount": 12600 },
   "customer": { "maskedName": "박*준", "phoneLast4": "1234", "orderCount": 3 }
 }
@@ -228,6 +229,7 @@ Idempotency-Key: 7c1e...           # 같은 요청 재전송 시 중복 처리 �
 | `pickupChoice` | 고객이 고른 픽업 시각(지금 · 5 · 10 · 20 · 30 · 40분 · 1시간 이상). 매장은 결제 시각 + 이 값으로 예정 시각을 계산 (Q26) |
 | `options[].groupName / optionName` | 주문서에 그대로 출력. **표시용 이름을 백엔드에서 내려 주세요** (매장에서 코드→이름 변환 안 함) |
 | `options[].quantity` | 샷 추가, 시럽 펌프 수 등 수량형 옵션 |
+| `statusTimes` | 제조중 · 제조완료 · 픽업완료가 된 시각(아직이면 null). 주문 요약 팝업의 처리 단계에 시:분으로 보임 (T05). [완료 취소]로 픽업완료를 되돌리면 `pickedUpAt`을 지워 주세요 |
 | `updatedAt` (또는 버전 번호) | 주문이 마지막으로 바뀐 시각. 매장은 가지고 있는 것보다 오래된 내용이 오면 무시함 (이벤트 순서 뒤바뀜 대비) |
 | `orderType` | 매장 / 포장 구분 (컵 종류 결정) |
 | `customerRequest` | 고객 요청사항 출력 |
