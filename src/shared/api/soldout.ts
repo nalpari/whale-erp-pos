@@ -15,6 +15,8 @@ interface CatalogItemBase {
   name: string;
   categoryName: string;
   price: number;
+  /** 품절 상태. 인기메뉴 API만 채운다(메뉴품절 API의 상품 목록에는 없다). */
+  soldOutMode?: SoldOutMode | null;
 }
 
 /** 메뉴는 카테고리 코드가 있고, 옵션은 카테고리가 없어 null이다. */
