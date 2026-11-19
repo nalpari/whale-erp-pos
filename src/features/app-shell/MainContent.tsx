@@ -36,6 +36,8 @@ export function MainContent() {
   const [soldoutPress, setSoldoutPress] = useState(0);
   // 품절 저장 · 삭제 · 추가 요청이 가는 중에는 메인 탭 이동을 막는다(결과 토스트가 사라지지 않게). 위젯 이동은 막지 않는다: 주문 처리가 먼저다.
   const [soldoutBusy, setSoldoutBusy] = useState(false);
+  // 품절 목록 검색어. 화면은 탭을 벗어나면 내려가므로 여기서 들고 있어 갔다 와도 남긴다(로그아웃하면 이 컴포넌트째 내려가 지워진다).
+  const [soldoutQuery, setSoldoutQuery] = useState("");
   // 매장정보에 저장하지 않은 변경이 있는데 다른 메인 탭을 누르면 확인창을 띄운다 (매장정보 SPEC 11장 A).
   // 화면은 이 탭일 때만 그려 내려가면 변경이 사라지므로, [나가기]는 탭만 옮기면 된다.
   const [storeInfoDirty, setStoreInfoDirty] = useState(false);
@@ -158,6 +160,8 @@ export function MainContent() {
               api={soldoutApi}
               refreshSeq={soldoutPress}
               onBusyChange={setSoldoutBusy}
+              query={soldoutQuery}
+              onQueryChange={setSoldoutQuery}
             />
           ) : (
             <Placeholder label={active.label} />
