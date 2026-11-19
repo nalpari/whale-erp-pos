@@ -58,9 +58,22 @@ const COLUMNS = "grid-cols-[5rem_6rem_1fr_7rem_6rem_8rem]";
 const CONTROL =
   "min-h-12 rounded-lg border border-gray-300 bg-white px-4 text-lg disabled:opacity-30";
 
-export function OrderHistoryScreen({ api }: { api: OrderHistoryApi }) {
+/** [주문내역] 탭을 누른 알림: 누를 때마다 seq가 오르고, at은 누른 시각(ms)이다. */
+export interface HistoryRefresh {
+  seq: number;
+  at: number;
+}
+
+export function OrderHistoryScreen({
+  api,
+  refresh,
+}: {
+  api: OrderHistoryApi;
+  refresh: HistoryRefresh;
+}) {
   // 며칠씩 켜 두므로 0시가 지나면 이전 · 다음 · 달력 범위가 따라가게 1분마다 시각을 읽는다.
-  const now = useNow(60_000);
+  // 탭을 누른 시각이 더 새로우면 그것을 쓴다: 0시 직후 신호(1분 간격)를 기다리지 않고 되돌림 · 조회가 오늘 기준이 된다.
+  const now = Math.max(useNow(60_000), refresh.at);
   // 처음 열면 오늘 (2.1).
   const [period, setPeriod] = useState<Period>(() => presets(now).today);
   const [tab, setTab] = useState<HistoryTab>("all");
@@ -140,16 +153,32 @@ export function OrderHistoryScreen({ api }: { api: OrderHistoryApi }) {
   const scroller = useRef<HTMLDivElement>(null);
   const savedScroll = useRef(0);
   const returnedFrom = useRef<string | null>(null);
+  const restoreScroll = useRef(false);
   useLayoutEffect(() => {
-    if (detailId !== null || returnedFrom.current === null || !loaded) return;
+    if (detailId !== null || !loaded) return;
+    if (!restoreScroll.current && returnedFrom.current === null) return;
     if (scroller.current) scroller.current.scrollTop = savedScroll.current;
-    scroller.current
-      ?.querySelector<HTMLElement>(
-        `[data-order-id="${CSS.escape(returnedFrom.current)}"]`,
-      )
-      ?.focus({ preventScroll: true });
+    if (returnedFrom.current !== null) {
+      scroller.current
+        ?.querySelector<HTMLElement>(
+          `[data-order-id="${CSS.escape(returnedFrom.current)}"]`,
+        )
+        ?.focus({ preventScroll: true });
+    }
     returnedFrom.current = null;
+    restoreScroll.current = false;
   }, [detailId, loaded]);
+
+  // 탭을 누를 때마다 같은 조건으로 다시 조회한다 (렌더 중에 맞춤). 처음 열 때는 마운트 조회가 있으므로 건너뛴다.
+  // 다시 조회하는 동안 목록이 비어 스크롤이 0으로 잘리므로 마지막 위치를 기억해 두었다가 데이터가 오면 되돌린다.
+  const [seenRefresh, setSeenRefresh] = useState(refresh.seq);
+  if (seenRefresh !== refresh.seq) {
+    setSeenRefresh(refresh.seq);
+    setReloadKey((k) => k + 1);
+  }
+  useEffect(() => {
+    restoreScroll.current = true;
+  }, [refresh.seq]);
 
   const prev = shiftPeriod(period, -1, now);
   const nextPeriod = shiftPeriod(period, 1, now);
@@ -183,7 +212,10 @@ export function OrderHistoryScreen({ api }: { api: OrderHistoryApi }) {
             />
             <button
               type="button"
-              onClick={() => setReloadKey((k) => k + 1)}
+              onClick={() => {
+                restoreScroll.current = true; // 다시 조회해도 보던 위치를 지킨다
+                setReloadKey((k) => k + 1);
+              }}
               className={CONTROL}
             >
               {HISTORY_TEXTS.refresh}
@@ -258,7 +290,14 @@ export function OrderHistoryScreen({ api }: { api: OrderHistoryApi }) {
           <p className="min-h-12 border-b border-gray-200 px-4 py-2 text-lg font-bold">
             {data && summaryLine(tab, data.counts, data.summary)}
           </p>
-          <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
+          <div
+            ref={scroller}
+            // 조회 중(목록이 비어 있을 때)의 0으로 잘린 위치는 기억하지 않는다.
+            onScroll={(e) => {
+              if (loaded) savedScroll.current = e.currentTarget.scrollTop;
+            }}
+            className="min-h-0 flex-1 overflow-y-auto"
+          >
             {loaded === null ? (
               <p className="p-8 text-center text-xl text-gray-500">
                 {HISTORY_TEXTS.loading}
@@ -383,6 +422,7 @@ export function OrderHistoryScreen({ api }: { api: OrderHistoryApi }) {
         <HistoryDetail
           orderId={detailId}
           api={api}
+          refreshSeq={refresh.seq}
           onBack={() => {
             returnedFrom.current = detailId;
             setDetailId(null);
