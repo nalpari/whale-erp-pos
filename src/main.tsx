@@ -1,6 +1,11 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./app/App";
+import { WidgetApp } from "./features/desktop-widget/WidgetApp";
+import {
+  createWidgetClient,
+  isWidgetWindow,
+} from "./features/desktop-widget/widget-host";
 import "./index.css";
 import {
   installConsoleBridge,
@@ -24,8 +29,14 @@ if (!rootElement) {
   throw new Error("#root 요소를 찾을 수 없습니다.");
 }
 
+// 위젯 창도 같은 화면 파일을 쓴다. 창 이름(label)이 위젯이면 위젯 화면만 그린다 (T06 스펙 4장).
+const widget = isWidgetWindow();
+if (widget) {
+  // 창 크기를 카드에 맞추므로 스크롤바가 생기지 않게 한다.
+  document.documentElement.style.overflow = "hidden";
+}
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <App />
+    {widget ? <WidgetApp client={createWidgetClient()} /> : <App />}
   </React.StrictMode>,
 );

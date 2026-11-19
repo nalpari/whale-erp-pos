@@ -8,7 +8,9 @@ import { createTokenStore } from "../shared/session/token-store";
 import { createMockOrderFeed } from "../shared/api/order-feed";
 import { createMockOrderBackend } from "../shared/api/orders";
 import { OrdersProvider } from "../shared/orders/OrdersProvider";
-import { createNoopSoundPlayer } from "../shared/sound/sound-player";
+import { createWebAudioSoundPlayer } from "../shared/sound/web-audio-player";
+import { DesktopWidgetProvider } from "../features/desktop-widget/DesktopWidgetProvider";
+import { createWidgetHost } from "../features/desktop-widget/widget-host";
 import { createLogApi } from "../shared/log/log-api";
 import { createAppWindow } from "../shared/platform/window";
 import {
@@ -31,8 +33,9 @@ function App() {
   // 가정: 백엔드 API가 정해지기 전이라 모의 서버를 쓴다 (SPEC-order-sync 5장). 주문 · 실시간 연결 · 주문받기가 같은 모의 서버를 본다.
   const [backend] = useState(() => createMockOrderBackend());
   const [orderFeed] = useState(() => createMockOrderFeed(backend));
-  // 소리 파일은 T06에서 넣는다. 그 전까지는 소리가 나지 않는다.
-  const [sound] = useState(createNoopSoundPlayer);
+  // 소리 파일이 없어 코드로 만든 소리를 낸다 (T06 스펙 11장 A).
+  const [sound] = useState(() => createWebAudioSoundPlayer());
+  const [widgetHost] = useState(createWidgetHost);
   // 가정: 로그인도 모의 구현을 쓴다 (SPEC-login 5장). 실제 서버를 붙이기 전까지는 설치 파일에서도 시험 계정으로만 로그인된다.
   const [authApi] = useState(() => createMockAuthApi());
   const [tokenStore] = useState(createTokenStore);
@@ -58,7 +61,9 @@ function App() {
         storeStatusApi={backend.storeStatusApi}
         sound={sound}
       >
-        <AppShell />
+        <DesktopWidgetProvider host={widgetHost}>
+          <AppShell />
+        </DesktopWidgetProvider>
       </OrdersProvider>
       {DevMockPanel && (
         <Suspense fallback={null}>
