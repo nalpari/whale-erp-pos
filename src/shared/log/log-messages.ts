@@ -131,6 +131,14 @@ export const logMessages = {
     `주문내역 ${kind === "list" ? "목록" : "상세"} 조회 ${timedOut ? "시간 초과" : `실패: ${errorName}`}${orderId ? ` (${orderId})` : ""}`,
   settingsFailed: (action: "save" | "load") =>
     action === "save" ? "설정 저장 실패" : "설정 읽기 실패",
+  // 소개 · 공지 본문은 남기지 않는다 (매장정보 SPEC 7장).
+  storeInfoSaved: () => "매장정보 저장",
+  storeInfoFailed: (
+    action: "load" | "save",
+    timedOut: boolean,
+    errorName: string,
+  ) =>
+    `매장정보 ${action === "load" ? "읽기" : "저장"} ${timedOut ? "시간 초과" : `실패: ${errorName}`}`,
 };
 
 /**
