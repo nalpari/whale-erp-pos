@@ -8,6 +8,8 @@ import { createTokenStore } from "../shared/session/token-store";
 import { createMockOrderFeed } from "../shared/api/order-feed";
 import { createMockOrderBackend } from "../shared/api/orders";
 import { OrderHistoryApiContext } from "../shared/api/order-history-context";
+import { createMockStoreInfoApi } from "../shared/api/store-info";
+import { StoreInfoApiContext } from "../shared/api/store-info-context";
 import { OrdersProvider } from "../shared/orders/OrdersProvider";
 import { createWebAudioSoundPlayer } from "../shared/sound/web-audio-player";
 import { WidgetSettingsProvider } from "../features/settings-widget/WidgetSettingsContext";
@@ -44,6 +46,8 @@ function App() {
   const [printerApi] = useState(createPrinterApi);
   const [printerSettingsStore] = useState(createPrinterSettingsStore);
   const [logApi] = useState(createLogApi);
+  // 가정: 매장정보도 모의 서버를 쓴다 (SPEC-store-info 5장).
+  const [storeInfoApi] = useState(() => createMockStoreInfoApi());
 
   return (
     <AppShellProvider
@@ -66,7 +70,9 @@ function App() {
         <WidgetSettingsProvider sound={sound}>
           <DesktopWidgetProvider host={widgetHost}>
             <OrderHistoryApiContext.Provider value={backend.historyApi}>
-              <AppShell />
+              <StoreInfoApiContext.Provider value={storeInfoApi}>
+                <AppShell />
+              </StoreInfoApiContext.Provider>
             </OrderHistoryApiContext.Provider>
           </DesktopWidgetProvider>
         </WidgetSettingsProvider>
