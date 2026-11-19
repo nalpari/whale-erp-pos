@@ -9,6 +9,8 @@ import { createMockOrderFeed } from "../shared/api/order-feed";
 import { createMockOrderBackend } from "../shared/api/orders";
 import { OrderHistoryApiContext } from "../shared/api/order-history-context";
 import { createMockStoreInfoApi } from "../shared/api/store-info";
+import { createMockPopularApi } from "../shared/api/popular";
+import { PopularApiContext } from "../shared/api/popular-context";
 import { createMockSoldOutApi } from "../shared/api/soldout";
 import { SoldOutApiContext } from "../shared/api/soldout-context";
 import { StoreInfoApiContext } from "../shared/api/store-info-context";
@@ -52,6 +54,8 @@ function App() {
   const [storeInfoApi] = useState(() => createMockStoreInfoApi());
   // 가정: 메뉴품절도 모의 서버를 쓴다 (SPEC-soldout 5장).
   const [soldoutApi] = useState(() => createMockSoldOutApi());
+  // 가정: AI챗봇 인기메뉴도 모의 서버를 쓴다. 상품 · 품절은 메뉴품절 모의와 같은 데이터 (SPEC-settings-ai-popular 5장).
+  const [popularApi] = useState(() => createMockPopularApi(soldoutApi));
 
   return (
     <AppShellProvider
@@ -76,7 +80,9 @@ function App() {
             <OrderHistoryApiContext.Provider value={backend.historyApi}>
               <StoreInfoApiContext.Provider value={storeInfoApi}>
                 <SoldOutApiContext.Provider value={soldoutApi}>
-                  <AppShell />
+                  <PopularApiContext.Provider value={popularApi}>
+                    <AppShell />
+                  </PopularApiContext.Provider>
                 </SoldOutApiContext.Provider>
               </StoreInfoApiContext.Provider>
             </OrderHistoryApiContext.Provider>
