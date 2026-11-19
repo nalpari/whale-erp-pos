@@ -3,6 +3,10 @@ import { useState } from "react";
 import { useAppShell } from "./AppShellContext";
 import { OrderHistoryScreen } from "../order-history/OrderHistoryScreen";
 import { useOrderHistoryApi } from "../../shared/api/order-history-context";
+import { useStoreInfoApi } from "../../shared/api/store-info-context";
+import { StoreInfoScreen } from "../store-info/StoreInfoScreen";
+import { STORE_INFO_TEXTS } from "../store-info/store-info-texts";
+import { ConfirmDialog } from "../../shared/ui/ConfirmDialog";
 import { CustomerCancelSound } from "../order-board/CustomerCancelSound";
 import { OrderBoardScreen } from "../order-board/OrderBoardScreen";
 import { WidgetSettingsScreen } from "../settings-widget/WidgetSettingsScreen";
@@ -10,7 +14,7 @@ import { PrinterSettingsScreen } from "../settings-printer/PrinterSettingsScreen
 import { useOrdersOptional } from "../../shared/orders/orders-context";
 import { panelId, tabId } from "../../shared/ui/tab-ids";
 import { TabBar } from "../../shared/ui/TabBar";
-import { MAIN_TABS, SETTINGS_TABS } from "./tabs";
+import { MAIN_TABS, SETTINGS_TABS, type MainTabId } from "./tabs";
 
 function Placeholder({ label }: { label: string }) {
   return (
@@ -24,6 +28,13 @@ export function MainContent() {
   // 주문 수신(OrdersProvider)이 없는 곳(일부 테스트)에서는 주문접수 화면 대신 자리표시를 둔다.
   const hasOrders = useOrdersOptional() !== null;
   const historyApi = useOrderHistoryApi();
+  const storeInfoApi = useStoreInfoApi();
+  // 매장정보에 저장하지 않은 변경이 있는데 다른 메인 탭을 누르면 확인창을 띄운다 (매장정보 SPEC 11장 A).
+  // 화면은 이 탭일 때만 그려 내려가면 변경이 사라지므로, [나가기]는 탭만 옮기면 된다.
+  const [storeInfoDirty, setStoreInfoDirty] = useState(false);
+  // 저장 요청이 가는 중에는 탭 이동을 막는다(결과 토스트가 사라지지 않게). 위젯 이동은 막지 않는다: 주문 처리가 먼저다.
+  const [storeInfoSaving, setStoreInfoSaving] = useState(false);
+  const [leaveTo, setLeaveTo] = useState<MainTabId | null>(null);
   const { state, actions, printerApi, printerSettingsStore } = useAppShell();
   const active =
     MAIN_TABS.find((t) => t.id === state.activeTab) ?? MAIN_TABS[0];
@@ -37,69 +48,115 @@ export function MainContent() {
   const settings =
     SETTINGS_TABS.find((t) => t.id === state.settingsTab) ?? SETTINGS_TABS[0];
 
+  // 탭 이동은 눌렀을 때와 확인창 [나가기]가 같은 길을 탄다: 주문내역은 어느 쪽으로 들어가도 다시 조회한다.
+  function goTo(id: MainTabId) {
+    actions.selectTab(id);
+    if (id === "order-history") {
+      setHistoryPress((p) => ({ seq: p.seq + 1, at: Date.now() }));
+    }
+  }
+  // 확인창이 떠 있는 동안 다른 경로(위젯)로 매장정보를 벗어났으면 확인창도 거둔다. 렌더 중에 맞춘다(효과 안 setState 금지).
+  if (leaveTo !== null && active.id !== "store-info") setLeaveTo(null);
+
   return (
     <>
-      {hasOrders && <CustomerCancelSound />}
-      <TabBar
-        label="메뉴"
-        tabs={MAIN_TABS}
-        activeId={state.activeTab}
-        idPrefix="main"
-        size="main"
-        onSelect={(id) => {
-          actions.selectTab(id);
-          if (id === "order-history") {
-            setHistoryPress((p) => ({ seq: p.seq + 1, at: Date.now() }));
-          }
-        }}
-      />
-      <section
-        role="tabpanel"
-        id={panelId("main", active.id)}
-        aria-labelledby={tabId("main", active.id)}
-        className="flex min-h-0 flex-1 flex-col"
-      >
-        {historyApi && hasOrders && historyVisited && (
-          <div hidden={!historyActive} className="flex min-h-0 flex-1 flex-col">
-            <OrderHistoryScreen api={historyApi} refresh={historyPress} />
-          </div>
-        )}
-        {historyActive && historyApi && hasOrders ? null : active.id ===
-          "settings" ? (
-          <>
-            <TabBar
-              label="환경설정 메뉴"
-              tabs={SETTINGS_TABS}
-              activeId={state.settingsTab}
-              idPrefix="settings"
-              size="sub"
-              onSelect={actions.selectSettingsTab}
-            />
-            <section
-              role="tabpanel"
-              id={panelId("settings", settings.id)}
-              aria-labelledby={tabId("settings", settings.id)}
+      {/* 확인창이 떠 있는 동안 뒤 화면을 터치 · 초점으로 건드리지 못하게 막는다. */}
+      <div inert={leaveTo !== null} className="flex min-h-0 flex-1 flex-col">
+        {hasOrders && <CustomerCancelSound />}
+        <TabBar
+          label="메뉴"
+          tabs={MAIN_TABS}
+          activeId={state.activeTab}
+          idPrefix="main"
+          size="main"
+          onSelect={(id) => {
+            if (
+              storeInfoSaving &&
+              active.id === "store-info" &&
+              id !== active.id
+            )
+              return;
+            if (
+              storeInfoDirty &&
+              active.id === "store-info" &&
+              id !== active.id
+            ) {
+              setLeaveTo(id);
+              return;
+            }
+            goTo(id);
+          }}
+        />
+        <section
+          role="tabpanel"
+          id={panelId("main", active.id)}
+          aria-labelledby={tabId("main", active.id)}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          {historyApi && hasOrders && historyVisited && (
+            <div
+              hidden={!historyActive}
               className="flex min-h-0 flex-1 flex-col"
             >
-              {settings.id === "printer" && state.session ? (
-                <PrinterSettingsScreen
-                  printerApi={printerApi}
-                  store={printerSettingsStore}
-                  storeName={state.session.store.name}
-                />
-              ) : settings.id === "widget" ? (
-                <WidgetSettingsScreen />
-              ) : (
-                <Placeholder label={settings.label} />
-              )}
-            </section>
-          </>
-        ) : active.id === "order-board" && hasOrders ? (
-          <OrderBoardScreen />
-        ) : (
-          <Placeholder label={active.label} />
-        )}
-      </section>
+              <OrderHistoryScreen api={historyApi} refresh={historyPress} />
+            </div>
+          )}
+          {historyActive && historyApi && hasOrders ? null : active.id ===
+            "settings" ? (
+            <>
+              <TabBar
+                label="환경설정 메뉴"
+                tabs={SETTINGS_TABS}
+                activeId={state.settingsTab}
+                idPrefix="settings"
+                size="sub"
+                onSelect={actions.selectSettingsTab}
+              />
+              <section
+                role="tabpanel"
+                id={panelId("settings", settings.id)}
+                aria-labelledby={tabId("settings", settings.id)}
+                className="flex min-h-0 flex-1 flex-col"
+              >
+                {settings.id === "printer" && state.session ? (
+                  <PrinterSettingsScreen
+                    printerApi={printerApi}
+                    store={printerSettingsStore}
+                    storeName={state.session.store.name}
+                  />
+                ) : settings.id === "widget" ? (
+                  <WidgetSettingsScreen />
+                ) : (
+                  <Placeholder label={settings.label} />
+                )}
+              </section>
+            </>
+          ) : active.id === "order-board" && hasOrders ? (
+            <OrderBoardScreen />
+          ) : active.id === "store-info" && storeInfoApi ? (
+            <StoreInfoScreen
+              api={storeInfoApi}
+              onDirtyChange={setStoreInfoDirty}
+              onSavingChange={setStoreInfoSaving}
+            />
+          ) : (
+            <Placeholder label={active.label} />
+          )}
+        </section>
+      </div>
+      {leaveTo && (
+        <ConfirmDialog
+          title={STORE_INFO_TEXTS.leave.title}
+          message={STORE_INFO_TEXTS.leave.message}
+          confirmLabel={STORE_INFO_TEXTS.leave.confirm}
+          cancelLabel={STORE_INFO_TEXTS.leave.cancel}
+          onConfirm={() => {
+            goTo(leaveTo);
+            setLeaveTo(null);
+          }}
+          onCancel={() => setLeaveTo(null)}
+        />
+      )}
     </>
   );
 }
