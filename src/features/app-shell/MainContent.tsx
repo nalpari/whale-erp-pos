@@ -6,6 +6,9 @@ import { useOrderHistoryApi } from "../../shared/api/order-history-context";
 import { useStoreInfoApi } from "../../shared/api/store-info-context";
 import { useSoldOutApi } from "../../shared/api/soldout-context";
 import { SoldOutScreen } from "../soldout/SoldOutScreen";
+import { usePopularApi } from "../../shared/api/popular-context";
+import { AiPopularScreen } from "../settings-ai-popular/AiPopularScreen";
+import { canEditSetting } from "../../shared/session/permissions";
 import { StoreInfoScreen } from "../store-info/StoreInfoScreen";
 import { STORE_INFO_TEXTS } from "../store-info/store-info-texts";
 import { ConfirmDialog } from "../../shared/ui/ConfirmDialog";
@@ -32,6 +35,11 @@ export function MainContent() {
   const historyApi = useOrderHistoryApi();
   const storeInfoApi = useStoreInfoApi();
   const soldoutApi = useSoldOutApi();
+  const popularApi = usePopularApi();
+  // [AI챗봇 인기메뉴 설정] 탭을 누를 때마다(이미 그 탭일 때도) 목록을 다시 조회하게 알린다 (SPEC-settings-ai-popular 3장).
+  const [popularPress, setPopularPress] = useState(0);
+  // 인기메뉴 추가 · 삭제 요청이 가는 중에는 메인 탭 · 환경설정 하위 탭 이동을 막는다. 위젯 이동은 막지 않는다: 주문 처리가 먼저다.
+  const [popularBusy, setPopularBusy] = useState(false);
   // [메뉴품절] 탭을 누를 때마다(이미 그 탭일 때도) 목록을 다시 조회하게 알린다 (메뉴품절 SPEC 11장 A).
   const [soldoutPress, setSoldoutPress] = useState(0);
   // 품절 저장 · 삭제 · 추가 요청이 가는 중에는 메인 탭 이동을 막는다(결과 토스트가 사라지지 않게). 위젯 이동은 막지 않는다: 주문 처리가 먼저다.
@@ -56,6 +64,8 @@ export function MainContent() {
   if (historyActive && !historyVisited) setHistoryVisited(true);
   const settings =
     SETTINGS_TABS.find((t) => t.id === state.settingsTab) ?? SETTINGS_TABS[0];
+  const popularActive =
+    active.id === "settings" && settings.id === "ai-popular-menu";
 
   // 탭 이동은 눌렀을 때와 확인창 [나가기]가 같은 길을 탄다: 주문내역은 어느 쪽으로 들어가도 다시 조회한다.
   function goTo(id: MainTabId) {
@@ -86,6 +96,7 @@ export function MainContent() {
               id !== active.id
             )
               return;
+            if (popularBusy && popularActive && id !== active.id) return;
             if (
               storeInfoSaving &&
               active.id === "store-info" &&
@@ -126,7 +137,12 @@ export function MainContent() {
                 activeId={state.settingsTab}
                 idPrefix="settings"
                 size="sub"
-                onSelect={actions.selectSettingsTab}
+                onSelect={(id) => {
+                  // 요청 중에는 같은 탭을 다시 눌러도 재조회하지 않는다(목록이 오류 화면으로 바뀌는 것을 막는다).
+                  if (popularBusy && popularActive) return;
+                  actions.selectSettingsTab(id);
+                  if (id === "ai-popular-menu") setPopularPress((n) => n + 1);
+                }}
               />
               <section
                 role="tabpanel"
@@ -142,6 +158,15 @@ export function MainContent() {
                   />
                 ) : settings.id === "widget" ? (
                   <WidgetSettingsScreen />
+                ) : settings.id === "ai-popular-menu" &&
+                  popularApi &&
+                  state.session ? (
+                  <AiPopularScreen
+                    api={popularApi}
+                    canEdit={canEditSetting(state.session, "aiPopular")}
+                    refreshSeq={popularPress}
+                    onBusyChange={setPopularBusy}
+                  />
                 ) : (
                   <Placeholder label={settings.label} />
                 )}
