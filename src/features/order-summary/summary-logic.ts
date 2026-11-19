@@ -19,7 +19,7 @@ export interface SummaryButtons {
   next: { action: NextAction; label: string } | null;
 }
 
-/** 스펙 2.3의 표(Q27). 인쇄 버튼은 T12 전까지 늘 막혀 있어 표에 두지 않는다. */
+/** 스펙 2.3의 표(Q27). 인쇄 버튼은 상태 버튼과 따로 정해지므로(영수증은 주문 상태와 무관, 주문서는 접수대기에서 막힘) 표에 두지 않는다. */
 export function summaryButtons(status: OrderStatus): SummaryButtons {
   switch (status) {
     case "pending":

@@ -1,4 +1,4 @@
-// 시험 페이지에 찍을 줄 (스펙 2.3-2). 글자를 그리는 일은 Rust print_test_page가 한다.
+// 시험 페이지에 찍을 줄 (스펙 2.3-2). 글자를 그리는 일은 Rust print_document가 한다.
 
 const pad = (n: number) => String(n).padStart(2, "0");
 

@@ -146,6 +146,7 @@ describe("프린터설정 화면", () => {
   it("목록을 못 읽으면 오류 문구를 보인다", async () => {
     const printerApi: PrinterApi = {
       listPrinters: vi.fn().mockRejectedValue(new Error("spooler")),
+      printDocument: vi.fn(),
       printTestPage: vi.fn(),
     };
     await renderScreen({ printerApi });
@@ -315,7 +316,11 @@ describe("프린터설정 화면", () => {
       return rejected;
     });
     await renderScreen({
-      printerApi: { listPrinters, printTestPage: vi.fn() },
+      printerApi: {
+        listPrinters,
+        printDocument: vi.fn(),
+        printTestPage: vi.fn(),
+      },
       store: createMemoryPrinterSettingsStore(settingsWith("A")),
     });
     // 거절이 화면에 반영될 때까지 기다린 뒤 본다.
@@ -361,6 +366,7 @@ describe("프린터설정 화면", () => {
     it("실패하면 실패 문구를 보인다", async () => {
       const printerApi: PrinterApi = {
         listPrinters: async () => ["A"],
+        printDocument: vi.fn(),
         printTestPage: vi.fn().mockRejectedValue(new Error("no printer")),
       };
       await renderScreen({
@@ -383,7 +389,11 @@ describe("프린터설정 화면", () => {
         () => new Promise<void>((resolve) => (finish = resolve)),
       );
       await renderScreen({
-        printerApi: { listPrinters: async () => ["A"], printTestPage },
+        printerApi: {
+          listPrinters: async () => ["A"],
+          printDocument: vi.fn(),
+          printTestPage,
+        },
         store: createMemoryPrinterSettingsStore(settingsWith("A")),
       });
       const button = within(slot(1)).getByRole("button", { name: "시험 인쇄" });
