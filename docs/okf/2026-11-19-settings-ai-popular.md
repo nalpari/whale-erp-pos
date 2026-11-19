@@ -3,7 +3,7 @@ type: Task Report
 title: T13. 환경설정 — AI챗봇 인기메뉴 설정
 description: 고객 앱 AI 챗봇의 인기 메뉴에 나올 메뉴를 최대 5개 고르고 바로 저장한다.
 tags: [settings-ai-popular, react]
-status: draft
+status: stable
 generated:
   by: claude-code/claude-opus-5-5
   at: 2026-11-19T15:06:31+09:00
@@ -17,6 +17,9 @@ sources:
   - id: task
     resource: plane:WHALEERPPO-14
     title: "[F-AIPOPM] T13. 환경설정 — AI챗봇 인기메뉴 설정"
+verified:
+  - by: human:yjnoh
+    at: 2026-11-19T15:27:56+09:00
 ---
 
 # 목표
@@ -47,7 +50,7 @@ sources:
 - 지휘 세션이 워크트리에서 직접 실행 (최종 A-2 반영 뒤): `pnpm lint` · `pnpm typecheck` · `pnpm format:check` · `pnpm test`(55파일 737개) · `pnpm build` 통과. 첫 보고 뒤 `cargo fmt --check` · `cargo clippy -q -- -D warnings` · `cargo test`(35개) 통과(Rust 변경 없음). T09 테스트 파일 변경 없음 확인
 - ② 리뷰(Opus 5.5): 8건 → 고침 6(삭제 중 추가 버튼 잠금, 불러오기 화면에 갇히고 토스트가 안 보이던 문제, 「최대 -1개 더」 막기 · 한도 초과 제출 막기, 숨김 줄 회색, 로그 정리, 주석) · 보류 2(일부 추가 문구 → 사용자 결정 A-2로 반영, 공용 타입의 soldOutMode — 낮음)
 - ③ 리뷰(Opus 5.5, code-reviewer · pr-test-analyzer · silent-failure-hunter): code 0건, 테스트 8건 → 보강 6 · 보류 2, 오류 처리 4건 → 고침 2(요청 중 같은 탭 재누름 무시, 한도가 줄었을 때 안내) · 보류 2(아래 남은 일)
-- Linux 실제 창 (사용자, 머지 뒤): 미확인
+- Linux 실제 창 (사용자, 머지 뒤 `GDK_BACKEND=x11`, 2026-11-19): 웨일ERP 계정 1~5 · 점포번호 계정 6 확인 순서대로 확인, 정상
 - Windows 수동 체크리스트 (사용자, 미확인):
   1. 두 계정으로 실제 창 확인 순서를 설치 파일에서 반복
   2. 터치로 체크박스 · [추가하기] · [삭제] · 확인창이 잘 눌리는지
@@ -71,5 +74,6 @@ sources:
 - 2026-11-19T15:18+09:00 작업 세션 보고: 구현 · ① · ② 8건(고침 6) · ③(보강 6 · 고침 2), 질문 A · B → 지휘 세션 ① 직접 재실행 통과(737개 · Rust 35개)
 - 2026-11-19T15:20+09:00 사용자 답: A-2(중립 문구), B-1(재누름 무시 확정) → 작업 세션 반영, 지휘 세션 ① 재확인(737개)
 - 2026-11-19T15:24+09:00 스펙 결정 C · D main 커밋 `6324779`, 사용자 "a-1,b-1" → 커밋 · 머지
+- 2026-11-19T15:27+09:00 머지 `ad292c4`, main ① 통과(737개 · Rust 35개). 지휘 세션이 앱을 켜고 사용자가 두 계정으로 실제 창 확인 정상, 사용자 "a-1"로 OKF 승인(stable)
 
 [^spec]: SPEC-settings-ai-popular.md
