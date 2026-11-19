@@ -19,6 +19,7 @@ import { createWebAudioSoundPlayer } from "../shared/sound/web-audio-player";
 import { WidgetSettingsProvider } from "../features/settings-widget/WidgetSettingsContext";
 import { DesktopWidgetProvider } from "../features/desktop-widget/DesktopWidgetProvider";
 import { createWidgetHost } from "../features/desktop-widget/widget-host";
+import { PrintFormsProvider } from "../features/print-forms/PrintFormsProvider";
 import { createLogApi } from "../shared/log/log-api";
 import { createAppWindow } from "../shared/platform/window";
 import {
@@ -31,6 +32,15 @@ const DevMockPanel = import.meta.env.DEV
   ? lazy(() =>
       import("../features/dev-mock/DevMockPanel").then((m) => ({
         default: m.DevMockPanel,
+      })),
+    )
+  : null;
+
+// 개발 모드의 출력 미리보기 (T12 스펙 11장 C). 운영 빌드에는 들어가지 않는다.
+const DevPrintPreview = import.meta.env.DEV
+  ? lazy(() =>
+      import("../features/dev-mock/DevPrintPreview").then((m) => ({
+        default: m.DevPrintPreview,
       })),
     )
   : null;
@@ -76,19 +86,26 @@ function App() {
         sound={sound}
       >
         <WidgetSettingsProvider sound={sound}>
-          <DesktopWidgetProvider host={widgetHost}>
-            <OrderHistoryApiContext.Provider value={backend.historyApi}>
-              <StoreInfoApiContext.Provider value={storeInfoApi}>
-                <SoldOutApiContext.Provider value={soldoutApi}>
-                  <PopularApiContext.Provider value={popularApi}>
-                    <AppShell />
-                  </PopularApiContext.Provider>
-                </SoldOutApiContext.Provider>
-              </StoreInfoApiContext.Provider>
-            </OrderHistoryApiContext.Provider>
-          </DesktopWidgetProvider>
+          <PrintFormsProvider>
+            <DesktopWidgetProvider host={widgetHost}>
+              <OrderHistoryApiContext.Provider value={backend.historyApi}>
+                <StoreInfoApiContext.Provider value={storeInfoApi}>
+                  <SoldOutApiContext.Provider value={soldoutApi}>
+                    <PopularApiContext.Provider value={popularApi}>
+                      <AppShell />
+                    </PopularApiContext.Provider>
+                  </SoldOutApiContext.Provider>
+                </StoreInfoApiContext.Provider>
+              </OrderHistoryApiContext.Provider>
+            </DesktopWidgetProvider>
+          </PrintFormsProvider>
         </WidgetSettingsProvider>
       </OrdersProvider>
+      {DevPrintPreview && (
+        <Suspense fallback={null}>
+          <DevPrintPreview />
+        </Suspense>
+      )}
       {DevMockPanel && (
         <Suspense fallback={null}>
           <DevMockPanel dev={backend.dev} />
