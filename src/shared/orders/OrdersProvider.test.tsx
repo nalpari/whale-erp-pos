@@ -147,6 +147,7 @@ describe("받기 (스펙 3.1 · 3.2)", () => {
       items: [{ name: "시험", quantity: 1 }],
       customerName: "홍*동",
       phoneLast4: "0000",
+      statusTimes: { preparingAt: null, readyAt: null, pickedUpAt: null },
     });
     const events: OrderEvent[] = [];
     for (let i = 0; i < 100; i += 1) {

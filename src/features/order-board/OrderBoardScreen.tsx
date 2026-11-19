@@ -24,6 +24,7 @@ import {
   STATUS_LABELS,
   type BoardTabId,
 } from "./board-texts";
+import { OrderSummaryDialog } from "../order-summary/OrderSummaryDialog";
 import { OrderCard } from "./OrderCard";
 import {
   newlyCustomerCancelled,
@@ -56,6 +57,7 @@ export function OrderBoardScreen() {
     null,
   );
   const [overflowing, setOverflowing] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
   // 0시가 지나면 [픽업완료] 탭이 비워지도록 날짜가 바뀔 때만 다시 그린다 (값이 같으면 다시 그리지 않는다).
   const [dayStart, setDayStart] = useState(() => startOfDay(Date.now()));
   useEffect(() => {
@@ -71,6 +73,8 @@ export function OrderBoardScreen() {
   useEffect(() => {
     latest.current = { orders, changeStatus };
   });
+  // 이 PC가 [주문취소]를 보낸 주문. 그 성공으로 팝업이 닫힐 때는 「다른 PC」 안내를 띄우지 않는다.
+  const ownCancel = useRef<string | null>(null);
   const padded = useRef(false);
   const bannerSeq = useRef(0);
   const scroller = useRef<HTMLDivElement>(null);
@@ -97,10 +101,26 @@ export function OrderBoardScreen() {
     setToast((t) => ({ key: (t?.key ?? 0) + 1, message }));
   }, []);
 
-  // 실패 문구는 T03이 준 것을 그대로 토스트로 보인다 (2.6).
+  // 실패 문구는 T03이 준 것을 그대로 토스트로 보이고, 앞에 「#번호 」를 붙인다 (2.6). 요약 팝업의 실패도 같은 길로 온다.
+  const reportFailure = useCallback(
+    (orderId: string, message: string) => {
+      const order = latest.current.orders.find((o) => o.orderId === orderId);
+      showToast(
+        order ? BOARD_TEXTS.failureToast(order.pickupNumber, message) : message,
+      );
+    },
+    [showToast],
+  );
   const run = useCallback(
     async (orderId: string, action: Exclude<OrderAction, "cancel">) => {
-      const result = await latest.current.changeStatus(orderId, action);
+      let result: Awaited<ReturnType<typeof latest.current.changeStatus>>;
+      try {
+        result = await latest.current.changeStatus(orderId, action);
+      } catch {
+        // 던지지 않는 계약이지만 던져도 점원에게는 실패로 보인다 (카드 버튼 · 요약 팝업 공통).
+        reportFailure(orderId, ORDER_MESSAGES.failed);
+        return false;
+      }
       if (result.ok) return true;
       // 문구 없는 거절은 [완료 취소]일 때만 실패 문구를 보인다: 5초가 끝나는 순간 누르면 T03이 서버에 보내지 않고 거절하는데
       // 점원은 되돌렸다고 믿기 때문이다 (order-sync 11장 F). 다른 버튼은 요청 중에 이미 막혀 있어 조용히 넘긴다.
@@ -110,23 +130,17 @@ export function OrderBoardScreen() {
           : action === "undo-pickup"
             ? ORDER_MESSAGES.failed
             : null;
-      if (message) {
-        const order = latest.current.orders.find((o) => o.orderId === orderId);
-        showToast(
-          order
-            ? BOARD_TEXTS.failureToast(order.pickupNumber, message)
-            : message,
-        );
-      }
+      if (message) reportFailure(orderId, message);
       return false;
     },
-    [showToast],
+    [reportFailure],
   );
   const handleAction = useCallback(
     async (orderId: string, action: Exclude<OrderAction, "cancel">) => {
       const ok = await run(orderId, action);
       const order = latest.current.orders.find((o) => o.orderId === orderId);
       if (ok && action === "pickup" && order) addBanner(order, "pickup");
+      return ok;
     },
     [run, addBanner],
   );
@@ -162,6 +176,29 @@ export function OrderBoardScreen() {
     [orders, sort, filters, dayStart, lingering],
   );
   const list = tab === "board" ? board : pickedUp;
+  // 열린 동안 목록에서 사라지거나(예: 다시 조회한 응답에 없음) 취소로 바뀌면 팝업(과 취소 사유 팝업)이 같이 닫힌다 (2.5).
+  // 고객 취소 배너는 위의 고객 취소 감지가 그대로 띄운다.
+  const found = openId ? orders.find((o) => o.orderId === openId) : undefined;
+  const openOrder =
+    found &&
+    found.status !== "store-cancelled" &&
+    found.status !== "customer-cancelled"
+      ? found
+      : undefined;
+  // 누르지 않았는데 팝업이 사라지면, 고객 취소(배너가 알린다)가 아닐 때 이유를 알린다 (사용자 결정 B-2).
+  // openId는 지우지 않는다(효과 안 setState 금지): 같은 id로 두 번 알리지 않게 notified로 막고, 카드를 새로 누를 때 다시 비운다. (0시 정리로 지워진 주문이 응답에 다시 들어오면 팝업이 다시 열릴 수 있으나, 서버 응답이 앞뒤가 안 맞을 때뿐이다.)
+  const notified = useRef<string | null>(null);
+  useEffect(() => {
+    if (!openId || openOrder || notified.current === openId) return;
+    notified.current = openId;
+    if (
+      found?.status !== "customer-cancelled" &&
+      ownCancel.current !== openId
+    ) {
+      reportFailure(openId, ORDER_MESSAGES.alreadyHandled);
+    }
+    ownCancel.current = null;
+  }, [openId, openOrder, found, reportFailure]);
 
   // [이전] [다음]은 카드가 한 화면을 넘을 때만 보인다 (Q23).
   useLayoutEffect(() => {
@@ -266,6 +303,10 @@ export function OrderBoardScreen() {
                     order={order}
                     busy={!!inFlight[order.orderId]}
                     onAction={handleAction}
+                    onOpen={(id) => {
+                      notified.current = null;
+                      setOpenId(id);
+                    }}
                   />
                 ))}
               </div>
@@ -293,6 +334,26 @@ export function OrderBoardScreen() {
         onExpire={removeBanner}
         onUndo={handleUndo}
       />
+      {openOrder && (
+        <OrderSummaryDialog
+          key={openOrder.orderId}
+          order={openOrder}
+          busy={!!inFlight[openOrder.orderId]}
+          // 요청이 끝나기 전에 다른 카드를 열었다면 그 팝업을 닫지 않도록 이 주문의 팝업일 때만 닫는다.
+          onClose={() => {
+            ownCancel.current = null;
+            setOpenId((id) => (id === openOrder.orderId ? null : id));
+          }}
+          onAction={handleAction}
+          onError={(id, message) => {
+            ownCancel.current = null; // 실패했으니 이 PC가 취소한 것이 아니다
+            reportFailure(id, message);
+          }}
+          onCancelRequest={(id) => {
+            ownCancel.current = id;
+          }}
+        />
+      )}
       {toast && (
         <Toast
           key={toast.key}

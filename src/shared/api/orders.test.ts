@@ -3,6 +3,40 @@ import type { OrderEvent } from "./order-feed";
 import { createMockOrderBackend } from "./orders";
 
 describe("모의 서버", () => {
+  it("상태가 바뀔 때마다 상태별 시각을 채우고, 완료 취소하면 픽업완료 시각을 지운다 (T05 결정 B)", async () => {
+    const backend = createMockOrderBackend({ delayMs: 0 });
+    backend.dev.addOrders(1);
+    const [order] = await backend.api.fetchOrders();
+    expect(order.statusTimes).toEqual({
+      preparingAt: null,
+      readyAt: null,
+      pickedUpAt: null,
+    });
+    const send = (action: "accept" | "complete" | "pickup" | "undo-pickup") =>
+      backend.api.changeStatus({
+        orderId: order.orderId,
+        action,
+        idempotencyKey: `k-${action}`,
+      });
+    const times = async () => (await backend.api.fetchOrders())[0].statusTimes;
+
+    await send("accept");
+    const afterAccept = await times();
+    expect(afterAccept.preparingAt).toEqual(expect.any(Number));
+    expect(afterAccept.readyAt).toBeNull();
+    await send("complete");
+    expect((await times()).readyAt).toEqual(expect.any(Number));
+    await send("pickup");
+    const afterPickup = await times();
+    expect(afterPickup.pickedUpAt).toEqual(expect.any(Number));
+    expect(afterPickup.readyAt).toEqual(expect.any(Number));
+    expect(afterPickup.preparingAt).toBe(afterAccept.preparingAt);
+    await send("undo-pickup");
+    expect((await times()).pickedUpAt).toBeNull();
+    // 제조완료가 된 처음 시각은 그대로다
+    expect((await times()).readyAt).toBe(afterPickup.readyAt);
+  });
+
   it("같은 멱등키로 다시 보내도 한 번만 처리한다", async () => {
     const backend = createMockOrderBackend({ delayMs: 0 });
     backend.dev.addOrders(1);

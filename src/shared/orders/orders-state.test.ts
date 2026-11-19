@@ -30,6 +30,7 @@ function order(
     items: [{ name: "시험 음료", quantity: 1 }],
     customerName: "홍*동",
     phoneLast4: "0000",
+    statusTimes: { preparingAt: null, readyAt: null, pickedUpAt: null },
   };
 }
 
