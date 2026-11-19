@@ -16,6 +16,7 @@ export const SOLDOUT_TEXTS = {
   add: "+ 품절 상품 추가",
   empty: "품절 상품이 없습니다.",
   search: "상품명 검색",
+  searchButton: "검색",
   clearSearch: "검색어 지우기",
   noMatch: "검색된 품절 상품이 없습니다.",
   loading: "품절 목록을 불러오는 중입니다.",

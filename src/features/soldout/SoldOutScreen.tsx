@@ -57,6 +57,7 @@ export function SoldOutScreen({
   const [removing, setRemoving] = useState<SoldOutEntry | null>(null);
   const [popupOpen, setPopupOpen] = useState(false);
   const [adding, setAdding] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState<{ id: number; message: string } | null>(
     null,
   );
@@ -245,37 +246,53 @@ export function SoldOutScreen({
         inert={popupOpen || removing !== null}
         className="flex min-h-0 flex-1 flex-col"
       >
-        <div className="flex items-center justify-between gap-4 px-8 pt-6">
-          <p className="text-lg text-gray-600">{T.guide}</p>
+        {/* 한 줄: 검색칸(남는 폭) · [검색] · [+ 품절 상품 추가]. 1024px에서도 넘치지 않게 오른쪽 둘은 줄어들지 않는 폭이다. */}
+        <form
+          role="search"
+          className="flex items-center gap-3 px-8 pt-6"
+          onSubmit={(e) => {
+            // 치는 대로 이미 걸러져 있어 다시 적용할 것은 없다. Enter · [검색]은 초점을 빼 화상 키보드를 닫는 것이 일이다.
+            e.preventDefault();
+            searchRef.current?.blur();
+          }}
+        >
+          <div className="relative min-w-0 flex-1">
+            <input
+              ref={searchRef}
+              type="text"
+              aria-label={T.search}
+              placeholder={T.search}
+              value={query}
+              onChange={(e) => onQueryChange(e.target.value)}
+              className="h-12 w-full rounded-xl border border-gray-300 pr-12 pl-4 text-lg"
+            />
+            {query !== "" && (
+              <button
+                type="button"
+                aria-label={T.clearSearch}
+                onClick={() => onQueryChange("")}
+                className="absolute top-0 right-0 flex size-12 items-center justify-center text-2xl text-gray-500"
+              >
+                ×
+              </button>
+            )}
+          </div>
+          <button
+            type="submit"
+            className="h-12 w-24 shrink-0 rounded-xl border border-blue-600 text-lg font-bold text-blue-700"
+          >
+            {T.searchButton}
+          </button>
           <button
             type="button"
             onClick={() => setPopupOpen(true)}
-            className="h-14 shrink-0 rounded-xl bg-blue-600 px-6 text-xl font-bold text-white"
+            className="h-12 shrink-0 rounded-xl bg-blue-600 px-6 text-lg font-bold text-white"
           >
             {T.add}
           </button>
-        </div>
-        <div className="relative mx-8 mt-4 w-80">
-          <input
-            type="text"
-            aria-label={T.search}
-            placeholder={T.search}
-            value={query}
-            onChange={(e) => onQueryChange(e.target.value)}
-            className="h-12 w-full rounded-xl border border-gray-300 pr-12 pl-4 text-lg"
-          />
-          {query !== "" && (
-            <button
-              type="button"
-              aria-label={T.clearSearch}
-              onClick={() => onQueryChange("")}
-              className="absolute top-0 right-0 flex size-12 items-center justify-center text-2xl text-gray-500"
-            >
-              ×
-            </button>
-          )}
-        </div>
-        <div className="mt-2">
+        </form>
+        <p className="px-8 pt-3 text-lg text-gray-600">{T.guide}</p>
+        <div className="mt-3">
           <TabBar<StatusTab>
             label="품절 상태"
             tabs={tabs}
