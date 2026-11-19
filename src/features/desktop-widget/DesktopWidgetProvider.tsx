@@ -17,6 +17,7 @@ import { logInfo } from "../../shared/log/log";
 import { logMessages } from "../../shared/log/log-messages";
 import { ORDER_MESSAGES } from "../../shared/orders/order-texts";
 import { useOrders } from "../../shared/orders/orders-context";
+import { usePrintForms } from "../print-forms/print-forms-context";
 import { UNDO_WINDOW_MS } from "../../shared/orders/orders-state";
 import { ALERT_REPEAT_MS } from "../../shared/sound/sound-player";
 import { Toast } from "../../shared/ui/Toast";
@@ -44,6 +45,8 @@ interface Props {
 export function DesktopWidgetProvider({ host, children }: Props) {
   const { state: shell, actions } = useAppShell();
   const { orders, sound, inFlight, changeStatus, onNewOrder } = useOrders();
+  // 주문서 출력에 실패한 주문은 카드에 「미출력」 꼬리표를 붙인다 (T12).
+  const unprinted = usePrintForms()?.unprinted;
   const active = shell.session !== null;
   // 환경설정의 위젯설정: 보일 상태 · 위치. 바꾸면 바로 다음 화면부터 반영된다 (T10).
   const { settings } = useWidgetSettings();
@@ -173,8 +176,18 @@ export function DesktopWidgetProvider({ host, children }: Props) {
         inFlight,
         failures,
         statuses,
+        unprinted,
       }),
-    [orders, dismissed, lingering, autoOffCard, inFlight, failures, statuses],
+    [
+      orders,
+      dismissed,
+      lingering,
+      autoOffCard,
+      inFlight,
+      failures,
+      statuses,
+      unprinted,
+    ],
   );
   // 로그아웃하면 위젯이 닫힌다 (3.1). 카드가 0장이 되면 "띄운 상태"도 끈다 (3.2): 안 그러면 나중에 카드가 생길 때
   // 본 창이 앞인데도 위젯이 떠 버린다. 렌더 중에 고쳐 두면 효과를 거치지 않고 바로 반영된다.

@@ -112,6 +112,14 @@ describe("buildWidgetView", () => {
     expect(view.visible).toBe(true);
     expect(view.cards).toHaveLength(1);
   });
+  it("주문서 출력에 실패한 주문의 카드에만 「미출력」 표시를 싣는다 (T12)", () => {
+    const view = buildWidgetView(
+      [order("a1", "pending", 1), order("b2", "pending", 2)],
+      { ...base, unprinted: new Set(["b2"]) },
+    );
+    expect(view.cards[0]).not.toHaveProperty("unprinted");
+    expect(view.cards[1]).toMatchObject({ unprinted: true });
+  });
   it("카드가 0장이면 숨긴다. 자동 OFF 카드만 있어도 보인다", () => {
     expect(buildWidgetView([], base).visible).toBe(false);
     expect(buildWidgetView([], { ...base, autoOffCard: true }).visible).toBe(

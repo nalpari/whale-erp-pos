@@ -8,5 +8,6 @@ export const WIDGET_TEXTS = {
   cancel: "주문취소",
   moreOrders: (n: number) => `+ ${n}건 더 있음`,
   pickedUp: "픽업완료",
+  unprinted: "미출력",
   moreItems: (n: number) => `+ 외 ${n}개`,
 } as const;

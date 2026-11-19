@@ -144,6 +144,23 @@ export const logMessages = {
     orderId?: string,
   ) =>
     `주문내역 ${kind === "list" ? "목록" : "상세"} 조회 ${timedOut ? "시간 초과" : `실패: ${errorName}`}${orderId ? ` (${orderId})` : ""}`,
+  // 출력 내용(고객명 · 요청사항 · 카드 · 점포 정보)은 남기지 않는다. 주문은 orderId, 이유는 고정 문구만 (T12 스펙 8장).
+  printResult: (
+    kind: "order" | "retry" | "receipt",
+    orderId: string,
+    slotNumber: number,
+    result: { ok: true } | { ok: false; reason: string },
+  ) =>
+    `${kind === "receipt" ? "영수증" : kind === "retry" ? "주문서 다시 인쇄" : "주문서"} 출력: ${orderId}, 슬롯 ${slotNumber}, ${result.ok ? "성공" : `실패 (${result.reason})`}`,
+  printLate: (
+    kind: "order" | "retry" | "receipt",
+    orderId: string,
+    slotNumber: number,
+    ok: boolean,
+  ) =>
+    `${kind === "receipt" ? "영수증" : "주문서"} 출력 결과가 늦게 도착(무시함): ${orderId}, 슬롯 ${slotNumber}, ${ok ? "성공" : "실패"}`,
+  printSkipped: (orderId: string, retry: boolean) =>
+    `주문서 ${retry ? "다시 인쇄" : "자동 출력"} 건너뜀: ${orderId}, 「주문서」 체크된 슬롯 없음`,
   settingsFailed: (action: "save" | "load") =>
     action === "save" ? "설정 저장 실패" : "설정 읽기 실패",
   // 소개 · 공지 본문은 남기지 않는다 (매장정보 SPEC 7장).

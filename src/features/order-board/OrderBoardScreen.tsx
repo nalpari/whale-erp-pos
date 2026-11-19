@@ -27,6 +27,8 @@ import {
 import { OrderSummaryDialog } from "../order-summary/OrderSummaryDialog";
 import { OrderCard } from "./OrderCard";
 import { useOpenRequest } from "../desktop-widget/open-request";
+import { usePrintForms } from "../print-forms/print-forms-context";
+import { PRINT_TEXTS } from "../print-forms/print-texts";
 import {
   newlyCustomerCancelled,
   splitOrders,
@@ -45,6 +47,9 @@ const FILTER_STATUSES: BoardStatus[] = ["pending", "preparing", "ready"];
 
 export function OrderBoardScreen() {
   const { orders, inFlight, changeStatus } = useOrders();
+  // 주문서 출력 실패 띠 · 「미출력」 꼬리표 (T12). 출력 연결이 없는 화면(일부 테스트)에서는 null.
+  const print = usePrintForms();
+  const printFailures = print?.failures;
   const [tab, setTab] = useState<BoardTabId>("board");
   const [sort, setSort] = useState<SortOrder>(loadSort);
   // 필터는 저장하지 않는다. [주문접수] 탭을 열 때마다 모두 체크 (11장 D).
@@ -245,7 +250,7 @@ export function OrderBoardScreen() {
       window.removeEventListener("resize", measure);
       observer?.disconnect();
     };
-  }, [tab, list.length, banners.length]);
+  }, [tab, list.length, banners.length, printFailures?.length]);
 
   const page = (direction: 1 | -1) => {
     const el = scroller.current;
@@ -325,6 +330,7 @@ export function OrderBoardScreen() {
                     key={order.orderId}
                     order={order}
                     busy={!!inFlight[order.orderId]}
+                    unprinted={print?.unprinted.has(order.orderId)}
                     onAction={handleAction}
                     onOpen={(id) => {
                       notified.current = null;
@@ -356,6 +362,14 @@ export function OrderBoardScreen() {
         inFlight={inFlight}
         onExpire={removeBanner}
         onUndo={handleUndo}
+        printFailures={printFailures}
+        printing={print?.printing}
+        onRetryPrint={(id) =>
+          void print?.retry(id).then((result) => {
+            if (result === "no-printer") showToast(PRINT_TEXTS.noOrderPrinter);
+          })
+        }
+        onDismissPrint={print?.dismiss}
       />
       {openOrder && (
         <OrderSummaryDialog
@@ -385,6 +399,7 @@ export function OrderBoardScreen() {
           onCancelRequest={(id) => {
             ownCancel.current = id;
           }}
+          onToast={showToast}
         />
       )}
       {toast && (

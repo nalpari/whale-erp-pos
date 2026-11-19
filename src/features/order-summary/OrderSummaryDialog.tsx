@@ -1,7 +1,11 @@
 // 주문 요약 팝업 (SPEC-order-summary 2장). 주문 한 건을 자세히 보이고 다음 단계 · 주문취소를 처리한다.
 // 주문은 prop으로 받는다. 부르는 쪽이 useOrders() 목록에서 매번 찾아 넘겨야 다른 PC의 처리가 바로 반영된다 (2.5).
 import { useEffect, useId, useRef, useState } from "react";
+import { useOrderHistoryApi } from "../../shared/api/order-history-context";
 import type { Order, OrderAction } from "../../shared/api/orders";
+import { usePrintForms } from "../print-forms/print-forms-context";
+import { PRINT_TEXTS } from "../print-forms/print-texts";
+import { ReceiptPreviewDialog } from "../print-forms/ReceiptPreviewDialog";
 import { BOARD_TEXTS, STATUS_LABELS } from "../order-board/board-texts";
 import { formatClock } from "../order-board/order-board-logic";
 import { PickupText } from "../order-board/OrderCard";
@@ -27,6 +31,8 @@ interface Props {
   onError(orderId: string, message: string): void;
   /** 취소 요청을 보내기 직전 (CancelReasonDialog.onRequest). */
   onCancelRequest(orderId: string): void;
+  /** 「주문서를 출력할 프린터가 없습니다.」 · 「영수증을 출력했습니다.」 토스트 (T12). */
+  onToast(message: string): void;
 }
 
 const BUTTON = "min-h-14 rounded-xl px-5 text-xl font-bold disabled:opacity-50";
@@ -39,8 +45,17 @@ export function OrderSummaryDialog({
   onAction,
   onError,
   onCancelRequest,
+  onToast,
 }: Props) {
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const print = usePrintForms();
+  const historyApi = useOrderHistoryApi();
+  // 인쇄 버튼이 있는 팝업이 열릴 때 「영수증」 체크 여부를 다시 읽는다 (프린터설정에서 바꿨을 수 있다).
+  const refreshReceiptEnabled = print?.refreshReceiptEnabled;
+  useEffect(() => {
+    void refreshReceiptEnabled?.();
+  }, [refreshReceiptEnabled]);
   const closeRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
   const buttons = summaryButtons(order.status);
@@ -57,15 +72,15 @@ export function OrderSummaryDialog({
     return () => previous?.focus();
   }, []);
 
-  // Esc는 맨 위 팝업만 닫는다. 취소 사유 팝업이 열려 있으면 그쪽이 받는다.
+  // Esc는 맨 위 팝업만 닫는다. 취소 사유 · 영수증 미리보기 팝업이 열려 있으면 그쪽이 받는다.
   useEffect(() => {
-    if (cancelShown) return;
+    if (cancelShown || receiptOpen) return;
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [cancelShown, onClose]);
+  }, [cancelShown, receiptOpen, onClose]);
 
   async function next() {
     if (!buttons.next) return;
@@ -73,6 +88,15 @@ export function OrderSummaryDialog({
     const ok = await onAction(order.orderId, action);
     // 성공하면 열린 채 새 상태로 바뀐다. [픽업완료]만 닫고 배너가 뜬다 (11장 D).
     if (ok && action === "pickup") onClose();
+  }
+
+  // [주문서 인쇄]는 접수대기에서 막힌다: 접수하면 자동으로 나온다 (Q27). 실패는 띠 · 꼬리표 · 경고음이 알린다.
+  const printing = !!print?.printing[order.orderId];
+  async function printOrder() {
+    if (!print) return;
+    if ((await print.printOrder(order)) === "no-printer") {
+      onToast(PRINT_TEXTS.noOrderPrinter);
+    }
   }
 
   const label = STATUS_LABELS[order.status] ?? "";
@@ -181,12 +205,21 @@ export function OrderSummaryDialog({
           </div>
 
           <footer className="flex flex-wrap items-center gap-3 border-t border-gray-200 px-6 py-4">
-            {/* 인쇄는 T12에서 연결한다. 그 전까지 보이고 막아 둔다 (11장 A). */}
-            <button type="button" disabled className={GRAY}>
+            <button
+              type="button"
+              disabled={!print?.receiptEnabled || !historyApi}
+              onClick={() => setReceiptOpen(true)}
+              className={GRAY}
+            >
               {SUMMARY_TEXTS.printReceipt}
             </button>
-            <button type="button" disabled className={GRAY}>
-              {SUMMARY_TEXTS.printOrder}
+            <button
+              type="button"
+              disabled={!print || order.status === "pending" || printing}
+              onClick={printOrder}
+              className={GRAY}
+            >
+              {printing ? PRINT_TEXTS.printing : SUMMARY_TEXTS.printOrder}
             </button>
             <span className="flex-1" />
             {buttons.cancel !== "hidden" && (
@@ -212,6 +245,17 @@ export function OrderSummaryDialog({
           </footer>
         </div>
       </div>
+      {receiptOpen && historyApi && (
+        <ReceiptPreviewDialog
+          orderId={order.orderId}
+          api={historyApi}
+          onClose={() => setReceiptOpen(false)}
+          onPrinted={() => {
+            setReceiptOpen(false);
+            onToast(PRINT_TEXTS.receiptPrinted);
+          }}
+        />
+      )}
       {/* 다른 PC가 제조완료로 바꿔 [주문취소]가 막히면 사유 팝업도 같이 사라진다 (Q17). */}
       {cancelShown && (
         <CancelReasonDialog

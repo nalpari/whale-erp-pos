@@ -69,6 +69,8 @@ export interface ViewInput extends CardInput {
   inFlight: Readonly<Record<string, true>>;
   /** 주문별 실패 문구. */
   failures: Readonly<Record<string, string>>;
+  /** 주문서 출력에 실패한 주문 (「미출력」 꼬리표, T12). */
+  unprinted?: ReadonlySet<string>;
 }
 
 /** 본 창이 위젯에 보내는 화면. 띄운 상태(shown)이고 카드나 자동 OFF 안내가 하나라도 있을 때만 보인다 (3.2). */
@@ -86,6 +88,7 @@ export function buildWidgetView(
     note: o.note,
     items: o.items.map(({ name, quantity }) => ({ name, quantity })),
     busy: !!input.inFlight[o.orderId],
+    ...(input.unprinted?.has(o.orderId) ? { unprinted: true as const } : {}),
     failure: input.failures[o.orderId],
     undoExpiresAt: input.lingering.get(o.orderId),
   }));

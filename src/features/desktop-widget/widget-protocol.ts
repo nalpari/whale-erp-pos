@@ -20,6 +20,8 @@ export interface WidgetCardView {
   items: Array<{ name: string; quantity: number }>;
   /** 이 주문의 요청이 진행 중이라 버튼을 막는다. */
   busy: boolean;
+  /** 주문서 출력에 실패해 「미출력」 꼬리표를 붙인다 (T12 스펙 5장). 아니면 없다. */
+  unprinted?: true;
   /** 「#12 …」 실패 문구. 3초 보인다 (11장 F). */
   failure?: string;
   /** 「완료 취소」를 받는 마감 시각(ms). picked-up 카드에만 있다. */

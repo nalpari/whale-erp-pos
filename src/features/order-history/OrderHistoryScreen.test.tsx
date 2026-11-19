@@ -23,6 +23,8 @@ import {
 import { createMemoryTokenStore } from "../../shared/session/token-store";
 import { createFakeWindow } from "../../test/fakes";
 import { AppShell } from "../app-shell/AppShell";
+import { PrintFormsProvider } from "../print-forms/PrintFormsProvider";
+import type { PrinterSettings } from "../../shared/printer/printer-settings";
 import { AppShellProvider } from "../app-shell/AppShellContext";
 import { SEARCH_DELAY_MS } from "./OrderHistoryScreen";
 import { HISTORY_TEXTS } from "./history-texts";
@@ -48,6 +50,8 @@ function renderHistory(
     api?: Partial<OrderApi>;
     history?: Partial<OrderHistoryApi>;
     backend?: MockOrderBackend;
+    /** 프린터 설정 (T12 인쇄 버튼 시험용). 기본은 빈 설정. */
+    printerSettings?: PrinterSettings;
   } = {},
 ) {
   const backend = options.backend ?? createMockOrderBackend({ delayMs: 0 });
@@ -55,6 +59,7 @@ function renderHistory(
   const history: OrderHistoryApi = {
     fetchPage,
     fetchDetail: (id) => backend.historyApi.fetchDetail(id),
+    fetchReceiptStore: () => backend.historyApi.fetchReceiptStore(),
     ...options.history,
   };
   const api: OrderApi = { ...backend.api, ...options.api };
@@ -65,7 +70,9 @@ function renderHistory(
       authApi={createMockAuthApi({ delayMs: 0 })}
       tokenStore={createMemoryTokenStore()}
       printerApi={createFakePrinterApi()}
-      printerSettingsStore={createMemoryPrinterSettingsStore()}
+      printerSettingsStore={createMemoryPrinterSettingsStore(
+        options.printerSettings,
+      )}
       logApi={createFakeLogApi()}
       initialSession={STORE}
     >
@@ -75,9 +82,11 @@ function renderHistory(
         storeStatusApi={backend.storeStatusApi}
         sound={{ playNewOrder: vi.fn(), playWarning: vi.fn() }}
       >
-        <OrderHistoryApiContext.Provider value={history}>
-          <AppShell />
-        </OrderHistoryApiContext.Provider>
+        <PrintFormsProvider>
+          <OrderHistoryApiContext.Provider value={history}>
+            <AppShell />
+          </OrderHistoryApiContext.Provider>
+        </PrintFormsProvider>
       </OrdersProvider>
     </AppShellProvider>
   );
@@ -382,8 +391,12 @@ describe("페이지 (2.4 · Q37)", () => {
 });
 
 describe("상세 (3장)", () => {
-  async function openOrder(n: number, count = n) {
-    const view = await openHistory();
+  async function openOrder(
+    n: number,
+    count = n,
+    options: Parameters<typeof renderHistory>[0] = {},
+  ) {
+    const view = await openHistory(options);
     act(() => view.backend.dev.addOrders(count));
     await press(button(HISTORY_TEXTS.refresh));
     await press(
@@ -394,6 +407,48 @@ describe("상세 (3장)", () => {
     );
     return view;
   }
+
+  it("[주문서 인쇄]는 접수대기에서 막히고, [영수증 인쇄]는 「영수증」 체크가 없으면 막힌다 (T12 Q27)", async () => {
+    await openOrder(3); // 접수대기
+    expect(button("주문서 인쇄")).toBeDisabled();
+    expect(button("영수증 인쇄")).toBeDisabled();
+  });
+
+  it("[주문서 인쇄]: 제조중이면 「[재출력]」과 옵션 줄(이름 글자)로 내고, 체크된 슬롯이 없으면 토스트 (T12)", async () => {
+    await openOrder(3);
+    // 3번째 모의 주문은 옵션이 있는 긴 주문이다. 접수해서 제조중으로 만든다.
+    await press(button("주문접수"));
+    await press(button("주문서 인쇄"));
+    // 프린터 설정이 비어 있으므로 토스트만 뜬다.
+    expect(
+      screen.getByText("주문서를 출력할 프린터가 없습니다."),
+    ).toBeInTheDocument();
+  });
+
+  it("[영수증 인쇄] → 미리보기 → 출력하면 토스트 (T12 스펙 4.1)", async () => {
+    await openOrder(3, 3, {
+      printerSettings: {
+        version: 1,
+        slots: [
+          {
+            printerName: "SEWOO",
+            purpose: "",
+            printOrder: false,
+            printReceipt: true,
+            paperWidth: 80,
+          },
+          null,
+          null,
+        ],
+      },
+    });
+    expect(button("영수증 인쇄")).toBeEnabled();
+    await press(button("영수증 인쇄"));
+    const preview = screen.getByRole("dialog", { name: "영수증 미리보기" });
+    expect(within(preview).getByText("영수증")).toBeInTheDocument();
+    await press(within(preview).getByRole("button", { name: "영수증 인쇄" }));
+    expect(screen.getByText("영수증을 출력했습니다.")).toBeInTheDocument();
+  });
 
   it("7개 영역: 머리 · 메뉴 · 기본 정보 · 요청사항 · 결제정보 · 처리 이력 · 버튼", async () => {
     await openOrder(3); // 3번째 모의 주문: 긴 주문 + 요청사항 + 포인트 할인
@@ -432,7 +487,7 @@ describe("상세 (3장)", () => {
     expect(screen.queryByText(/할인$/)).toBeNull(); // 안 쓴 할인 줄은 없다
   });
 
-  it("접수대기: [주문취소] [주문접수★], 인쇄는 회색으로 막혀 있다", async () => {
+  it("접수대기: [주문취소] [주문접수★], 주문서 인쇄는 막혀 있다", async () => {
     await openOrder(1);
     expect(button("주문접수")).toHaveClass("bg-blue-600");
     expect(button("주문취소")).not.toHaveClass("bg-blue-600");
@@ -764,7 +819,8 @@ describe("값 검증 (③ 리뷰)", () => {
     expect(blue()).toEqual(["픽업완료"]);
     await press(button("픽업완료"));
     expect(blue()).toEqual([]);
-    expect(button("주문서 인쇄")).toBeDisabled();
+    // 픽업완료에서는 [주문서 인쇄]가 켜진다 (T12 스펙 3.2). 프린터가 없으면 눌렀을 때 토스트가 알린다.
+    expect(button("주문서 인쇄")).toBeEnabled();
   });
 
   it("다시 불러오기가 실패하면 낡은 상태 버튼을 막고 안내한다", async () => {

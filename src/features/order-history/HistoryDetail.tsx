@@ -13,6 +13,9 @@ import { errorSummary } from "../../shared/error-summary";
 import { logInfo } from "../../shared/log/log";
 import { logMessages } from "../../shared/log/log-messages";
 import { ORDER_MESSAGES } from "../../shared/orders/order-texts";
+import { usePrintForms } from "../print-forms/print-forms-context";
+import { PRINT_TEXTS } from "../print-forms/print-texts";
+import { ReceiptPreviewDialog } from "../print-forms/ReceiptPreviewDialog";
 import { useOrders } from "../../shared/orders/orders-context";
 import { BOARD_TEXTS } from "../order-board/board-texts";
 import { pickupSchedule } from "../order-board/order-board-logic";
@@ -77,6 +80,13 @@ export function HistoryDetail({
   const [failed, setFailed] = useState(false);
   const [loadKey, setLoadKey] = useState(0);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const print = usePrintForms();
+  // 이 화면이 열릴 때 「영수증」 체크 여부를 다시 읽는다 (프린터설정에서 바꿨을 수 있다).
+  const refreshReceiptEnabled = print?.refreshReceiptEnabled;
+  useEffect(() => {
+    void refreshReceiptEnabled?.();
+  }, [refreshReceiptEnabled]);
 
   // 상세를 불러온다. 다시 불러올 때는 보이던 내용을 지우지 않는다 (loadKey만 올린다).
   useEffect(() => {
@@ -143,6 +153,21 @@ export function HistoryDetail({
   const buttons = view ? summaryButtons(view.status) : null;
   const cancelled =
     view?.status === "store-cancelled" || view?.status === "customer-cancelled";
+
+  // [주문서 인쇄]는 접수대기에서 막히고 취소 주문에는 없다 (Q27). 주문서는 주문 목록의 Order 모양(옵션은 이름 글자)으로 낸다.
+  const printing = !!print?.printing[orderId];
+  async function printOrder() {
+    if (!view || !print) return;
+    const result = await print.printOrder({
+      ...view,
+      items: view.items.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        options: item.options.map((o) => o.name),
+      })),
+    });
+    if (result === "no-printer") onToast(PRINT_TEXTS.noOrderPrinter);
+  }
 
   async function next() {
     if (!view || !buttons?.next) return;
@@ -351,13 +376,23 @@ export function HistoryDetail({
       </div>
 
       <footer className="flex flex-wrap items-center gap-3 border-t border-gray-200 px-4 py-3">
-        {/* 인쇄는 T12에서 연결한다. 그 전까지 보이고 막아 둔다. 취소 주문은 취소 영수증만 있다 (Q27 · Q50). */}
-        <button type="button" disabled className={GRAY}>
+        {/* 취소 주문은 취소 영수증만 있다 (Q27 · Q50). 영수증은 「영수증」 체크된 슬롯이 없으면 막힌다. */}
+        <button
+          type="button"
+          disabled={!print?.receiptEnabled}
+          onClick={() => setReceiptOpen(true)}
+          className={GRAY}
+        >
           {HISTORY_TEXTS.printReceipt}
         </button>
         {!cancelled && (
-          <button type="button" disabled className={GRAY}>
-            {HISTORY_TEXTS.printOrder}
+          <button
+            type="button"
+            disabled={!print || view.status === "pending" || printing}
+            onClick={printOrder}
+            className={GRAY}
+          >
+            {printing ? PRINT_TEXTS.printing : HISTORY_TEXTS.printOrder}
           </button>
         )}
         <span className="flex-1" />
@@ -382,6 +417,17 @@ export function HistoryDetail({
           </button>
         )}
       </footer>
+      {receiptOpen && (
+        <ReceiptPreviewDialog
+          orderId={orderId}
+          api={api}
+          onClose={() => setReceiptOpen(false)}
+          onPrinted={() => {
+            setReceiptOpen(false);
+            onToast(PRINT_TEXTS.receiptPrinted);
+          }}
+        />
+      )}
       {cancelOpen && buttons?.cancel === "enabled" && (
         <CancelReasonDialog
           orderId={orderId}
