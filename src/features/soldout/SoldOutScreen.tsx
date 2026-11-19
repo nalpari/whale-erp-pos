@@ -246,12 +246,12 @@ export function SoldOutScreen({
         inert={popupOpen || removing !== null}
         className="flex min-h-0 flex-1 flex-col"
       >
-        {/* 한 줄: 검색칸(남는 폭) · [검색] · [+ 품절 상품 추가]. 1024px에서도 넘치지 않게 오른쪽 둘은 줄어들지 않는 폭이다. */}
+        {/* 한 줄: 검색칸(남는 폭) · [+ 품절 상품 추가](줄어들지 않는 폭). */}
         <form
           role="search"
           className="flex items-center gap-3 px-8 pt-6"
           onSubmit={(e) => {
-            // 치는 대로 이미 걸러져 있어 다시 적용할 것은 없다. Enter · [검색]은 초점을 빼 화상 키보드를 닫는 것이 일이다.
+            // 치는 대로 이미 걸러져 있어 다시 적용할 것은 없다. Enter는 초점을 빼 화상 키보드를 닫는 것이 일이다.
             e.preventDefault();
             searchRef.current?.blur();
           }}
@@ -277,12 +277,6 @@ export function SoldOutScreen({
               </button>
             )}
           </div>
-          <button
-            type="submit"
-            className="h-12 w-24 shrink-0 rounded-xl border border-blue-600 text-lg font-bold text-blue-700"
-          >
-            {T.searchButton}
-          </button>
           <button
             type="button"
             onClick={() => setPopupOpen(true)}
