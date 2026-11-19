@@ -58,13 +58,34 @@ export interface HistoryItem {
 
 export type DiscountKind = "promotion" | "coupon" | "stamp" | "point";
 
+/**
+ * 카드 결제 정보 (영수증 Q50, T12 스펙 6장 가정). 카드번호는 서버가 가려서 준다(앱이 원번호를 받지 않음).
+ * 칸 이름과 값 형태는 모두 가정이고, 백엔드 요청 문서 7.2 #4에 덧붙였다.
+ */
+export interface CardInfo {
+  maskedNumber: string;
+  kind: "신용" | "체크";
+  /** 일시불 · 할부 N개월. */
+  division: string;
+  acquirer: string;
+}
+
 export interface Payment {
   orderAmount: number;
   /** 쓴 것만 온다 (Q35). */
   discounts: { kind: DiscountKind; amount: number }[];
   paidAmount: number;
+  /** 카드 · 간편결제(예: 카카오페이) · 포인트 결제 등 표시용 이름. */
   method: string;
-  /** 결제 시각은 `Order.paidAt` 하나만 쓴다(기획 결정). 여기에는 두지 않는다. */
+  /** 과세금액 · 부가세는 서버 값을 그대로 찍는다(앱이 계산하지 않음, T12 스펙 4.2). 가정. */
+  taxableAmount: number;
+  vat: number;
+  /** 카드 · 간편결제의 승인 정보. 전액 할인(결제금액 0원)이면 null. 가정. */
+  approvalNumber: string | null;
+  /** 영수증에 찍는 승인일시(서버 값 그대로). 주문의 결제 시각은 `Order.paidAt` 하나만 쓴다(기획 결정). */
+  approvedAt: number | null;
+  /** 카드 결제일 때만. 간편결제 · 전액 할인은 null. 가정. */
+  card: CardInfo | null;
   transactionId: string;
 }
 
@@ -82,9 +103,20 @@ export interface HistoryOrder extends Omit<Order, "items"> {
   orderCount: number;
 }
 
+/** 영수증 머리에 찍는 점포 정보 (T12 스펙 6장, 새 조회 하나로 가정). */
+export interface ReceiptStore {
+  name: string;
+  phone: string;
+  address: string;
+  representative: string;
+  businessNumber: string;
+}
+
 export interface OrderHistoryApi {
   fetchPage(query: HistoryQuery): Promise<HistoryPage>;
   fetchDetail(orderId: string): Promise<HistoryOrder>;
+  /** 영수증용 점포 정보. 실패하면 reject한다. */
+  fetchReceiptStore(): Promise<ReceiptStore>;
 }
 
 const TABS: HistoryTab[] = [
@@ -122,7 +154,8 @@ const MENUS = [
   { name: "초코 쿠키(시험)", price: 3000 },
 ];
 const OPTION_PRICES: Record<string, number> = { "샷 추가": 500 };
-const METHODS = ["신용카드", "간편결제", "신용카드", "포인트 결제"];
+// 시험용 결제 수단. 전액 할인은 seed % 6 === 5인 주문이다(결제수단 이름은 「포인트 결제」, 할인 종류는 포인트 또는 쿠폰). 영수증 양식 4종(신용 · 체크 · 간편결제 · 전액 할인)을 모두 볼 수 있게 한다.
+const METHODS = ["신용카드", "카카오페이", "체크카드"];
 const CANCEL_REASONS = [
   "재료가 소진되었습니다",
   "주문이 많아 준비가 어렵습니다",
@@ -163,16 +196,30 @@ function withPayment(
       i.quantity * (i.unitPrice + i.options.reduce((s, o) => s + o.price, 0)),
     0,
   );
-  const discountAmount = seed % 3 === 0 ? Math.min(1000, orderAmount) : 0;
+  const fullDiscount = seed % 6 === 5;
+  const discountAmount = fullDiscount
+    ? orderAmount
+    : seed % 3 === 0
+      ? Math.min(1000, orderAmount)
+      : 0;
   const discounts =
     discountAmount > 0
       ? [
           {
-            kind: DISCOUNT_KINDS[seed % DISCOUNT_KINDS.length],
+            kind: fullDiscount
+              ? seed % 4 === 1
+                ? ("point" as const)
+                : ("coupon" as const)
+              : DISCOUNT_KINDS[seed % DISCOUNT_KINDS.length],
             amount: discountAmount,
           },
         ]
       : [];
+  const paidAmount = orderAmount - discountAmount;
+  // 부가세는 서버가 계산해 준다고 가정한다: 결제금액에 포함된 10%를 모의로 흉내 낸다.
+  const vat = Math.floor(paidAmount / 11);
+  const method = fullDiscount ? "포인트 결제" : METHODS[seed % METHODS.length];
+  const isCard = method === "신용카드" || method === "체크카드";
   return {
     ...base,
     cancel,
@@ -180,8 +227,20 @@ function withPayment(
     payment: {
       orderAmount,
       discounts,
-      paidAmount: orderAmount - discountAmount,
-      method: METHODS[seed % METHODS.length],
+      paidAmount,
+      method,
+      taxableAmount: paidAmount - vat,
+      vat,
+      approvalNumber: paidAmount > 0 ? String(30000000 + seed * 7919) : null,
+      approvedAt: paidAmount > 0 ? base.paidAt : null,
+      card: isCard
+        ? {
+            maskedNumber: `${4000 + (seed % 1000)}-12**-****-${1000 + ((seed * 37) % 9000)}`,
+            kind: method === "신용카드" ? "신용" : "체크",
+            division: seed % 8 === 0 ? "할부 3개월" : "일시불",
+            acquirer: seed % 8 === 0 ? "시험카드" : "시험은행",
+          }
+        : null,
       transactionId: `TX${base.orderNumber}`,
     },
   };
@@ -328,6 +387,17 @@ export function createMockOrderHistoryApi(
       const found = all().find((o) => o.orderId === orderId);
       if (!found) throw new Error("모의 서버: 없는 주문");
       return found;
+    },
+    async fetchReceiptStore() {
+      await guard();
+      // 시험용 값이다. 실제 점포 정보가 아니다.
+      return {
+        name: "웨일커피 시험점",
+        phone: "02-000-0000",
+        address: "서울특별시 시험구 시험로 1길 2",
+        representative: "김시험",
+        businessNumber: "000-00-00000",
+      };
     },
   };
 }

@@ -31,6 +31,20 @@ function setup(v: WidgetView) {
 }
 
 describe("WidgetScreen", () => {
+  it("주문서 출력에 실패한 카드에만 「미출력」 꼬리표를 보인다 (T12)", () => {
+    setup(
+      view({
+        cards: [
+          card({ orderId: "a", pickupNumber: 1, unprinted: true }),
+          card({ orderId: "b", pickupNumber: 2 }),
+        ],
+      }),
+    );
+    const [first, second] = screen.getAllByRole("article");
+    expect(within(first).getByText("미출력")).toBeInTheDocument();
+    expect(within(second).queryByText("미출력")).toBeNull();
+  });
+
   it("접수대기 카드는 시간 · 번호 · 메뉴와 [주문취소] [주문접수]를 보인다", () => {
     setup(
       view({

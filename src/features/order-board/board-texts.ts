@@ -33,6 +33,7 @@ export const ACTION_BUTTONS = {
 
 export const BOARD_TEXTS = {
   moreItems: (n: number) => `+ 외 ${n}개`,
+  unprinted: "미출력",
   autoCancelWarning: "3분 뒤 자동 취소",
   busy: "처리 중…",
   emptyBoard: "처리할 주문이 없습니다.",

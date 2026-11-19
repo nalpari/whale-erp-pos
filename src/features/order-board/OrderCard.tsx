@@ -52,6 +52,8 @@ interface Props {
   onAction(orderId: string, action: Exclude<OrderAction, "cancel">): void;
   /** 카드(버튼 밖)를 눌렀을 때 (요약 팝업). */
   onOpen?(orderId: string): void;
+  /** 주문서 출력에 실패했다: 「미출력」 꼬리표 (T12 스펙 5장). */
+  unprinted?: boolean;
 }
 
 export const OrderCard = memo(function OrderCard({
@@ -59,6 +61,7 @@ export const OrderCard = memo(function OrderCard({
   busy,
   onAction,
   onOpen,
+  unprinted = false,
 }: Props) {
   const { shown, moreCount } = menuSummary(order.items);
   const button =
@@ -90,6 +93,11 @@ export const OrderCard = memo(function OrderCard({
       <header className="flex items-center justify-between">
         <span className="text-2xl font-bold">#{order.pickupNumber}</span>
         <span className="flex items-center gap-2 text-lg font-bold">
+          {unprinted && (
+            <span className="rounded bg-red-600 px-2 py-0.5 text-base text-white">
+              {BOARD_TEXTS.unprinted}
+            </span>
+          )}
           {STATUS_LABELS[order.status]}
           <span aria-hidden="true" className="text-2xl text-gray-500">
             ›

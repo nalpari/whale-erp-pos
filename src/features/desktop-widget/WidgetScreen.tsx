@@ -108,7 +108,14 @@ function OrderCardView({
       className={`flex flex-col gap-1 rounded-xl border-2 p-3 ${CARD_COLORS[status]}`}
     >
       <header className="flex items-center justify-between">
-        <span className="text-lg font-bold">{STATUS_LABELS[status]}</span>
+        <span className="text-lg font-bold">
+          {STATUS_LABELS[status]}
+          {card.unprinted && (
+            <span className="ml-2 rounded bg-red-600 px-2 py-0.5 text-base text-white">
+              {WIDGET_TEXTS.unprinted}
+            </span>
+          )}
+        </span>
         <button
           type="button"
           aria-label={WIDGET_TEXTS.closeCard}

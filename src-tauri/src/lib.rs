@@ -2,6 +2,7 @@ use tauri::Manager;
 
 mod auto_login;
 mod log_viewer;
+mod print_layout;
 mod printer;
 mod printer_settings;
 mod system;
@@ -31,7 +32,7 @@ pub fn run() {
             auto_login::load_refresh_token,
             auto_login::clear_refresh_token,
             printer::list_printers,
-            printer::print_test_page,
+            printer::print_document,
             printer_settings::load_printer_settings,
             printer_settings::save_printer_settings,
             log_viewer::read_recent_logs,

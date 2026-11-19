@@ -20,9 +20,9 @@ export function Header() {
       <div className="flex items-center gap-3">
         <span
           aria-hidden="true"
-          className="flex size-9 items-center justify-center rounded-lg bg-blue-500 text-xl font-bold"
+          className="flex size-9 items-center justify-center rounded-lg bg-white"
         >
-          P
+          <img src="/logo-whale.svg" alt="" className="w-6" />
         </span>
         <span className="text-xl font-bold">픽업오더 주문접수</span>
       </div>

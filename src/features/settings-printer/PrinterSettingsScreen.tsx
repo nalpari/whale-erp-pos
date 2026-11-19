@@ -150,6 +150,7 @@ export function PrinterSettingsScreen({ printerApi, store, storeName }: Props) {
                       storeName,
                       now: new Date(),
                     }),
+                    slot.paperWidth,
                   )
                 : Promise.reject(new Error("빈 칸은 시험 인쇄할 수 없습니다."))
             }
