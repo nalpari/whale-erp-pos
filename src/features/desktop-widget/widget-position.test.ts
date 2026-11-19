@@ -26,4 +26,29 @@ describe("widgetBounds", () => {
     expect(b.x).toBe(1920 + 1920 - 356);
     expect(b.y).toBe(16);
   });
+  it("왼쪽 위는 두 번째 모니터 좌표와 배율 150%를 따른다", () => {
+    const b = widgetBounds(
+      { x: 1920, y: 0, width: 2880, height: 1560 },
+      1.5,
+      300,
+      "top-left",
+    );
+    expect(b.x).toBe(1920 + 24);
+    expect(b.y).toBe(24);
+  });
+
+  it("위치를 고르면 그 모서리에서 여백 16px을 띄운다", () => {
+    expect(widgetBounds(screen, 1, 300, "top-left")).toMatchObject({
+      x: 16,
+      y: 16,
+    });
+    expect(widgetBounds(screen, 1, 300, "top-right")).toMatchObject({
+      x: 1920 - 356,
+      y: 16,
+    });
+    expect(widgetBounds(screen, 1, 300, "bottom-left")).toMatchObject({
+      x: 16,
+      y: 1040 - 316,
+    });
+  });
 });

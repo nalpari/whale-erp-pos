@@ -24,7 +24,11 @@ describe("WidgetApp", () => {
     render(<WidgetApp client={client} />);
     await act(async () => {});
     expect(client.send).toHaveBeenCalledWith({ type: "ready" });
-    expect(client.present).toHaveBeenLastCalledWith(false, expect.any(Number));
+    expect(client.present).toHaveBeenLastCalledWith(
+      false,
+      expect.any(Number),
+      undefined,
+    );
 
     push({
       visible: true,
@@ -43,7 +47,29 @@ describe("WidgetApp", () => {
       moreCount: 0,
     });
     expect(screen.getByLabelText("픽업번호 3")).toBeInTheDocument();
-    expect(client.present).toHaveBeenLastCalledWith(true, expect.any(Number));
+    expect(client.present).toHaveBeenLastCalledWith(
+      true,
+      expect.any(Number),
+      undefined,
+    );
+  });
+
+  it("본 창이 보낸 위치를 창 쪽 present에 넘긴다", async () => {
+    const { client, push } = fakeClient();
+    render(<WidgetApp client={client} />);
+    await act(async () => {});
+    push({
+      visible: true,
+      autoOffCard: true,
+      position: "top-left",
+      cards: [],
+      moreCount: 0,
+    });
+    expect(client.present).toHaveBeenLastCalledWith(
+      true,
+      expect.any(Number),
+      "top-left",
+    );
   });
 
   it("화면 받기 등록이 계속 실패하면 다시 시도하다가 안내만 띄운다", async () => {
@@ -66,7 +92,11 @@ describe("WidgetApp", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(
         "본 화면에서 처리해 주세요",
       );
-      expect(client.present).toHaveBeenLastCalledWith(true, expect.any(Number));
+      expect(client.present).toHaveBeenLastCalledWith(
+        true,
+        expect.any(Number),
+        undefined,
+      );
 
       // 화면을 못 받아 안내만 떠 있을 때는 [×]로 접을 수 있다.
       await act(async () => {
@@ -76,6 +106,7 @@ describe("WidgetApp", () => {
       expect(client.present).toHaveBeenLastCalledWith(
         false,
         expect.any(Number),
+        undefined,
       );
     } finally {
       vi.useRealTimers();

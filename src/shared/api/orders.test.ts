@@ -122,4 +122,22 @@ describe("모의 서버", () => {
     expect([...times].sort((x, y) => x - y)).toEqual(times);
     expect(new Set(times).size).toBe(times.length);
   });
+
+  it("전체 주문 삭제는 취소 · 픽업완료까지 모두 지우고 구독자에게 알린다", async () => {
+    const backend = createMockOrderBackend({ delayMs: 0 });
+    const events: string[] = [];
+    backend.subscribe(
+      (e) => events.push(e.type),
+      () => {},
+    );
+    backend.dev.addOrders(2);
+    backend.dev.customerCancelsOldestPending();
+    backend.dev.deleteAllOrders();
+    expect(await backend.api.fetchOrders()).toEqual([]);
+    expect(events[events.length - 1]).toBe("orders-cleared");
+    backend.dev.addOrders(1);
+    const [fresh] = await backend.api.fetchOrders();
+    expect(fresh.pickupNumber).toBe(1);
+    expect(fresh.orderId).not.toBe("mock-order-1"); // 지우기 전 orderId는 다시 쓰지 않는다
+  });
 });

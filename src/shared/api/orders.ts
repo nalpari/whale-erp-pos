@@ -120,6 +120,8 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
   let accepting = false;
   let acceptingBeforeDisconnect = false;
   let orderSeq = 0;
+  // 전체 삭제 뒤 픽업번호만 처음부터 다시 센다. orderId는 계속 올려, 화면 쪽에 orderId로 남은 상태(시간 초과 접수 키 등)가 같은 orderId의 새 주문에 붙지 않게 한다.
+  let pickupBase = 0;
   let eventSeq = 0;
   let lastTimestamp = 0;
   let lastCreated: Order | null = null;
@@ -151,7 +153,7 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
     const order: Order = {
       orderId: `mock-order-${orderSeq}`,
       orderNumber: `261118000001${String(orderSeq).padStart(4, "0")}`,
-      pickupNumber: orderSeq,
+      pickupNumber: orderSeq - pickupBase,
       status: "pending",
       updatedAt: at,
       paidAt: at,
@@ -323,6 +325,17 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
         }
       },
       isAccepting: () => accepting,
+      /**
+       * 개발용: 서버의 주문을 전부 지운다(오늘 픽업완료 · 취소 포함). 처음 상태에서 다시 시험하려는 용도다.
+       * 픽업번호는 처음(#1)부터 다시 센다. 멱등 결과와 「같은 주문 다시 보내기」 대상도 비우고, 주문받기 상태는 그대로 둔다.
+       */
+      deleteAllOrders() {
+        orders.clear();
+        results.clear();
+        lastCreated = null;
+        pickupBase = orderSeq;
+        emit({ eventId: nextEventId(), type: "orders-cleared" });
+      },
     },
   };
 }

@@ -79,7 +79,7 @@ export function WidgetApp({ client }: { client: WidgetClient }) {
     }
     client
       // 연결이 실패했으면 카드가 없어도 안내만 띄운다.
-      .present(view.visible || linkFailed, el?.offsetHeight ?? 0)
+      .present(view.visible || linkFailed, el?.offsetHeight ?? 0, view.position)
       .catch(() => void logInfo(logMessages.widgetFailed("present")));
   }, [client, view, limit, linkFailed]);
 

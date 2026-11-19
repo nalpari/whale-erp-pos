@@ -7,6 +7,8 @@ import type { MockOrderBackend, Order } from "./orders";
 export type OrderEvent =
   | { eventId: string; type: "order-created"; order: Order }
   | { eventId: string; type: "order-updated"; order: Order }
+  /** 개발용 모의 서버가 주문을 전부 지웠다. 화면이 가진 주문도 비운다. 실제 서버는 보내지 않는다. */
+  | { eventId: string; type: "orders-cleared" }
   | {
       eventId: string;
       type: "accepting-changed";

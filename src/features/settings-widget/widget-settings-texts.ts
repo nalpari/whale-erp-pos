@@ -1,0 +1,26 @@
+// 위젯설정 화면 문구. 제목은 화면정의서 p.18 원문, 저장 토스트는 프린터설정과 같다 (Q45).
+export const WIDGET_SETTINGS_TEXTS = {
+  title: "바탕화면에 주문 알림 위젯을 표시합니다.",
+  statusTitle: "표시할 주문 상태",
+  pending: "접수대기",
+  pendingLocked: "항상 표시",
+  preparing: "제조중",
+  ready: "제조완료",
+  positionTitle: "위젯 위치",
+  positions: {
+    "top-left": "좌상단",
+    "top-right": "우상단",
+    "bottom-left": "좌하단",
+    "bottom-right": "우하단",
+  },
+  volumeTitle: "알림음 크기",
+  previewNewOrder: "새 주문 미리듣기",
+  previewWarning: "경고 미리듣기",
+  previewTitle: "미리보기",
+  previewNote: "예시 화면입니다. 실제 주문이 아닙니다.",
+  notShown: "위젯에 표시 안 함",
+  prev: "이전 예시",
+  next: "다음 예시",
+  saved: "저장되었습니다",
+  saveFailed: "설정을 저장하지 못했습니다.",
+} as const;
