@@ -7,6 +7,7 @@ import { restoreSession } from "../shared/session/restore-session";
 import { createTokenStore } from "../shared/session/token-store";
 import { createMockOrderFeed } from "../shared/api/order-feed";
 import { createMockOrderBackend } from "../shared/api/orders";
+import { OrderHistoryApiContext } from "../shared/api/order-history-context";
 import { OrdersProvider } from "../shared/orders/OrdersProvider";
 import { createWebAudioSoundPlayer } from "../shared/sound/web-audio-player";
 import { WidgetSettingsProvider } from "../features/settings-widget/WidgetSettingsContext";
@@ -64,7 +65,9 @@ function App() {
       >
         <WidgetSettingsProvider sound={sound}>
           <DesktopWidgetProvider host={widgetHost}>
-            <AppShell />
+            <OrderHistoryApiContext.Provider value={backend.historyApi}>
+              <AppShell />
+            </OrderHistoryApiContext.Provider>
           </DesktopWidgetProvider>
         </WidgetSettingsProvider>
       </OrdersProvider>
