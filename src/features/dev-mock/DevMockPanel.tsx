@@ -29,6 +29,8 @@ export function DevMockPanel({ dev }: Props) {
     ],
     ["미접수 2건 자동 OFF", dev.triggerAutoOff],
     ["같은 주문 다시 보내기", dev.resendLastOrder],
+    // 확인창 없이 바로 지운다 (개발용, T10 스펙 12장).
+    ["전체 주문 삭제", dev.deleteAllOrders],
   ];
   return (
     <details className="fixed bottom-2 left-2 z-50 rounded bg-black/80 p-2 text-sm text-white">

@@ -18,6 +18,7 @@ import {
 import { createFakeWindow } from "../../test/fakes";
 import { AppShell } from "../app-shell/AppShell";
 import { AppShellProvider } from "../app-shell/AppShellContext";
+import { WidgetSettingsProvider } from "../settings-widget/WidgetSettingsContext";
 import { WIDGET_RETRY_MAX, WIDGET_RETRY_MS } from "./retry";
 import { DesktopWidgetProvider } from "./DesktopWidgetProvider";
 import type { WidgetHost } from "./widget-host";
@@ -62,9 +63,11 @@ function setup(front: boolean, options: { listenFails?: boolean } = {}) {
         storeStatusApi={backend.storeStatusApi}
         sound={sound}
       >
-        <DesktopWidgetProvider host={host}>
-          <AppShell />
-        </DesktopWidgetProvider>
+        <WidgetSettingsProvider sound={sound}>
+          <DesktopWidgetProvider host={host}>
+            <AppShell />
+          </DesktopWidgetProvider>
+        </WidgetSettingsProvider>
       </OrdersProvider>
     </AppShellProvider>,
   );
@@ -88,7 +91,10 @@ const flush = () =>
 const advance = (ms: number) =>
   act(async () => void (await vi.advanceTimersByTimeAsync(ms)));
 
-beforeEach(() => vi.useFakeTimers());
+beforeEach(() => {
+  localStorage.clear();
+  vi.useFakeTimers();
+});
 afterEach(() => vi.useRealTimers());
 
 describe("뜨는 조건 (3.2)", () => {
@@ -472,5 +478,80 @@ describe("연결 실패 · 취소 불가 안내 (사용자 결정 A-2 · B-2)", 
       "다른 PC에서 이미 처리한 주문입니다.",
     );
     expect(screen.getByRole("status").textContent).not.toContain("#");
+  });
+});
+
+describe("환경설정 반영 (T10)", () => {
+  it("저장된 위치를 위젯 화면에 담아 보낸다 (기본은 오른쪽 아래)", async () => {
+    localStorage.setItem(
+      "widgetSettings",
+      JSON.stringify({
+        showPreparing: true,
+        showReady: true,
+        position: "top-left",
+        volume: 40,
+      }),
+    );
+    const t = setup(false);
+    await flush();
+    act(() => t.backend.dev.addOrders(1));
+    await flush();
+    expect(t.view().position).toBe("top-left");
+  });
+
+  it("제조중을 끄면 접수한 주문 카드는 사라지고 접수대기는 늘 보인다", async () => {
+    localStorage.setItem(
+      "widgetSettings",
+      JSON.stringify({
+        showPreparing: false,
+        showReady: true,
+        position: "bottom-right",
+        volume: 40,
+      }),
+    );
+    const t = setup(false);
+    await flush();
+    act(() => t.backend.dev.addOrders(2));
+    await flush();
+    expect(t.view().cards).toHaveLength(2);
+    act(() => t.backend.dev.otherPcAcceptsOldestPending());
+    await flush();
+    expect(t.view().cards.map((c) => c.status)).toEqual(["pending"]);
+  });
+
+  it("실행 중에 환경설정을 바꾸면 이미 뜬 위젯 화면이 바로 바뀐다", async () => {
+    const t = setup(false);
+    await flush();
+    act(() => t.backend.dev.addOrders(2));
+    await flush();
+    act(() => t.backend.dev.otherPcAcceptsOldestPending());
+    await flush();
+    expect(t.view().cards.map((c) => c.status)).toEqual([
+      "pending",
+      "preparing",
+    ]);
+    expect(t.view().position).toBe("bottom-right");
+
+    fireEvent.click(screen.getByRole("tab", { name: "환경설정" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "제조중" }));
+    fireEvent.click(screen.getByRole("radio", { name: "좌상단" }));
+    await flush();
+
+    expect(t.view().cards.map((c) => c.status)).toEqual(["pending"]);
+    expect(t.view().position).toBe("top-left");
+  });
+
+  it("[전체 주문 삭제] 뒤에는 위젯 · 30초 반복이 빈 목록을 따른다", async () => {
+    const t = setup(false);
+    await flush();
+    act(() => t.backend.dev.addOrders(2));
+    await flush();
+    expect(t.view().visible).toBe(true);
+    act(() => t.backend.dev.deleteAllOrders());
+    await flush();
+    expect(t.view().visible).toBe(false);
+    vi.mocked(t.sound.playNewOrder).mockClear();
+    await advance(ALERT_REPEAT_MS * 2);
+    expect(t.sound.playNewOrder).not.toHaveBeenCalled();
   });
 });

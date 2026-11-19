@@ -12,6 +12,7 @@ describe("DevMockPanel", () => {
       other: vi.spyOn(backend.dev, "otherPcAcceptsOldestPending"),
       off: vi.spyOn(backend.dev, "triggerAutoOff"),
       resend: vi.spyOn(backend.dev, "resendLastOrder"),
+      clear: vi.spyOn(backend.dev, "deleteAllOrders"),
     };
     render(<DevMockPanel dev={backend.dev} />);
 
@@ -28,6 +29,8 @@ describe("DevMockPanel", () => {
       screen.getByRole("button", { name: "같은 주문 다시 보내기" }),
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "전체 주문 삭제" }));
+    expect(spies.clear).toHaveBeenCalledTimes(1);
     expect(spies.add.mock.calls).toEqual([[1], [10]]);
     expect(spies.cancel).toHaveBeenCalledTimes(1);
     expect(spies.other).toHaveBeenCalledTimes(1);

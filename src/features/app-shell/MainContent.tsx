@@ -2,6 +2,7 @@
 import { useAppShell } from "./AppShellContext";
 import { CustomerCancelSound } from "../order-board/CustomerCancelSound";
 import { OrderBoardScreen } from "../order-board/OrderBoardScreen";
+import { WidgetSettingsScreen } from "../settings-widget/WidgetSettingsScreen";
 import { PrinterSettingsScreen } from "../settings-printer/PrinterSettingsScreen";
 import { useOrdersOptional } from "../../shared/orders/orders-context";
 import { panelId, tabId } from "../../shared/ui/tab-ids";
@@ -64,6 +65,8 @@ export function MainContent() {
                   store={printerSettingsStore}
                   storeName={state.session.store.name}
                 />
+              ) : settings.id === "widget" ? (
+                <WidgetSettingsScreen />
               ) : (
                 <Placeholder label={settings.label} />
               )}

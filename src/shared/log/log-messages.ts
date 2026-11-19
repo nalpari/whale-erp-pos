@@ -115,6 +115,9 @@ export const logMessages = {
   widgetFailed: (
     step: "publish" | "bring-front" | "listen" | "present" | "send" | "view",
   ) => `바탕화면 주문 알림 위젯 실패: ${WIDGET_STEP[step]}`,
+  soundLimiterFailed: () => "알림음 리미터 만들기 실패(리미터 없이 재생)",
+  ordersClearedIgnored: () =>
+    "개발용 주문 전체 삭제 신호를 운영 빌드에서 받아 무시함",
   soundBlocked: () => "알림음이 막혀 있음(화면을 누르기 전일 수 있음)",
   duplicatesDropped: (count: number) =>
     `중복 · 오래된 주문 사건 ${count}건 버림`,
