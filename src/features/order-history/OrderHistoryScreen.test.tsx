@@ -829,3 +829,127 @@ describe("0시가 지난 뒤 (A-1)", () => {
     expect(button(HISTORY_TEXTS.periodLabel)).toHaveTextContent("11.19");
   });
 });
+
+describe("탭을 누를 때마다 새로 고침", () => {
+  const input = () =>
+    screen.getByRole("textbox", { name: HISTORY_TEXTS.searchLabel });
+
+  it("처음 열 때는 조회가 한 번뿐이다", async () => {
+    const { fetchPage } = await openHistory();
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+  });
+
+  it("다른 탭에 갔다 오면 같은 조건으로 다시 조회하고, 그동안 생긴 주문이 보인다", async () => {
+    const { fetchPage, backend } = await openHistory();
+    await press(button("최근 한 달"));
+    await press(mainTabFor("취소"));
+    fireEvent.change(input(), { target: { value: "1" } });
+    await advance(SEARCH_DELAY_MS);
+    const before = lastQuery(fetchPage);
+    const calls = fetchPage.mock.calls.length;
+    await press(mainTab("주문접수"));
+    act(() => backend.dev.addOrders(1));
+    await press(mainTab("주문내역"));
+    expect(fetchPage.mock.calls.length).toBe(calls + 1);
+    expect(lastQuery(fetchPage)).toEqual(before); // 기간 · 탭 · 검색어 · 페이지 · 건수 그대로
+    expect(input()).toHaveValue("1");
+    expect(mainTabFor("취소")).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("새로 생긴 주문이 [새로 고침]을 누르지 않아도 목록에 나온다", async () => {
+    const { backend } = await openHistory();
+    expect(screen.getByText(HISTORY_TEXTS.empty)).toBeInTheDocument();
+    await press(mainTab("주문접수"));
+    act(() => backend.dev.addOrders(1));
+    await press(mainTab("주문내역"));
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  it("이미 [주문내역] 탭일 때 다시 눌러도 새로 고침", async () => {
+    const { fetchPage } = await openHistory();
+    const calls = fetchPage.mock.calls.length;
+    await press(mainTab("주문내역"));
+    expect(fetchPage.mock.calls.length).toBe(calls + 1);
+  });
+
+  it("상세가 열려 있으면 그 상세도 다시 불러온다", async () => {
+    const backend = createMockOrderBackend({ delayMs: 0 });
+    const fetchDetail = vi.fn((id: string) =>
+      backend.historyApi.fetchDetail(id),
+    );
+    const view = await openHistory({ backend, history: { fetchDetail } });
+    act(() => view.backend.dev.addOrders(1));
+    await press(button(HISTORY_TEXTS.refresh));
+    await press(screen.getAllByRole("listitem")[0].querySelector("button")!);
+    const calls = fetchDetail.mock.calls.length;
+    await press(mainTab("주문접수"));
+    await press(mainTab("주문내역"));
+    expect(fetchDetail.mock.calls.length).toBe(calls + 1);
+    expect(screen.getByRole("heading", { name: /#1/ })).toBeInTheDocument();
+  });
+
+  it("0시 되돌림이 먼저 적용된 뒤 오늘 기준으로 조회한다 (1분 신호를 기다리지 않는다)", async () => {
+    const { fetchPage } = await openHistory();
+    await press(button("최근 한 달")); // 10.19 ~ 11.19
+    await press(mainTab("주문접수"));
+    vi.setSystemTime(new Date(2026, 10, 21, 0, 0, 10)); // 신호(now)는 아직 11.19 15:00
+    const calls = fetchPage.mock.calls.length;
+    await press(mainTab("주문내역"));
+    expect(fetchPage.mock.calls.length).toBe(calls + 1); // 예전 기간으로 한 번 더 묻지 않는다
+    expect(button(HISTORY_TEXTS.periodLabel)).toHaveTextContent("11.21");
+    expect(lastQuery(fetchPage)).toMatchObject({
+      fromDay: new Date(2026, 10, 21).getTime(),
+      toDay: new Date(2026, 10, 21).getTime(),
+      page: 1,
+    });
+  });
+
+  it("다시 조회가 끝나면 보던 스크롤 위치를 되돌린다", async () => {
+    await openHistory();
+    await press(button("최근 한 달"));
+    const list = screen.getAllByRole("listitem")[0].closest("div")!;
+    list.scrollTop = 150;
+    fireEvent.scroll(list);
+    await press(mainTab("주문접수"));
+    list.scrollTop = 0; // 숨겨졌다 다시 보이며 위치가 날아간 것을 흉내 낸다
+    await press(mainTab("주문내역"));
+    expect(screen.getAllByRole("listitem")[0].closest("div")!.scrollTop).toBe(
+      150,
+    );
+  });
+
+  it("조회 중에 목록이 비어 생기는 0 위치는 기억하지 않는다", async () => {
+    const backend = createMockOrderBackend({ delayMs: 0 });
+    let gate: Promise<void> | null = null;
+    const fetchPage = (q: HistoryQuery) =>
+      gate
+        ? gate.then(() => backend.historyApi.fetchPage(q))
+        : backend.historyApi.fetchPage(q);
+    await openHistory({ backend, history: { fetchPage } });
+    await press(button("최근 한 달"));
+    const list = screen.getAllByRole("listitem")[0].closest("div")!;
+    list.scrollTop = 150;
+    fireEvent.scroll(list);
+    await press(mainTab("주문접수"));
+    let release = () => {};
+    gate = new Promise<void>((resolve) => (release = resolve));
+    await press(mainTab("주문내역")); // 조회 중
+    list.scrollTop = 0;
+    fireEvent.scroll(list); // 목록이 비어 위치가 0으로 잘린 것을 흉내 낸다
+    gate = null;
+    release();
+    await flush();
+    expect(list.scrollTop).toBe(150);
+  });
+
+  it("화면 안 [새로 고침]도 보던 스크롤 위치를 지킨다", async () => {
+    await openHistory();
+    await press(button("최근 한 달"));
+    const list = screen.getAllByRole("listitem")[0].closest("div")!;
+    list.scrollTop = 120;
+    fireEvent.scroll(list);
+    list.scrollTop = 0;
+    await press(button(HISTORY_TEXTS.refresh));
+    expect(list.scrollTop).toBe(120);
+  });
+});

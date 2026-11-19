@@ -31,6 +31,8 @@ export function MainContent() {
   // 값은 렌더 중에 맞춘다(효과 안 setState 금지). 로그아웃하면 이 화면이 통째로 내려가 처음 상태로 돌아간다.
   const [historyVisited, setHistoryVisited] = useState(false);
   const historyActive = active.id === "order-history";
+  // [주문내역] 탭을 누를 때마다(다른 탭에서 들어올 때, 이미 그 탭일 때도) 목록 · 상세를 다시 조회하게 알린다. at은 누른 시각이다.
+  const [historyPress, setHistoryPress] = useState({ seq: 0, at: 0 });
   if (historyActive && !historyVisited) setHistoryVisited(true);
   const settings =
     SETTINGS_TABS.find((t) => t.id === state.settingsTab) ?? SETTINGS_TABS[0];
@@ -44,7 +46,12 @@ export function MainContent() {
         activeId={state.activeTab}
         idPrefix="main"
         size="main"
-        onSelect={actions.selectTab}
+        onSelect={(id) => {
+          actions.selectTab(id);
+          if (id === "order-history") {
+            setHistoryPress((p) => ({ seq: p.seq + 1, at: Date.now() }));
+          }
+        }}
       />
       <section
         role="tabpanel"
@@ -54,7 +61,7 @@ export function MainContent() {
       >
         {historyApi && hasOrders && historyVisited && (
           <div hidden={!historyActive} className="flex min-h-0 flex-1 flex-col">
-            <OrderHistoryScreen api={historyApi} />
+            <OrderHistoryScreen api={historyApi} refresh={historyPress} />
           </div>
         )}
         {historyActive && historyApi && hasOrders ? null : active.id ===
