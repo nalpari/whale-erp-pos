@@ -27,13 +27,23 @@ export function sortRecent(entries: SoldOutEntry[]) {
   return [...entries].sort((a, b) => b.addedAt - a.addedAt);
 }
 
+/** 상품명 검색: 앞뒤 공백과 대소문자를 무시한 부분 일치. 빈 검색어는 모두 맞는다. */
+export function matchesName(name: string, query: string) {
+  const q = query.trim().toLowerCase();
+  return q === "" || name.toLowerCase().includes(q);
+}
+
+/** 품절 목록을 상품명으로 거른다. */
+export function filterByName(entries: SoldOutEntry[], query: string) {
+  return entries.filter((e) => matchesName(e.name, query));
+}
+
 /** 카테고리 탭과 검색어로 거른다. [전체]는 메뉴만, 옵션은 [옵션] 탭에서만 보인다. */
 export function filterCatalog(
   items: CatalogItem[],
   category: CategoryTab,
   query: string,
 ) {
-  const q = query.trim().toLowerCase();
   return items.filter((item) => {
     if (category === "option") {
       if (item.kind !== "option") return false;
@@ -45,7 +55,7 @@ export function filterCatalog(
     ) {
       return false;
     }
-    return q === "" || item.name.toLowerCase().includes(q);
+    return matchesName(item.name, query);
   });
 }
 

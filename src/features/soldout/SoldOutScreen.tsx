@@ -18,6 +18,7 @@ import { Toast } from "../../shared/ui/Toast";
 import { AddPopup } from "./AddPopup";
 import { logSoldoutFailure } from "./soldout-log";
 import {
+  filterByName,
   filterByTab,
   formatPrice,
   sortRecent,
@@ -32,13 +33,22 @@ interface Props {
   refreshSeq: number;
   /** 저장 · 삭제 · 추가 요청이 가는 중인지 알린다. 그동안 메인 탭 이동을 막아 결과 토스트가 사라지지 않게 한다. */
   onBusyChange(busy: boolean): void;
+  /** 목록 검색어. 다른 메인 탭에 갔다 와도 남도록 부모(MainContent)가 들고 있는다. */
+  query: string;
+  onQueryChange(query: string): void;
 }
 
 type Load = "loading" | "error" | "ready";
 
 const MODES: SoldOutMode[] = ["temp", "hidden"];
 
-export function SoldOutScreen({ api, refreshSeq, onBusyChange }: Props) {
+export function SoldOutScreen({
+  api,
+  refreshSeq,
+  onBusyChange,
+  query,
+  onQueryChange,
+}: Props) {
   const [load, setLoad] = useState<Load>("loading");
   const [entries, setEntries] = useState<SoldOutEntry[]>([]);
   const [tab, setTab] = useState<StatusTab>("all");
@@ -151,6 +161,8 @@ export function SoldOutScreen({ api, refreshSeq, onBusyChange }: Props) {
   // 추가 팝업이 돌려준 항목을 넣는다. 그사이 조회가 같은 코드를 이미 넣었으면 겹치지 않게 뺀다.
   function addEntries(added: SoldOutEntry[]) {
     mutations.current += 1;
+    // 검색어가 남아 있으면 방금 추가한 항목이 걸러져 안 보이므로, 실제로 추가됐을 때만 검색어를 지운다.
+    if (added.length > 0) onQueryChange("");
     setEntries((list) => [
       ...list.filter((e) => !added.some((a) => a.code === e.code)),
       ...added,
@@ -215,14 +227,16 @@ export function SoldOutScreen({ api, refreshSeq, onBusyChange }: Props) {
     );
   }
 
-  const counts = tabCounts(entries);
+  // 탭 건수도 검색 결과 기준이다(주문내역과 같은 방식).
+  const searched = filterByName(entries, query);
+  const counts = tabCounts(searched);
   const tabs = (["all", "temp", "hidden"] as const).map(
     (id): { id: StatusTab; label: string } => ({
       id,
       label: `${T.tabs[id]} ${counts[id]}`,
     }),
   );
-  const rows = sortRecent(filterByTab(entries, tab));
+  const rows = sortRecent(filterByTab(searched, tab));
 
   return (
     <>
@@ -241,7 +255,27 @@ export function SoldOutScreen({ api, refreshSeq, onBusyChange }: Props) {
             {T.add}
           </button>
         </div>
-        <div className="mt-4">
+        <div className="relative mx-8 mt-4 w-80">
+          <input
+            type="text"
+            aria-label={T.search}
+            placeholder={T.search}
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+            className="h-12 w-full rounded-xl border border-gray-300 pr-12 pl-4 text-lg"
+          />
+          {query !== "" && (
+            <button
+              type="button"
+              aria-label={T.clearSearch}
+              onClick={() => onQueryChange("")}
+              className="absolute top-0 right-0 flex size-12 items-center justify-center text-2xl text-gray-500"
+            >
+              ×
+            </button>
+          )}
+        </div>
+        <div className="mt-2">
           <TabBar<StatusTab>
             label="품절 상태"
             tabs={tabs}
@@ -258,7 +292,9 @@ export function SoldOutScreen({ api, refreshSeq, onBusyChange }: Props) {
           className="min-h-0 flex-1 overflow-y-auto px-8 pb-6"
         >
           {rows.length === 0 ? (
-            <p className="p-8 text-center text-xl text-gray-500">{T.empty}</p>
+            <p className="p-8 text-center text-xl text-gray-500">
+              {query.trim() === "" ? T.empty : T.noMatch}
+            </p>
           ) : (
             <table className="w-full text-left text-lg">
               <thead className="sticky top-0 bg-white text-gray-500">
