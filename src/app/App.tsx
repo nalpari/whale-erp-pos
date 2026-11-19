@@ -9,6 +9,8 @@ import { createMockOrderFeed } from "../shared/api/order-feed";
 import { createMockOrderBackend } from "../shared/api/orders";
 import { OrderHistoryApiContext } from "../shared/api/order-history-context";
 import { createMockStoreInfoApi } from "../shared/api/store-info";
+import { createMockSoldOutApi } from "../shared/api/soldout";
+import { SoldOutApiContext } from "../shared/api/soldout-context";
 import { StoreInfoApiContext } from "../shared/api/store-info-context";
 import { OrdersProvider } from "../shared/orders/OrdersProvider";
 import { createWebAudioSoundPlayer } from "../shared/sound/web-audio-player";
@@ -48,6 +50,8 @@ function App() {
   const [logApi] = useState(createLogApi);
   // 가정: 매장정보도 모의 서버를 쓴다 (SPEC-store-info 5장).
   const [storeInfoApi] = useState(() => createMockStoreInfoApi());
+  // 가정: 메뉴품절도 모의 서버를 쓴다 (SPEC-soldout 5장).
+  const [soldoutApi] = useState(() => createMockSoldOutApi());
 
   return (
     <AppShellProvider
@@ -71,7 +75,9 @@ function App() {
           <DesktopWidgetProvider host={widgetHost}>
             <OrderHistoryApiContext.Provider value={backend.historyApi}>
               <StoreInfoApiContext.Provider value={storeInfoApi}>
-                <AppShell />
+                <SoldOutApiContext.Provider value={soldoutApi}>
+                  <AppShell />
+                </SoldOutApiContext.Provider>
               </StoreInfoApiContext.Provider>
             </OrderHistoryApiContext.Provider>
           </DesktopWidgetProvider>
