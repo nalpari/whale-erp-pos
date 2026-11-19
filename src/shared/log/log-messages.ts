@@ -78,6 +78,14 @@ const SYNC_REQUEST: Record<SyncRequestKind, string> = {
   accepting: "주문받기 상태",
 };
 
+const SOLDOUT_ACTION = {
+  list: "목록 조회",
+  catalog: "상품 목록 조회",
+  add: "추가",
+  mode: "표시방식 변경",
+  remove: "삭제",
+} as const;
+
 export const logMessages = {
   appStarted: (version: string) => `앱 시작: ${version}`,
   appExited: () => "앱 종료",
@@ -139,6 +147,18 @@ export const logMessages = {
     errorName: string,
   ) =>
     `매장정보 ${action === "load" ? "읽기" : "저장"} ${timedOut ? "시간 초과" : `실패: ${errorName}`}`,
+  // 실패는 동작과 원인 이름만, 결과는 상품 코드와 건수만 남긴다 (메뉴품절 SPEC 7장).
+  soldoutFailed: (
+    action: "list" | "catalog" | "add" | "mode" | "remove",
+    timedOut: boolean,
+    errorName: string,
+  ) =>
+    `메뉴품절 ${SOLDOUT_ACTION[action]} ${timedOut ? "시간 초과" : `실패: ${errorName}`}`,
+  soldoutAdded: (codes: string[]) =>
+    `품절 추가: ${codes.length}건 (${codes.join(", ")})`,
+  soldoutModeChanged: (code: string, mode: "temp" | "hidden") =>
+    `품절 표시방식 변경: ${code}, ${mode === "temp" ? "일시품절" : "숨김"}`,
+  soldoutRemoved: (code: string) => `품절 삭제: ${code}`,
 };
 
 /**
