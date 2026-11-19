@@ -86,6 +86,13 @@ const SOLDOUT_ACTION = {
   remove: "삭제",
 } as const;
 
+const POPULAR_ACTION = {
+  list: "목록 조회",
+  catalog: "상품 목록 조회",
+  add: "추가",
+  remove: "삭제",
+} as const;
+
 export const logMessages = {
   appStarted: (version: string) => `앱 시작: ${version}`,
   appExited: () => "앱 종료",
@@ -159,6 +166,16 @@ export const logMessages = {
   soldoutModeChanged: (code: string, mode: "temp" | "hidden") =>
     `품절 표시방식 변경: ${code}, ${mode === "temp" ? "일시품절" : "숨김"}`,
   soldoutRemoved: (code: string) => `품절 삭제: ${code}`,
+  // 인기메뉴도 실패는 동작과 원인 이름만, 결과는 상품 코드와 건수만 남긴다 (SPEC-settings-ai-popular 7장).
+  popularFailed: (
+    action: "list" | "catalog" | "add" | "remove",
+    timedOut: boolean,
+    errorName: string,
+  ) =>
+    `인기메뉴 ${POPULAR_ACTION[action]} ${timedOut ? "시간 초과" : `실패: ${errorName}`}`,
+  popularAdded: (codes: string[]) =>
+    `인기메뉴 추가: ${codes.length}건 (${codes.join(", ")})`,
+  popularRemoved: (code: string) => `인기메뉴 삭제: ${code}`,
 };
 
 /**

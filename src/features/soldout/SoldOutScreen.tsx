@@ -21,11 +21,12 @@ import {
   filterByName,
   filterByTab,
   formatPrice,
+  registeredCodes,
   sortRecent,
   tabCounts,
   type StatusTab,
 } from "./soldout-logic";
-import { SOLDOUT_TEXTS as T } from "./soldout-texts";
+import { SOLDOUT_POPUP_TEXTS, SOLDOUT_TEXTS as T } from "./soldout-texts";
 
 interface Props {
   api: SoldOutApi;
@@ -383,8 +384,14 @@ export function SoldOutScreen({
       )}
       {popupOpen && (
         <AddPopup
-          api={api}
-          entries={entries}
+          loadCatalog={() => api.loadCatalog()}
+          add={(codes) => api.add(codes)}
+          registered={registeredCodes(entries)}
+          texts={SOLDOUT_POPUP_TEXTS}
+          log={{
+            failure: logSoldoutFailure,
+            added: (codes) => void logInfo(logMessages.soldoutAdded(codes)),
+          }}
           onAdded={addEntries}
           onNotify={showToast}
           onAddingChange={setAdding}

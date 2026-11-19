@@ -51,3 +51,11 @@ export const SOLDOUT_TEXTS = {
     loadFailed: "상품 목록을 불러오지 못했습니다.",
   },
 } as const;
+
+/** 추가 팝업(AddPopup)이 받는 문구 모음. */
+export const SOLDOUT_POPUP_TEXTS = {
+  ...SOLDOUT_TEXTS.popup,
+  kind: SOLDOUT_TEXTS.kind,
+  retry: SOLDOUT_TEXTS.retry,
+  saveFailed: SOLDOUT_TEXTS.saveFailed,
+};
