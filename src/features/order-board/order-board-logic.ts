@@ -47,7 +47,10 @@ export interface PickupSchedule {
 }
 
 /** 픽업 예정 문구 4가지 (Q26). 예정 시각 = 결제 시각 + 고객이 고른 값. */
-export function pickupSchedule(order: Order, now: number): PickupSchedule {
+export function pickupSchedule(
+  order: Pick<Order, "pickupChoice" | "paidAt">,
+  now: number,
+): PickupSchedule {
   const choice = order.pickupChoice;
   // 값 이름이 아직 가정이라 모르는 값이 와도 "NaN"이 보이지 않게 「지금」으로 본다. 실제 API에서는 통신 계층이 검사한다.
   const minutes: number | undefined = PICKUP_CHOICE_MINUTES[choice];

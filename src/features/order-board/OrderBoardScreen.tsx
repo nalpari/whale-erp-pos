@@ -26,6 +26,7 @@ import {
 } from "./board-texts";
 import { OrderSummaryDialog } from "../order-summary/OrderSummaryDialog";
 import { OrderCard } from "./OrderCard";
+import { useOpenRequest } from "../desktop-widget/open-request";
 import {
   newlyCustomerCancelled,
   splitOrders,
@@ -67,6 +68,29 @@ export function OrderBoardScreen() {
     );
     return () => clearInterval(timer);
   }, []);
+
+  // 위젯에서 카드 · 「+ N건 더 있음」을 누르면 [주문접수] 첫 탭을 열고, 주문이 있으면 그 요약 팝업을 연다 (T06 스펙 3.4).
+  // 화면 상태는 렌더 중에 맞추고(효과 안 setState 금지), ref를 만지는 일은 효과에서 한다.
+  const openRequest = useOpenRequest();
+  const widgetRequest = openRequest?.request ?? null;
+  const [handledSeq, setHandledSeq] = useState(0);
+  if (widgetRequest && widgetRequest.seq !== handledSeq) {
+    setHandledSeq(widgetRequest.seq);
+    setTab("board");
+    // 필터가 꺼져 있으면 연 주문의 카드가 안 보이므로 모두 켠다.
+    setFilters({ pending: true, preparing: true, ready: true });
+    if (widgetRequest.orderId) setOpenId(widgetRequest.orderId);
+  }
+  // 팝업을 닫은 뒤 이 카드가 보이게 화면을 옮길 주문.
+  const scrollBackTo = useRef<string | null>(null);
+  const notified = useRef<string | null>(null);
+  useEffect(() => {
+    if (!widgetRequest) return;
+    // 위젯에서 같은 주문을 다시 열면 「사라짐」 알림이 다시 나올 수 있게 비운다.
+    notified.current = null;
+    scrollBackTo.current = widgetRequest.orderId ?? null;
+    openRequest?.consume(widgetRequest.seq);
+  }, [widgetRequest, openRequest]);
 
   // 버튼 핸들러가 카드를 다시 그리게 만들지 않도록 최신 값은 ref로 읽는다.
   const latest = useRef({ orders, changeStatus });
@@ -187,7 +211,6 @@ export function OrderBoardScreen() {
       : undefined;
   // 누르지 않았는데 팝업이 사라지면, 고객 취소(배너가 알린다)가 아닐 때 이유를 알린다 (사용자 결정 B-2).
   // openId는 지우지 않는다(효과 안 setState 금지): 같은 id로 두 번 알리지 않게 notified로 막고, 카드를 새로 누를 때 다시 비운다. (0시 정리로 지워진 주문이 응답에 다시 들어오면 팝업이 다시 열릴 수 있으나, 서버 응답이 앞뒤가 안 맞을 때뿐이다.)
-  const notified = useRef<string | null>(null);
   useEffect(() => {
     if (!openId || openOrder || notified.current === openId) return;
     notified.current = openId;
@@ -343,6 +366,16 @@ export function OrderBoardScreen() {
           onClose={() => {
             ownCancel.current = null;
             setOpenId((id) => (id === openOrder.orderId ? null : id));
+            const target = scrollBackTo.current;
+            scrollBackTo.current = null;
+            if (target === openOrder.orderId) {
+              // 팝업이 사라져 화면이 다시 그려진 뒤에 옮긴다.
+              requestAnimationFrame(() =>
+                document
+                  .querySelector(`[data-order-id="${CSS.escape(target)}"]`)
+                  ?.scrollIntoView?.({ block: "nearest" }),
+              );
+            }
           }}
           onAction={handleAction}
           onError={(id, message) => {
