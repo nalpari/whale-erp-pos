@@ -18,7 +18,23 @@
         "minWidth": 1024,
         "minHeight": 768,
         "center": true,
-        "decorations": false
+        "decorations": false,
+        "label": "main"
+      },
+      {
+        "label": "widget",
+        "title": "새 주문 알림",
+        "width": 340,
+        "height": 200,
+        "visible": false,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "focus": false,
+        "focusable": false,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false
       }
     ],
     "security": {

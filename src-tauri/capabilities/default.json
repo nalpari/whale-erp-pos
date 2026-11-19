@@ -13,6 +13,10 @@
     "core:window:allow-set-position",
     "core:window:allow-center",
     "core:window:allow-destroy",
-    "log:default"
+    "log:default",
+    "core:window:allow-show",
+    "core:window:allow-unminimize",
+    "core:window:allow-set-focus",
+    "core:window:allow-set-always-on-top"
   ]
 }

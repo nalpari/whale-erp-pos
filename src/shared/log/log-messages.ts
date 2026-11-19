@@ -38,6 +38,15 @@ function pick<K extends string>(table: Record<K, string>, key: K): string {
     : "알 수 없음";
 }
 
+const WIDGET_STEP = {
+  publish: "화면 보내기",
+  "bring-front": "본 창 앞으로 가져오기",
+  listen: "위젯 동작 받기",
+  present: "창 띄우기 · 크기 맞추기",
+  send: "위젯 동작 보내기",
+  view: "화면 받기",
+} as const;
+
 export type OrderLogAction =
   "accept" | "cancel" | "complete" | "pickup" | "undo-pickup";
 export type OrderLogResult =
@@ -100,6 +109,13 @@ export const logMessages = {
   syncRequestFailed: (kind: SyncRequestKind, timedOut: boolean) =>
     `${pick(SYNC_REQUEST, kind)} 요청 ${timedOut ? "시간 초과" : "실패"}`,
   listenerFailed: (orderId: string) => `주문 신호 처리 중 오류: ${orderId}`,
+  soundFailed: (kind: "new-order" | "warning") =>
+    `${kind === "new-order" ? "새 주문" : "경고"} 알림음 재생 실패`,
+  // 위젯 실패는 어느 단계인지만 남긴다 (원인 본문 · 주문 내용은 남기지 않는다).
+  widgetFailed: (
+    step: "publish" | "bring-front" | "listen" | "present" | "send" | "view",
+  ) => `바탕화면 주문 알림 위젯 실패: ${WIDGET_STEP[step]}`,
+  soundBlocked: () => "알림음이 막혀 있음(화면을 누르기 전일 수 있음)",
   duplicatesDropped: (count: number) =>
     `중복 · 오래된 주문 사건 ${count}건 버림`,
   settingsFailed: (action: "save" | "load") =>

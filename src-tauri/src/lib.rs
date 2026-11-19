@@ -1,3 +1,5 @@
+use tauri::Manager;
+
 mod auto_login;
 mod log_viewer;
 mod printer;
@@ -9,6 +11,19 @@ pub fn run() {
     install_panic_hook();
     tauri::Builder::default()
         .plugin(build_log_plugin())
+        // 본 창이 없어지면 위젯 창도 같이 닫는다. 안 그러면 위젯 창만 남아 프로그램이 끝나지 않는다 (T06 스펙 3.1).
+        .on_window_event(|window, event| {
+            if matches!(event, tauri::WindowEvent::Destroyed)
+                && closes_widget_with(window.label())
+                && let Some(widget) = window.app_handle().get_webview_window("widget")
+            {
+                // 못 닫으면 위젯 창만 남아 프로그램이 안 끝난다. 이유를 남기고 프로그램을 직접 끝낸다.
+                if let Err(e) = widget.destroy() {
+                    log::error!("[widget] 본 창 종료 때 위젯 창 닫기 실패: {e}");
+                    window.app_handle().exit(0);
+                }
+            }
+        })
         // 앱 자체 명령은 capability 없이 모든 창에서 부를 수 있다 (Tauri v2 기본값,
         // https://v2.tauri.app/security/capabilities/). build.rs에서 AppManifest::commands를 쓰면 바뀐다.
         .invoke_handler(tauri::generate_handler![
@@ -27,6 +42,11 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// 이 창이 없어질 때 위젯 창도 닫아야 하는지. 위젯 자신이 없어질 때는 아니다.
+fn closes_widget_with(label: &str) -> bool {
+    label == "main"
 }
 
 // 파일 크기 · 보관 · 시간은 스펙 2.2. 파일 이름은 임시로 "app"(날짜 이름 방식은 결정 대기).
@@ -73,6 +93,12 @@ fn install_panic_hook() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn widget_closes_only_with_the_main_window() {
+        assert!(closes_widget_with("main"));
+        assert!(!closes_widget_with("widget"));
+    }
 
     #[test]
     fn panic_payload_text_for_str_and_string() {
