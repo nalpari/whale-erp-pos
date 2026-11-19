@@ -147,20 +147,7 @@ describe("SoldOutScreen", () => {
       expect(screen.getByRole("tab", { name: "숨김 1" })).toBeInTheDocument();
     });
 
-    it("[검색]을 누르면 같은 결과를 보이고 입력칸 초점을 뺀다(검색어가 비어도 전체를 보인다)", async () => {
-      setup();
-      await screen.findByText(T.guide);
-      search().focus();
-      type("치즈");
-      fireEvent.click(screen.getByRole("button", { name: T.searchButton }));
-      expect(names()).toEqual(["치즈케이크"]);
-      expect(search()).not.toHaveFocus();
-      type("");
-      fireEvent.click(screen.getByRole("button", { name: T.searchButton }));
-      expect(names()).toHaveLength(3);
-    });
-
-    it("Enter로도 초점이 빠진다", async () => {
+    it("Enter(제출)를 치면 입력칸 초점이 빠지고 결과는 그대로다", async () => {
       setup();
       await screen.findByText(T.guide);
       search().focus();
@@ -168,17 +155,18 @@ describe("SoldOutScreen", () => {
       fireEvent.submit(screen.getByRole("search"));
       expect(search()).not.toHaveFocus();
       expect(names()).toEqual(["샷 추가"]);
+      // 검색어가 비어도 제출되고 전체를 보인다.
+      type("");
+      fireEvent.submit(screen.getByRole("search"));
+      expect(names()).toHaveLength(3);
     });
 
-    it("검색칸 · [검색] · [+ 품절 상품 추가]가 한 줄에 있고 안내 문구는 그 아래다", async () => {
+    it("검색칸 · [+ 품절 상품 추가]가 한 줄에 있고 안내 문구는 그 아래다", async () => {
       setup();
       await screen.findByText(T.guide);
       const row = screen.getByRole("search");
       expect(
         within(row).getByRole("textbox", { name: T.search }),
-      ).toBeInTheDocument();
-      expect(
-        within(row).getByRole("button", { name: T.searchButton }),
       ).toBeInTheDocument();
       expect(
         within(row).getByRole("button", { name: T.add }),
