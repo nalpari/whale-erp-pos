@@ -29,6 +29,7 @@ function order(
     items: [{ name: "아메리카노", quantity: 1 }],
     customerName: "홍*동",
     phoneLast4: "0000",
+    statusTimes: { preparingAt: null, readyAt: null, pickedUpAt: null },
     ...over,
   };
 }
