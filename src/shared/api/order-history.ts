@@ -1,0 +1,333 @@
+// 주문내역 조회 API. 백엔드 API가 정해지기 전이라 인터페이스와 모의 구현만 둔다 (SPEC-order-history 4장, 가정).
+// 아래 요청 · 응답 형태와 칸 이름은 모두 가정이다. 백엔드 요청 문서 3.7 · 7장과 맞추고, 협의 뒤 이 파일만 바꾼다.
+// 걸러 세는 일은 서버가 한다고 가정하므로, 모의 구현이 그 일을 흉내 낸다. 화면은 직접 세지 않는다.
+import { addDays, sameDayLastMonth, startOfDay } from "../date-days";
+import type { Order, OrderStatus } from "./orders";
+
+export type HistoryTab =
+  "all" | "pending" | "preparing" | "ready" | "picked-up" | "cancelled"; // 매장취소 + 고객취소 (Q17 · Q19)
+
+export const PAGE_SIZES = [20, 50, 100] as const;
+export type PageSize = (typeof PAGE_SIZES)[number];
+
+export interface HistoryQuery {
+  /** 조회 기간. 두 값 모두 그날 0시(ms)이고, 끝 날짜는 그날 전체를 포함한다. 검색어가 있으면 서버가 무시한다. */
+  fromDay: number;
+  toDay: number;
+  tab: HistoryTab;
+  /** 휴대폰 끝 4자리 · 픽업번호 · 주문번호. 빈 값이면 검색 없음. 서버가 최근 한 달 전체에서 찾는다 (Q36). */
+  q: string;
+  /** 1부터. */
+  page: number;
+  size: PageSize;
+}
+
+export interface HistoryRow {
+  orderId: string;
+  pickupNumber: number;
+  status: OrderStatus;
+  /** 서버가 가린 값. */
+  customerName: string;
+  /** 주문한 메뉴 이름(종류마다 하나). 「외 N개」는 화면이 만든다. */
+  menuNames: string[];
+  /** 결제금액(할인 뒤, Q35). */
+  paidAmount: number;
+  paidAt: number;
+}
+
+export interface HistorySummary {
+  /** 탭의 결제 합계. 전체 · 그 밖의 탭은 취소를 뺀 결제금액, 취소 탭은 취소 금액이다 (Q35). */
+  amount: number;
+  /** 전체 탭에서 합계에서 뺀 취소 건수. 다른 탭은 0. */
+  excludedCancelCount: number;
+}
+
+export interface HistoryPage {
+  rows: HistoryRow[];
+  /** 기간 · 검색 조건에 맞는 주문의 탭별 건수. */
+  counts: Record<HistoryTab, number>;
+  summary: HistorySummary;
+}
+
+export interface HistoryItem {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  options: { name: string; price: number }[];
+}
+
+export type DiscountKind = "promotion" | "coupon" | "stamp" | "point";
+
+export interface Payment {
+  orderAmount: number;
+  /** 쓴 것만 온다 (Q35). */
+  discounts: { kind: DiscountKind; amount: number }[];
+  paidAmount: number;
+  method: string;
+  /** 결제 시각은 `Order.paidAt` 하나만 쓴다(기획 결정). 여기에는 두지 않는다. */
+  transactionId: string;
+}
+
+export interface CancelInfo {
+  at: number;
+  by: "store" | "customer" | "auto";
+  reason: string | null;
+}
+
+export interface HistoryOrder extends Omit<Order, "items"> {
+  items: HistoryItem[];
+  payment: Payment;
+  cancel: CancelInfo | null;
+  /** 이 고객이 이 점포에서 결제한 누적 주문 수(이번 주문 포함, 취소 제외, Q29). 1이면 첫 주문. */
+  orderCount: number;
+}
+
+export interface OrderHistoryApi {
+  fetchPage(query: HistoryQuery): Promise<HistoryPage>;
+  fetchDetail(orderId: string): Promise<HistoryOrder>;
+}
+
+const TABS: HistoryTab[] = [
+  "all",
+  "pending",
+  "preparing",
+  "ready",
+  "picked-up",
+  "cancelled",
+];
+
+function tabOf(status: OrderStatus): HistoryTab {
+  return status === "store-cancelled" || status === "customer-cancelled"
+    ? "cancelled"
+    : status;
+}
+
+/** 서버가 하는 검색을 흉내 낸다: 16자리는 주문번호, 그 밖의 숫자는 픽업번호 또는 휴대폰 끝 4자리. */
+function matchesSearch(order: HistoryOrder, q: string): boolean {
+  const digits = q.replace(/\D/g, "");
+  if (digits === "" || digits !== q.replace(/^#/, "")) return false;
+  if (digits.length === 16) return order.orderNumber === digits;
+  return (
+    order.pickupNumber === Number(digits) ||
+    (digits.length === 4 && order.phoneLast4 === digits)
+  );
+}
+
+// 시험용 메뉴와 값. 실제 메뉴 · 고객 정보가 아니다.
+const MENUS = [
+  { name: "아이스 아메리카노(시험)", price: 4500 },
+  { name: "카페라떼(시험)", price: 5000 },
+  { name: "딸기 스무디(시험)", price: 6500 },
+  { name: "치즈 케이크(시험)", price: 6000 },
+  { name: "초코 쿠키(시험)", price: 3000 },
+];
+const OPTION_PRICES: Record<string, number> = { "샷 추가": 500 };
+const METHODS = ["신용카드", "간편결제", "신용카드", "포인트 결제"];
+const CANCEL_REASONS = [
+  "재료가 소진되었습니다",
+  "주문이 많아 준비가 어렵습니다",
+  "매장 사정으로 주문을 취소합니다",
+];
+const DISCOUNT_KINDS: DiscountKind[] = [
+  "promotion",
+  "coupon",
+  "stamp",
+  "point",
+];
+
+/** 오늘 주문(T03 모의 주문)에 결제 정보를 붙인다. 값은 주문에서 정해지는 시험용 값이다. */
+export function toHistoryOrder(
+  order: Order,
+  cancel: CancelInfo | null,
+): HistoryOrder {
+  const items: HistoryItem[] = order.items.map((item) => ({
+    name: item.name,
+    quantity: item.quantity,
+    unitPrice: MENUS.find((m) => m.name === item.name)?.price ?? MENUS[0].price,
+    options: (item.options ?? []).map((name) => ({
+      name,
+      price: OPTION_PRICES[name] ?? 0,
+    })),
+  }));
+  return withPayment({ ...order, items }, cancel, order.pickupNumber);
+}
+
+function withPayment(
+  base: Omit<HistoryOrder, "payment" | "cancel" | "orderCount">,
+  cancel: CancelInfo | null,
+  seed: number,
+): HistoryOrder {
+  const orderAmount = base.items.reduce(
+    (sum, i) =>
+      sum +
+      i.quantity * (i.unitPrice + i.options.reduce((s, o) => s + o.price, 0)),
+    0,
+  );
+  const discountAmount = seed % 3 === 0 ? Math.min(1000, orderAmount) : 0;
+  const discounts =
+    discountAmount > 0
+      ? [
+          {
+            kind: DISCOUNT_KINDS[seed % DISCOUNT_KINDS.length],
+            amount: discountAmount,
+          },
+        ]
+      : [];
+  return {
+    ...base,
+    cancel,
+    orderCount: (seed % 4) + 1,
+    payment: {
+      orderAmount,
+      discounts,
+      paidAmount: orderAmount - discountAmount,
+      method: METHODS[seed % METHODS.length],
+      transactionId: `TX${base.orderNumber}`,
+    },
+  };
+}
+
+/** 최근 한 달 예시 주문 (오늘 제외). 날짜가 같으면 항상 같은 값이 나온다. */
+function pastOrders(today: number): HistoryOrder[] {
+  const result: HistoryOrder[] = [];
+  const first = sameDayLastMonth(today);
+  for (let day = first, n = 0; day < today; day = addDays(day, 1), n += 1) {
+    const d = new Date(day);
+    const yymmdd = `${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+    const count = 3 + (n % 4);
+    for (let i = 0; i < count; i += 1) {
+      const seed = n * 7 + i;
+      const paidAt = day + (9 * 60 + i * 37) * 60_000;
+      // 열 번에 한 번은 매장취소, 열 번 중 한 번은 고객취소. 지난 날은 처리 중인 주문이 없다 (0시에 서버가 픽업완료로 바꿈, Q21).
+      const status: OrderStatus =
+        seed % 10 === 3
+          ? "store-cancelled"
+          : seed % 10 === 7
+            ? "customer-cancelled"
+            : "picked-up";
+      const cancelled = status !== "picked-up";
+      const menus = MENUS.slice(seed % 3, (seed % 3) + 1 + (seed % 4));
+      result.push(
+        withPayment(
+          {
+            orderId: `hist-${n}-${i}`,
+            // 일련번호는 1001부터: 오늘 모의 주문(0001부터)과 번호가 겹치지 않게 한다.
+            orderNumber: `${yymmdd}000001${String(1001 + i)}`,
+            pickupNumber: i + 1,
+            status,
+            updatedAt: paidAt + 15 * 60_000,
+            paidAt,
+            pickupChoice: "20min",
+            items: menus.map((m, k) => ({
+              name: m.name,
+              quantity: 1 + ((seed + k) % 2),
+              unitPrice: m.price,
+              options:
+                k === 0 && seed % 2 === 0
+                  ? [{ name: "샷 추가", price: OPTION_PRICES["샷 추가"] }]
+                  : [],
+            })),
+            note: seed % 5 === 0 ? "빨대는 필요 없습니다." : undefined,
+            customerName: "홍*동",
+            phoneLast4: String(1000 + ((seed * 37) % 9000)),
+            statusTimes: {
+              preparingAt: cancelled ? null : paidAt + 2 * 60_000,
+              readyAt: cancelled ? null : paidAt + 8 * 60_000,
+              pickedUpAt: cancelled ? null : paidAt + 15 * 60_000,
+            },
+          },
+          cancelled
+            ? {
+                at: paidAt + 5 * 60_000,
+                by: status === "store-cancelled" ? "store" : "customer",
+                reason:
+                  status === "store-cancelled"
+                    ? CANCEL_REASONS[seed % CANCEL_REASONS.length]
+                    : null,
+              }
+            : null,
+          seed,
+        ),
+      );
+    }
+  }
+  return result;
+}
+
+export interface MockOrderHistoryOptions {
+  /** 오늘 주문. 모의 주문 서버가 가진 것과 같은 주문이다 (취소된 것 포함). */
+  todayOrders(): HistoryOrder[];
+  /** 응답까지 걸리는 시간. 0이면 타이머 없이 바로 응답한다 (테스트). 기본 300ms. */
+  delayMs?: number;
+  now?(): number;
+  /** 연결이 끊긴 모의 서버처럼 요청이 실패하게 한다. */
+  isConnected?(): boolean;
+}
+
+export function createMockOrderHistoryApi(
+  options: MockOrderHistoryOptions,
+): OrderHistoryApi {
+  const { delayMs = 300, now = Date.now, isConnected = () => true } = options;
+  async function guard() {
+    if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
+    if (!isConnected()) throw new Error("모의 서버 연결 끊김");
+  }
+  const all = () => {
+    const today = startOfDay(now());
+    return [...pastOrders(today), ...options.todayOrders()];
+  };
+
+  return {
+    async fetchPage(query) {
+      await guard();
+      const today = startOfDay(now());
+      const searching = query.q !== "";
+      // 검색은 고른 기간과 상관없이 최근 한 달 전체에서 찾는다 (Q36).
+      const from = searching ? sameDayLastMonth(today) : query.fromDay;
+      const to = searching ? today : query.toDay;
+      const end = addDays(to, 1);
+      const inScope = all()
+        .filter((o) => o.paidAt >= from && o.paidAt < end)
+        .filter((o) => !searching || matchesSearch(o, query.q))
+        .sort((a, b) => b.paidAt - a.paidAt);
+      const counts = Object.fromEntries(
+        TABS.map((t) => [
+          t,
+          inScope.filter((o) => t === "all" || tabOf(o.status) === t).length,
+        ]),
+      ) as Record<HistoryTab, number>;
+      const inTab = inScope.filter(
+        (o) => query.tab === "all" || tabOf(o.status) === query.tab,
+      );
+      const isCancelled = (o: HistoryOrder) => tabOf(o.status) === "cancelled";
+      const summed =
+        query.tab === "cancelled"
+          ? inTab
+          : inTab.filter((o) => !isCancelled(o));
+      const start = (query.page - 1) * query.size;
+      return {
+        rows: inTab.slice(start, start + query.size).map((o) => ({
+          orderId: o.orderId,
+          pickupNumber: o.pickupNumber,
+          status: o.status,
+          customerName: o.customerName,
+          menuNames: o.items.map((i) => i.name),
+          paidAmount: o.payment.paidAmount,
+          paidAt: o.paidAt,
+        })),
+        counts,
+        summary: {
+          amount: summed.reduce((s, o) => s + o.payment.paidAmount, 0),
+          excludedCancelCount:
+            query.tab === "all" ? inTab.filter(isCancelled).length : 0,
+        },
+      };
+    },
+    async fetchDetail(orderId) {
+      await guard();
+      const found = all().find((o) => o.orderId === orderId);
+      if (!found) throw new Error("모의 서버: 없는 주문");
+      return found;
+    },
+  };
+}
