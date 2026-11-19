@@ -225,6 +225,15 @@ export function createOrderSync(deps: OrderSyncDeps): OrderSync {
       duplicateEvents += 1;
       return;
     }
+    if (event.type === "orders-cleared") {
+      // 개발용 모의 서버만 보내는 신호다. 운영에서 잘못 오면 주문이 소리 없이 사라지므로 무시하고 로그만 남긴다.
+      if (!import.meta.env.DEV) {
+        void logInfo(logMessages.ordersClearedIgnored());
+        return;
+      }
+      afterCommit(deps.commit({ type: "reset" }));
+      return;
+    }
     if (event.type === "accepting-changed") {
       const autoOff = event.reason === "auto-cancel-streak";
       deps.applyServerAccepting(event.accepting, autoOff);

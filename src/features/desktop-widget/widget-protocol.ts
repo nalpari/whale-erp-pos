@@ -1,6 +1,7 @@
 // 본 창과 위젯 창이 주고받는 메시지 (T06 스펙 4장). 주문 목록은 본 창 하나가 가지므로,
 // 위젯은 본 창이 보낸 WidgetView를 그리기만 하고 누른 것은 WidgetCommand로 돌려보낸다.
 import type { Order } from "../../shared/api/orders";
+import type { WidgetPosition } from "./widget-position";
 
 export const WIDGET_VIEW_EVENT = "widget:view";
 export const WIDGET_COMMAND_EVENT = "widget:command";
@@ -31,6 +32,8 @@ export interface WidgetView {
   autoOffCard: boolean;
   /** 본 창이 위젯의 동작을 못 받는다 (받기 등록이 계속 실패). 위젯이 「본 화면에서 처리해 주세요」를 보인다. */
   linkFailed?: boolean;
+  /** 위젯을 놓을 모서리 (환경설정, T10). 없으면 오른쪽 아래. */
+  position?: WidgetPosition;
   cards: WidgetCardView[];
   /** 최대 장수(WIDGET_MAX_CARDS)를 넘어 보내지 않은 카드 수. 위젯 창은 높이 때문에 못 그린 카드를 여기에 더해 「+ N건 더 있음」으로 보인다. */
   moreCount: number;

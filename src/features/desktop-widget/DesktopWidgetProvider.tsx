@@ -20,6 +20,8 @@ import { useOrders } from "../../shared/orders/orders-context";
 import { UNDO_WINDOW_MS } from "../../shared/orders/orders-state";
 import { ALERT_REPEAT_MS } from "../../shared/sound/sound-player";
 import { Toast } from "../../shared/ui/Toast";
+import { useWidgetSettings } from "../settings-widget/widget-settings-context";
+import { widgetStatuses } from "../settings-widget/widget-settings";
 import { startWithRetry } from "./retry";
 import {
   OpenRequestContext,
@@ -43,6 +45,10 @@ export function DesktopWidgetProvider({ host, children }: Props) {
   const { state: shell, actions } = useAppShell();
   const { orders, sound, inFlight, changeStatus, onNewOrder } = useOrders();
   const active = shell.session !== null;
+  // 환경설정의 위젯설정: 보일 상태 · 위치. 바꾸면 바로 다음 화면부터 반영된다 (T10).
+  const { settings } = useWidgetSettings();
+  const statuses = useMemo(() => widgetStatuses(settings), [settings]);
+  const position = settings.position;
 
   // 위젯을 띄운 상태 (본 창이 앞이 아닐 때 새 주문 · 30초 반복 · 서버 자동 OFF가 켠다). 머리 [×] · 카드 0장이면 꺼진다.
   const [shown, setShown] = useState(false);
@@ -166,16 +172,17 @@ export function DesktopWidgetProvider({ host, children }: Props) {
         autoOffCard,
         inFlight,
         failures,
+        statuses,
       }),
-    [orders, dismissed, lingering, autoOffCard, inFlight, failures],
+    [orders, dismissed, lingering, autoOffCard, inFlight, failures, statuses],
   );
   // 로그아웃하면 위젯이 닫힌다 (3.1). 카드가 0장이 되면 "띄운 상태"도 끈다 (3.2): 안 그러면 나중에 카드가 생길 때
   // 본 창이 앞인데도 위젯이 떠 버린다. 렌더 중에 고쳐 두면 효과를 거치지 않고 바로 반영된다.
   if (shown && (!active || !full.visible)) setShown(false);
   if (!active && cancelId) setCancelId(null);
   const view = useMemo(
-    () => (active && shown ? { ...full, linkFailed } : HIDDEN_VIEW),
-    [active, shown, full, linkFailed],
+    () => (active && shown ? { ...full, linkFailed, position } : HIDDEN_VIEW),
+    [active, shown, full, linkFailed, position],
   );
 
   const viewRef = useRef(view);

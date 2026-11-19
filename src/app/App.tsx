@@ -9,6 +9,7 @@ import { createMockOrderFeed } from "../shared/api/order-feed";
 import { createMockOrderBackend } from "../shared/api/orders";
 import { OrdersProvider } from "../shared/orders/OrdersProvider";
 import { createWebAudioSoundPlayer } from "../shared/sound/web-audio-player";
+import { WidgetSettingsProvider } from "../features/settings-widget/WidgetSettingsContext";
 import { DesktopWidgetProvider } from "../features/desktop-widget/DesktopWidgetProvider";
 import { createWidgetHost } from "../features/desktop-widget/widget-host";
 import { createLogApi } from "../shared/log/log-api";
@@ -61,9 +62,11 @@ function App() {
         storeStatusApi={backend.storeStatusApi}
         sound={sound}
       >
-        <DesktopWidgetProvider host={widgetHost}>
-          <AppShell />
-        </DesktopWidgetProvider>
+        <WidgetSettingsProvider sound={sound}>
+          <DesktopWidgetProvider host={widgetHost}>
+            <AppShell />
+          </DesktopWidgetProvider>
+        </WidgetSettingsProvider>
       </OrdersProvider>
       {DevMockPanel && (
         <Suspense fallback={null}>

@@ -15,7 +15,11 @@ import {
   type WidgetCommand,
   type WidgetView,
 } from "./widget-protocol";
-import { WIDGET_WIDTH, widgetBounds } from "./widget-position";
+import {
+  WIDGET_WIDTH,
+  widgetBounds,
+  type WidgetPosition,
+} from "./widget-position";
 
 /** 본 창이 쓰는 쪽. */
 export interface WidgetHost {
@@ -32,8 +36,12 @@ export interface WidgetHost {
 export interface WidgetClient {
   onView(handler: (view: WidgetView) => void): Promise<() => void>;
   send(command: WidgetCommand): Promise<void>;
-  /** 보이면 주 모니터 오른쪽 아래에 놓고 띄우고, 아니면 숨긴다. 띄울 때 초점은 가져가지 않는다(창 설정 focusable: false). */
-  present(visible: boolean, contentHeight: number): Promise<void>;
+  /** 보이면 주 모니터의 고른 모서리에 놓고 띄우고, 아니면 숨긴다. 띄울 때 초점은 가져가지 않는다(창 설정 focusable: false). */
+  present(
+    visible: boolean,
+    contentHeight: number,
+    position?: WidgetPosition,
+  ): Promise<void>;
 }
 
 /** 이 웹뷰가 위젯 창인지. 브라우저 개발 모드는 주소에 ?widget을 붙여 화면만 시험한다. */
@@ -74,7 +82,11 @@ export function createTauriWidgetClient(): WidgetClient {
   const win = getCurrentWindow();
   let visibleNow = false;
   let lastHeight = 0;
-  async function doPresent(visible: boolean, contentHeight: number) {
+  async function doPresent(
+    visible: boolean,
+    contentHeight: number,
+    corner?: WidgetPosition,
+  ) {
     if (!visible) {
       visibleNow = false;
       await win.hide();
@@ -92,6 +104,7 @@ export function createTauriWidgetClient(): WidgetClient {
         },
         monitor.scaleFactor,
         contentHeight,
+        corner,
       );
       const move = () =>
         win.setPosition(new PhysicalPosition(bounds.x, bounds.y));
@@ -117,8 +130,8 @@ export function createTauriWidgetClient(): WidgetClient {
     onView: (handler) =>
       listen<WidgetView>(WIDGET_VIEW_EVENT, (e) => handler(e.payload)),
     send: (command) => emit(WIDGET_COMMAND_EVENT, command),
-    present(visible, contentHeight) {
-      const run = chain.then(() => doPresent(visible, contentHeight));
+    present(visible, contentHeight, position) {
+      const run = chain.then(() => doPresent(visible, contentHeight, position));
       chain = run.catch(() => {});
       return run;
     },
