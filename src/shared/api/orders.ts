@@ -40,6 +40,14 @@ export interface OrderItem {
   options?: string[];
 }
 
+/** 상태별로 그 단계가 된 시각(ms). 아직이면 null. 요약 팝업의 처리 단계에서 지난 단계의 시:분으로 보인다 (T05 결정 B, 백엔드 요청 3.6 statusTimes 가정). */
+export interface StatusTimes {
+  preparingAt: number | null;
+  readyAt: number | null;
+  /** [완료 취소]로 되돌리면 서버가 지운다(null). */
+  pickedUpAt: number | null;
+}
+
 export interface Order {
   /** 서버가 정한 식별자. 로그에는 이것만 남긴다. */
   orderId: string;
@@ -58,6 +66,7 @@ export interface Order {
   /** 서버가 가려서 준다고 가정한 값 (개인정보 규칙). */
   customerName: string;
   phoneLast4: string;
+  statusTimes: StatusTimes;
 }
 
 export interface StatusChangeRequest {
@@ -170,6 +179,7 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
         : undefined,
       customerName: "홍*동",
       phoneLast4: "0000",
+      statusTimes: { preparingAt: null, readyAt: null, pickedUpAt: null },
     };
     orders.set(order.orderId, order);
     return order;
@@ -179,7 +189,17 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
     return [...orders.values()].find((o) => o.status === "pending");
   }
   function update(order: Order, status: Order["status"]): Order {
-    const next = { ...order, status, updatedAt: stamp() };
+    const at = stamp();
+    const t = order.statusTimes;
+    const statusTimes = {
+      preparingAt: status === "preparing" ? at : t.preparingAt,
+      // 완료 취소로 제조완료에 돌아와도 처음 제조완료가 된 시각을 지키지 않고 덮어쓰면 단계 시각이 거짓이 된다.
+      readyAt: status === "ready" && t.readyAt === null ? at : t.readyAt,
+      // 픽업완료에서 되돌아가면(제조완료) 지운다. 취소 같은 다른 변경은 그대로 둔다.
+      pickedUpAt:
+        status === "picked-up" ? at : status === "ready" ? null : t.pickedUpAt,
+    };
+    const next = { ...order, status, updatedAt: at, statusTimes };
     orders.set(next.orderId, next);
     emit({ eventId: nextEventId(), type: "order-updated", order: next });
     return next;

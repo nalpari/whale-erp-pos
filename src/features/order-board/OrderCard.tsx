@@ -28,7 +28,7 @@ const BUTTON_COLORS = {
 } as const;
 
 /** 1분마다 이 글자만 다시 그린다. */
-function PickupText({ order }: { order: Order }) {
+export function PickupText({ order }: { order: Order }) {
   const { label, note } = pickupSchedule(order, useNow(MINUTE_MS));
   return (
     <span>
@@ -60,7 +60,7 @@ interface Props {
   /** 이 주문의 상태 변경 요청이 진행 중이다. */
   busy: boolean;
   onAction(orderId: string, action: Exclude<OrderAction, "cancel">): void;
-  /** 카드(버튼 밖)를 눌렀을 때. T05가 요약 팝업을 연결한다. T04에서는 아무것도 넘기지 않는다. */
+  /** 카드(버튼 밖)를 눌렀을 때 (요약 팝업). */
   onOpen?(orderId: string): void;
 }
 
@@ -81,7 +81,18 @@ export const OrderCard = memo(function OrderCard({
   return (
     <article
       aria-label={`픽업번호 ${order.pickupNumber}`}
+      // 터치 · 마우스 · 키보드(Enter · Space) 모두 요약 팝업을 연다. 팝업이 닫히면 초점이 이 카드로 돌아온다.
+      tabIndex={onOpen ? 0 : undefined}
       onClick={() => onOpen?.(order.orderId)}
+      onKeyDown={(e) => {
+        if (
+          e.target === e.currentTarget &&
+          (e.key === "Enter" || e.key === " ")
+        ) {
+          e.preventDefault();
+          onOpen?.(order.orderId);
+        }
+      }}
       className={`flex h-[480px] w-[300px] flex-col gap-2 rounded-xl border-2 p-3 ${CARD_COLORS[order.status]}`}
     >
       <header className="flex items-center justify-between">
