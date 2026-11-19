@@ -4,6 +4,8 @@ import { useAppShell } from "./AppShellContext";
 import { OrderHistoryScreen } from "../order-history/OrderHistoryScreen";
 import { useOrderHistoryApi } from "../../shared/api/order-history-context";
 import { useStoreInfoApi } from "../../shared/api/store-info-context";
+import { useSoldOutApi } from "../../shared/api/soldout-context";
+import { SoldOutScreen } from "../soldout/SoldOutScreen";
 import { StoreInfoScreen } from "../store-info/StoreInfoScreen";
 import { STORE_INFO_TEXTS } from "../store-info/store-info-texts";
 import { ConfirmDialog } from "../../shared/ui/ConfirmDialog";
@@ -29,6 +31,11 @@ export function MainContent() {
   const hasOrders = useOrdersOptional() !== null;
   const historyApi = useOrderHistoryApi();
   const storeInfoApi = useStoreInfoApi();
+  const soldoutApi = useSoldOutApi();
+  // [메뉴품절] 탭을 누를 때마다(이미 그 탭일 때도) 목록을 다시 조회하게 알린다 (메뉴품절 SPEC 11장 A).
+  const [soldoutPress, setSoldoutPress] = useState(0);
+  // 품절 저장 · 삭제 · 추가 요청이 가는 중에는 메인 탭 이동을 막는다(결과 토스트가 사라지지 않게). 위젯 이동은 막지 않는다: 주문 처리가 먼저다.
+  const [soldoutBusy, setSoldoutBusy] = useState(false);
   // 매장정보에 저장하지 않은 변경이 있는데 다른 메인 탭을 누르면 확인창을 띄운다 (매장정보 SPEC 11장 A).
   // 화면은 이 탭일 때만 그려 내려가면 변경이 사라지므로, [나가기]는 탭만 옮기면 된다.
   const [storeInfoDirty, setStoreInfoDirty] = useState(false);
@@ -51,6 +58,7 @@ export function MainContent() {
   // 탭 이동은 눌렀을 때와 확인창 [나가기]가 같은 길을 탄다: 주문내역은 어느 쪽으로 들어가도 다시 조회한다.
   function goTo(id: MainTabId) {
     actions.selectTab(id);
+    if (id === "menu-sold-out") setSoldoutPress((n) => n + 1);
     if (id === "order-history") {
       setHistoryPress((p) => ({ seq: p.seq + 1, at: Date.now() }));
     }
@@ -70,6 +78,12 @@ export function MainContent() {
           idPrefix="main"
           size="main"
           onSelect={(id) => {
+            if (
+              soldoutBusy &&
+              active.id === "menu-sold-out" &&
+              id !== active.id
+            )
+              return;
             if (
               storeInfoSaving &&
               active.id === "store-info" &&
@@ -138,6 +152,12 @@ export function MainContent() {
               api={storeInfoApi}
               onDirtyChange={setStoreInfoDirty}
               onSavingChange={setStoreInfoSaving}
+            />
+          ) : active.id === "menu-sold-out" && soldoutApi ? (
+            <SoldOutScreen
+              api={soldoutApi}
+              refreshSeq={soldoutPress}
+              onBusyChange={setSoldoutBusy}
             />
           ) : (
             <Placeholder label={active.label} />
