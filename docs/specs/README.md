@@ -14,7 +14,8 @@
 | `order-board` | T04 주문접수 화면 | WHALEERPPO-5 | [SPEC-order-board.md](./SPEC-order-board.md) | 승인 (2026-11-18) |
 | `order-summary` | T05 주문 요약 팝업 · 주문취소 팝업 | WHALEERPPO-6 | [SPEC-order-summary.md](./SPEC-order-summary.md) | 승인 (2026-11-19) |
 | `desktop-widget` | T06 바탕화면 주문 알림 위젯 · 알림음 | WHALEERPPO-7 | [SPEC-desktop-widget.md](./SPEC-desktop-widget.md) | 승인 (2026-11-19) |
+| `settings-widget` | T10 환경설정 — 위젯설정 · 알림음 | WHALEERPPO-11 | [SPEC-settings-widget.md](./SPEC-settings-widget.md) | 승인 (2026-11-19) |
 
-빌드 순서: `project-skeleton` → `app-shell` → `login` → `settings-printer` → `logging` → `order-sync` → `order-board` → `order-summary` → `desktop-widget`
+빌드 순서: `project-skeleton` → `app-shell` → `login` → `settings-printer` → `logging` → `order-sync` → `order-board` → `order-summary` → `desktop-widget` → `settings-widget`
 
 구현 계획은 `docs/plans/PLAN-<모듈 id>.md`에 둔다. 단계는 그 문서의 체크리스트로 관리하고, Plane에는 태스크 하나만 둔다.
