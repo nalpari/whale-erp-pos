@@ -121,6 +121,14 @@ export const logMessages = {
   soundBlocked: () => "알림음이 막혀 있음(화면을 누르기 전일 수 있음)",
   duplicatesDropped: (count: number) =>
     `중복 · 오래된 주문 사건 ${count}건 버림`,
+  // 검색어 · 고객 정보 · 결제 정보는 남기지 않는다 (주문내역 SPEC 6장).
+  historyRequestFailed: (
+    kind: "list" | "detail",
+    timedOut: boolean,
+    errorName: string,
+    orderId?: string,
+  ) =>
+    `주문내역 ${kind === "list" ? "목록" : "상세"} 조회 ${timedOut ? "시간 초과" : `실패: ${errorName}`}${orderId ? ` (${orderId})` : ""}`,
   settingsFailed: (action: "save" | "load") =>
     action === "save" ? "설정 저장 실패" : "설정 읽기 실패",
 };

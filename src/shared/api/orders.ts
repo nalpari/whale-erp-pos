@@ -2,6 +2,11 @@
 // 아래 응답 형태, 상태 이름, 오류 구분은 모두 가정이다. 백엔드 협의 뒤 이 파일만 바꾼다.
 import { ACTION_TRANSITIONS } from "../orders/orders-state";
 import type { OrderEvent } from "./order-feed";
+import {
+  createMockOrderHistoryApi,
+  toHistoryOrder,
+  type CancelInfo,
+} from "./order-history";
 import type { StoreStatusApi } from "./store-status";
 
 export type OrderStatus =
@@ -112,6 +117,8 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
   const { delayMs = 300 } = options;
   const orders = new Map<string, Order>();
   const results = new Map<string, StatusChangeResult>();
+  // 주문내역 상세가 보이는 취소 시각 · 누가 · 사유 (주문내역 SPEC 3장).
+  const cancels = new Map<string, CancelInfo>();
   const subscribers = new Set<{
     onEvent(e: OrderEvent): void;
     onClose(): void;
@@ -190,8 +197,19 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
   function oldestPending(): Order | undefined {
     return [...orders.values()].find((o) => o.status === "pending");
   }
-  function update(order: Order, status: Order["status"]): Order {
+  function update(
+    order: Order,
+    status: Order["status"],
+    reason?: string,
+  ): Order {
     const at = stamp();
+    if (status === "store-cancelled" || status === "customer-cancelled") {
+      cancels.set(order.orderId, {
+        at,
+        by: status === "store-cancelled" ? "store" : "customer",
+        reason: reason ?? null,
+      });
+    }
     const t = order.statusTimes;
     const statusTimes = {
       preparingAt: status === "preparing" ? at : t.preparingAt,
@@ -239,7 +257,11 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
       ) {
         result = { kind: "already-handled", order };
       } else {
-        const next = update(order, ACTION_TRANSITIONS[request.action].to);
+        const next = update(
+          order,
+          ACTION_TRANSITIONS[request.action].to,
+          request.reason,
+        );
         result = { kind: "ok", order: next };
       }
       results.set(request.idempotencyKey, result);
@@ -268,9 +290,20 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
     }
   }
 
+  const historyApi = createMockOrderHistoryApi({
+    todayOrders: () =>
+      [...orders.values()].map((o) =>
+        toHistoryOrder(o, cancels.get(o.orderId) ?? null),
+      ),
+    delayMs,
+    isConnected: () => connected,
+  });
+
   return {
     api,
     storeStatusApi,
+    /** 주문내역 조회. 오늘 주문은 이 모의 서버의 주문과 같다. */
+    historyApi,
     /** 실시간 연결. 끊긴 상태면 던진다. 돌려주는 함수가 연결을 닫는다. */
     subscribe(onEvent: (e: OrderEvent) => void, onClose: () => void) {
       if (!connected) throw new Error("모의 서버 연결 끊김");
@@ -332,6 +365,7 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
       deleteAllOrders() {
         orders.clear();
         results.clear();
+        cancels.clear();
         lastCreated = null;
         pickupBase = orderSeq;
         emit({ eventId: nextEventId(), type: "orders-cleared" });
