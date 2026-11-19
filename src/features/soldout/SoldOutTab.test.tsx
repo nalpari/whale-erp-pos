@@ -14,7 +14,7 @@ import { createMemoryTokenStore } from "../../shared/session/token-store";
 import { createFakeWindow } from "../../test/fakes";
 import { AppShell } from "../app-shell/AppShell";
 import { AppShellProvider } from "../app-shell/AppShellContext";
-import { SoldOutScreen } from "./SoldOutScreen";
+import { SoldOutHarness } from "../../test/soldout-harness";
 import { SOLDOUT_TEXTS as T } from "./soldout-texts";
 
 vi.mock("@tauri-apps/plugin-log", () => {
@@ -57,6 +57,39 @@ describe("[메뉴품절] 탭", () => {
     fireEvent.click(screen.getByRole("tab", { name: "매장정보" }));
     fireEvent.click(tab());
     await vi.waitFor(() => expect(spy).toHaveBeenCalledTimes(3));
+  });
+});
+
+describe("검색어 유지", () => {
+  it("다른 메인 탭에 갔다 와도 검색어가 남는다", async () => {
+    const api = createMockSoldOutApi({ delayMs: 0 });
+    render(
+      <AppShellProvider
+        windowApi={createFakeWindow().win}
+        storeStatusApi={createMockStoreStatusApi({ delayMs: 0 })}
+        authApi={createMockAuthApi({ delayMs: 0 })}
+        tokenStore={createMemoryTokenStore()}
+        printerApi={createFakePrinterApi()}
+        printerSettingsStore={createMemoryPrinterSettingsStore()}
+        logApi={createFakeLogApi()}
+        initialSession={STORE}
+      >
+        <SoldOutApiContext.Provider value={api}>
+          <AppShell />
+        </SoldOutApiContext.Provider>
+      </AppShellProvider>,
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "메뉴품절" }));
+    await screen.findByText(T.guide);
+    fireEvent.change(screen.getByRole("textbox", { name: T.search }), {
+      target: { value: "치즈" },
+    });
+    fireEvent.click(screen.getByRole("tab", { name: "주문내역" }));
+    fireEvent.click(screen.getByRole("tab", { name: "메뉴품절" }));
+    await screen.findByText(T.guide);
+    expect(screen.getByRole("textbox", { name: T.search })).toHaveValue("치즈");
+    expect(screen.getByText("치즈케이크")).toBeInTheDocument();
+    expect(screen.queryByText("아메리카노")).toBeNull();
   });
 });
 
@@ -114,16 +147,12 @@ describe("요청과 조회가 엇갈릴 때", () => {
     vi.spyOn(api, "setMode").mockReturnValue(
       new Promise<void>((r) => (finish = r)),
     );
-    const { rerender } = render(
-      <SoldOutScreen api={api} refreshSeq={0} onBusyChange={() => {}} />,
-    );
+    const { rerender } = render(<SoldOutHarness api={api} refreshSeq={0} />);
     await screen.findByText(T.guide);
     const group = screen.getByRole("group", { name: "아메리카노 표시방식" });
     fireEvent.click(within(group).getByRole("radio", { name: "숨김" }));
     const load = vi.spyOn(api, "loadList").mockResolvedValue(list);
-    rerender(
-      <SoldOutScreen api={api} refreshSeq={1} onBusyChange={() => {}} />,
-    );
+    rerender(<SoldOutHarness api={api} refreshSeq={1} />);
     await vi.waitFor(() => expect(load).toHaveBeenCalled());
     await new Promise((r) => setTimeout(r, 10));
     expect(within(group).getByRole("radio", { name: "숨김" })).toBeChecked();
@@ -138,9 +167,7 @@ describe("요청과 조회가 엇갈릴 때", () => {
       const api = createMockSoldOutApi({ delayMs: 0 });
       vi.spyOn(api, "setMode").mockReturnValue(new Promise(() => {}));
       const load = vi.spyOn(api, "loadList");
-      render(
-        <SoldOutScreen api={api} refreshSeq={0} onBusyChange={() => {}} />,
-      );
+      render(<SoldOutHarness api={api} refreshSeq={0} />);
       await act(async () => {
         await vi.advanceTimersByTimeAsync(0);
       });
@@ -163,7 +190,7 @@ describe("요청과 조회가 엇갈릴 때", () => {
     const api = createMockSoldOutApi({ delayMs: 0 });
     const load = vi.spyOn(api, "loadList");
     vi.spyOn(api, "add").mockResolvedValue([]);
-    render(<SoldOutScreen api={api} refreshSeq={0} onBusyChange={() => {}} />);
+    render(<SoldOutHarness api={api} refreshSeq={0} />);
     await screen.findByText(T.guide);
     fireEvent.click(screen.getByRole("button", { name: T.add }));
     const popup = await screen.findByRole("dialog");
@@ -179,18 +206,14 @@ describe("요청과 조회가 엇갈릴 때", () => {
   it("조회를 보낸 뒤 끝난 삭제가 있으면, 늦게 온 옛 조회 응답으로 줄이 되살아나지 않는다", async () => {
     const api = createMockSoldOutApi({ delayMs: 0 });
     const old = await api.loadList();
-    const { rerender } = render(
-      <SoldOutScreen api={api} refreshSeq={0} onBusyChange={() => {}} />,
-    );
+    const { rerender } = render(<SoldOutHarness api={api} refreshSeq={0} />);
     await screen.findByText(T.guide);
     // 첫 조회는 삭제 전 값을 늦게 돌려주고, 두 번째부터는 서버의 지금 값을 준다.
     let lateReply: (v: typeof old) => void = () => {};
     const load = vi
       .spyOn(api, "loadList")
       .mockReturnValueOnce(new Promise((r) => (lateReply = r)));
-    rerender(
-      <SoldOutScreen api={api} refreshSeq={1} onBusyChange={() => {}} />,
-    );
+    rerender(<SoldOutHarness api={api} refreshSeq={1} />);
     await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByRole("button", { name: "아메리카노 삭제" }));
     fireEvent.click(

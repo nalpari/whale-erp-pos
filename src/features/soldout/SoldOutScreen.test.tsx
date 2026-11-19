@@ -6,7 +6,7 @@ import {
   type SoldOutRequestKind,
 } from "../../shared/api/soldout";
 import { RequestTimeoutError } from "../../shared/api/with-timeout";
-import { SoldOutScreen } from "./SoldOutScreen";
+import { SoldOutHarness } from "../../test/soldout-harness";
 import { SOLDOUT_TEXTS as T } from "./soldout-texts";
 
 vi.mock("@tauri-apps/plugin-log", () => {
@@ -20,9 +20,7 @@ function setup(failing: SoldOutRequestKind[] = []) {
     delayMs: 0,
     shouldFail: (kind) => failures.has(kind),
   });
-  const view = render(
-    <SoldOutScreen api={api} refreshSeq={0} onBusyChange={() => {}} />,
-  );
+  const view = render(<SoldOutHarness api={api} refreshSeq={0} />);
   return { api, failures, ...view };
 }
 
@@ -55,13 +53,9 @@ describe("SoldOutScreen", () => {
   it("refreshSeq가 바뀌면 다시 조회한다", async () => {
     const api = createMockSoldOutApi({ delayMs: 0 });
     const spy = vi.spyOn(api, "loadList");
-    const { rerender } = render(
-      <SoldOutScreen api={api} refreshSeq={0} onBusyChange={() => {}} />,
-    );
+    const { rerender } = render(<SoldOutHarness api={api} refreshSeq={0} />);
     await screen.findByText(T.guide);
-    rerender(
-      <SoldOutScreen api={api} refreshSeq={1} onBusyChange={() => {}} />,
-    );
+    rerender(<SoldOutHarness api={api} refreshSeq={1} />);
     await vi.waitFor(() => expect(spy).toHaveBeenCalledTimes(2));
     expect(screen.getByText(T.guide)).toBeInTheDocument();
   });
@@ -132,8 +126,100 @@ describe("SoldOutScreen", () => {
   it("서버 목록이 비어 있으면 빈 목록 문구를 보인다", async () => {
     const api = createMockSoldOutApi({ delayMs: 0 });
     vi.spyOn(api, "loadList").mockResolvedValue([]);
-    render(<SoldOutScreen api={api} refreshSeq={0} onBusyChange={() => {}} />);
+    render(<SoldOutHarness api={api} refreshSeq={0} />);
     expect(await screen.findByText(T.empty)).toBeInTheDocument();
+  });
+
+  describe("목록 검색", () => {
+    const search = () => screen.getByRole("textbox", { name: T.search });
+    const type = (value: string) =>
+      fireEvent.change(search(), { target: { value } });
+
+    it("입력하면 바로 거르고(대소문자 · 앞뒤 공백 무시) 탭 건수도 결과 기준이다", async () => {
+      setup();
+      await screen.findByText(T.guide);
+      type("  치즈 ");
+      expect(names()).toEqual(["치즈케이크"]);
+      expect(screen.getByRole("tab", { name: "전체 1" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("tab", { name: "일시품절 0" }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "숨김 1" })).toBeInTheDocument();
+    });
+
+    it("고른 상태 탭 안에서 거른다", async () => {
+      setup();
+      await screen.findByText(T.guide);
+      fireEvent.click(screen.getByRole("tab", { name: "숨김 1" }));
+      type("샷");
+      expect(screen.getByText(T.noMatch)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("tab", { name: "일시품절 1" }));
+      expect(names()).toEqual(["샷 추가"]);
+    });
+
+    it("결과가 없으면 안내를 보이고, ×로 지우면 전체가 돌아온다", async () => {
+      setup();
+      await screen.findByText(T.guide);
+      expect(
+        screen.queryByRole("button", { name: T.clearSearch }),
+      ).not.toBeInTheDocument();
+      type("없는상품");
+      expect(screen.getByText(T.noMatch)).toBeInTheDocument();
+      expect(screen.queryByText(T.empty)).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: T.clearSearch }));
+      expect(search()).toHaveValue("");
+      expect(names()).toHaveLength(3);
+    });
+
+    it("다시 조회해도 검색어가 남는다", async () => {
+      const api = createMockSoldOutApi({ delayMs: 0 });
+      const spy = vi.spyOn(api, "loadList");
+      const { rerender } = render(<SoldOutHarness api={api} refreshSeq={0} />);
+      await screen.findByText(T.guide);
+      type("아메");
+      rerender(<SoldOutHarness api={api} refreshSeq={1} />);
+      await vi.waitFor(() => expect(spy).toHaveBeenCalledTimes(2));
+      expect(search()).toHaveValue("아메");
+      expect(names()).toEqual(["아메리카노"]);
+    });
+
+    it("추가에 성공하면 검색어를 지워 방금 추가한 항목이 맨 위에 보인다(팝업은 열린 채)", async () => {
+      setup();
+      await screen.findByText(T.guide);
+      type("아메");
+      fireEvent.click(screen.getByRole("button", { name: T.add }));
+      const popup = await screen.findByRole("dialog", { name: T.popup.title });
+      fireEvent.click(
+        await within(popup).findByRole("checkbox", { name: "스콘" }),
+      );
+      fireEvent.click(
+        within(popup).getByRole("button", { name: T.popup.submit }),
+      );
+      await screen.findByText(T.popup.added(1));
+      expect(screen.getByRole("dialog", { name: T.popup.title })).toBe(popup);
+      expect(search()).toHaveValue("");
+      fireEvent.click(
+        within(popup).getByRole("button", { name: T.popup.close }),
+      );
+      expect(names()[0]).toBe("스콘");
+    });
+
+    it("하나도 추가되지 않으면 검색어는 그대로 둔다", async () => {
+      const { api } = setup();
+      vi.spyOn(api, "add").mockResolvedValue([]);
+      await screen.findByText(T.guide);
+      type("아메");
+      fireEvent.click(screen.getByRole("button", { name: T.add }));
+      const popup = await screen.findByRole("dialog", { name: T.popup.title });
+      fireEvent.click(
+        await within(popup).findByRole("checkbox", { name: "스콘" }),
+      );
+      fireEvent.click(
+        within(popup).getByRole("button", { name: T.popup.submit }),
+      );
+      await screen.findByText(T.popup.allSkipped(1));
+      expect(search()).toHaveValue("아메");
+    });
   });
 
   describe("추가 팝업", () => {
