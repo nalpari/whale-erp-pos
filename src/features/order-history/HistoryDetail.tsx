@@ -31,6 +31,8 @@ import {
 import { DISCOUNT_LABELS, HISTORY_TEXTS, STATUS_VIEW } from "./history-texts";
 
 interface Props {
+  /** [주문내역] 탭을 누를 때마다 오른다. 바뀌면 상세를 다시 불러온다. */
+  refreshSeq: number;
   orderId: string;
   api: OrderHistoryApi;
   /** [← 이전]. 목록 조건 · 페이지 · 스크롤은 부르는 쪽이 지킨다. */
@@ -63,6 +65,7 @@ function Section({
 }
 
 export function HistoryDetail({
+  refreshSeq,
   orderId,
   api,
   onBack,
@@ -111,6 +114,11 @@ export function HistoryDetail({
   // [주문접수] 탭 · 다른 PC · 고객이 이 주문을 바꾸거나 목록에서 사라지면(취소) 상세도 다시 불러온다: 취소 시각 · 사유 같은 칸이 서버 값으로 채워진다.
   // 값은 렌더 중에 맞춘다(효과 안 setState 금지).
   const liveKey = live ? String(live.updatedAt) : "gone";
+  const [seenRefresh, setSeenRefresh] = useState(refreshSeq);
+  if (seenRefresh !== refreshSeq) {
+    setSeenRefresh(refreshSeq);
+    setLoadKey((k) => k + 1);
+  }
   const [seenLiveKey, setSeenLiveKey] = useState(liveKey);
   if (seenLiveKey !== liveKey) {
     setSeenLiveKey(liveKey);
