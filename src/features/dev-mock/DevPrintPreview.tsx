@@ -13,8 +13,9 @@ export function DevPrintPreview() {
   );
   const [open, setOpen] = useState(false);
 
+  // 오른쪽 아래: 왼쪽 아래는 가상 주문 패널(DevMockPanel) 자리라 겹치면 가린다.
   return (
-    <div className="fixed bottom-2 left-2 z-[60] text-sm">
+    <div className="fixed right-2 bottom-2 z-[60] text-sm">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
