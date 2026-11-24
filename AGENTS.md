@@ -150,6 +150,7 @@
    1. 확인: 워크트리에 고친 파일이 없고(`git status --porcelain`이 빈 값), 브랜치가 `main`에 머지됐고(`git branch --merged main`), 작업 세션이 쉬는 중(idle)인지 본다. 하나라도 아니면 멈추고 사용자에게 알린다.
    2. 작업 세션 닫기: 그 세션의 Claude Code 프로세스(작업 폴더가 그 워크트리인 프로세스)를 찾아 정상 종료 신호(SIGTERM)를 보낸다. 터미널 창은 남고 Claude만 끝난다.
    3. `git worktree remove <워크트리>` → `git branch -d <브랜치>` (`-D`로 강제 삭제하지 않는다).
+   4. **명세 보관소 맞추기 (2026-11-24 사용자 결정)**: 그 태스크에서 `docs/specs`가 바뀌었으면 명세 보관소(spec-store `whalepos`)도 고친다. 스펙 결정이 바뀐 S- · 정책 · 기능 항목을 고치고, `node scripts/spec-to-dc.mjs docs/specs <스크래치 폴더>`로 만든 HTML로 「문서」의 DC 항목(스크립트의 `DC_IDS`)을 바꾼다. 새 스펙이면 DC 항목을 새로 만들고 `DC_IDS`에 더한다. DC 맨 위 설명의 기준 날짜 · 저장소 커밋도 고친다.
 
 ### 지시서에 반드시 넣을 것
 
