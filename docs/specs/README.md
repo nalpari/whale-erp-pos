@@ -20,9 +20,11 @@
 | `soldout` | T09 메뉴품절 · 품절상품 추가 팝업 | WHALEERPPO-10 | [SPEC-soldout.md](./SPEC-soldout.md) | 승인 (2026-11-19) |
 | `settings-ai-popular` | T13 환경설정 — AI챗봇 인기메뉴 설정 | WHALEERPPO-14 | [SPEC-settings-ai-popular.md](./SPEC-settings-ai-popular.md) | 승인 (2026-11-19) |
 | `print-forms` | T12 출력 — 주문서 · 영수증 | WHALEERPPO-13 | [SPEC-print-forms.md](./SPEC-print-forms.md) | 승인 (2026-11-19) |
-| `order-summary` (개정) | T18 제조완료 매장 취소 | WHALEERPPO-51 | [SPEC-order-summary.md](./SPEC-order-summary.md) 12장 | 승인 (2026-11-25, 대표님 결정) |
+| `order-summary` (개정) | T18 매장 취소 범위 넓히기 | WHALEERPPO-51 | [SPEC-order-summary.md](./SPEC-order-summary.md) 12장 | 승인 (2026-11-25, 대표님 결정) |
 | `order-board` (개정) | T19 도착 예정 시각 | WHALEERPPO-52 | [SPEC-order-board.md](./SPEC-order-board.md) 12장 · print-forms 12장 | 승인 (2026-11-25, 대표님 결정) |
 | `settings-order` | T20 환경설정 — 주문설정 | WHALEERPPO-53 | [SPEC-settings-order.md](./SPEC-settings-order.md) | 승인 (2026-11-25, 대표님 결정) |
+| `remake` | T21 재제조 | WHALEERPPO-54 | [SPEC-remake.md](./SPEC-remake.md) · print-forms 13장 | 승인 (2026-11-25, Q62 답) |
+| `order-history` (개정) | T22 「환불」 · 자동 픽업완료 표시 | WHALEERPPO-55 | [SPEC-order-history.md](./SPEC-order-history.md) 12.1 · 12.2 | 승인 (2026-11-25, Q65 · Q66 답) |
 
 빌드 순서: `project-skeleton` → `app-shell` → `login` → `settings-printer` → `logging` → `order-sync` → `order-board` → `order-summary` → `desktop-widget` → `settings-widget` → `order-history` → `store-info` → `soldout` → `settings-ai-popular` → `print-forms`
 
