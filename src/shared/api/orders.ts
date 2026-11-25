@@ -1,5 +1,6 @@
 // 주문 수신 · 상태 변경 API. 백엔드 API가 정해지기 전이라 인터페이스와 모의 구현만 둔다 (SPEC-order-sync 2 · 5장, 가정).
 // 아래 응답 형태, 상태 이름, 오류 구분은 모두 가정이다. 백엔드 협의 뒤 이 파일만 바꾼다.
+import { startOfDay } from "../date-days";
 import { ACTION_TRANSITIONS } from "../orders/orders-state";
 import type { OrderEvent } from "./order-feed";
 import {
@@ -88,7 +89,9 @@ export type StatusChangeResult =
   | { kind: "ok"; order: Order }
   /** 다른 PC가 먼저 처리했다. order는 서버의 최신 상태. */
   | { kind: "already-handled"; order: Order }
-  | { kind: "customer-cancelled"; order: Order };
+  | { kind: "customer-cancelled"; order: Order }
+  /** 픽업완료 주문의 취소 시간(결제한 날 0시)이 지났다. 상태는 그대로 (T18, 거절 종류 이름은 가정 · 백엔드 협의). */
+  | { kind: "too-late"; order: Order };
 
 export interface OrderApi {
   /** 처리할 주문 전체(접수대기 · 제조중 · 제조완료)와 오늘 픽업완료 (스펙 3.1-2). */
@@ -252,6 +255,13 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
       let result: StatusChangeResult;
       if (order.status === "customer-cancelled") {
         result = { kind: "customer-cancelled", order };
+      } else if (
+        request.action === "cancel" &&
+        order.status === "picked-up" &&
+        order.paidAt < startOfDay(Date.now())
+      ) {
+        // 가정: 서버가 결제한 날 0시가 지난 픽업완료 취소를 거절한다 (T18).
+        result = { kind: "too-late", order };
       } else if (
         !ACTION_TRANSITIONS[request.action].from.includes(order.status)
       ) {

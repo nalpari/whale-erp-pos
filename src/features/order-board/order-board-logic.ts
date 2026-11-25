@@ -132,6 +132,9 @@ export function splitOrders(
   const board: Order[] = [];
   const pickedUp: Order[] = [];
   for (const o of orders) {
+    if (o.status === "store-cancelled" || o.status === "customer-cancelled") {
+      continue; // 5초 배너 동안 취소해도 카드를 남기지 않는다 (T18: 픽업완료도 취소할 수 있다)
+    }
     if (lingering.has(o.orderId)) {
       board.push(o);
     } else if (

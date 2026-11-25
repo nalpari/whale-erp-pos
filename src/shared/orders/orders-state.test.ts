@@ -52,6 +52,8 @@ describe("상태 변경 표 (스펙 2.1)", () => {
     cancel: [
       ["pending", "store-cancelled"],
       ["preparing", "store-cancelled"],
+      ["ready", "store-cancelled"],
+      ["picked-up", "store-cancelled"],
     ],
     complete: [["preparing", "ready"]],
     pickup: [["ready", "picked-up"]],
@@ -69,9 +71,9 @@ describe("상태 변경 표 (스펙 2.1)", () => {
     });
   }
 
-  it("제조완료 · 픽업완료부터는 취소할 수 없다 (Q17)", () => {
-    expect(canApplyAction("ready", "cancel")).toBe(false);
-    expect(canApplyAction("picked-up", "cancel")).toBe(false);
+  it("제조완료 · 픽업완료에서도 취소할 수 있다 (T18, Q17 변경)", () => {
+    expect(canApplyAction("ready", "cancel")).toBe(true);
+    expect(canApplyAction("picked-up", "cancel")).toBe(true);
   });
 });
 

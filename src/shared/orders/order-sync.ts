@@ -36,7 +36,7 @@ export type StatusOutcome =
   /** 화면(T04 · T05)이 message를 토스트로 보인다. */
   | {
       ok: false;
-      reason: "already-handled" | "customer-cancelled" | "failed";
+      reason: "already-handled" | "customer-cancelled" | "too-late" | "failed";
       message: string;
     };
 
@@ -527,6 +527,14 @@ export function createOrderSync(deps: OrderSyncDeps): OrderSync {
           ok: false,
           reason: "already-handled",
           message: ORDER_MESSAGES.alreadyHandled,
+        };
+      }
+      if (result.kind === "too-late") {
+        log("too-late");
+        return {
+          ok: false,
+          reason: "too-late",
+          message: ORDER_MESSAGES.tooLate,
         };
       }
       log("customer-cancelled");

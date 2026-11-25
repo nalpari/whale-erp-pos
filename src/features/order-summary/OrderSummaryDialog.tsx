@@ -58,8 +58,10 @@ export function OrderSummaryDialog({
   }, [refreshReceiptEnabled]);
   const closeRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
-  const buttons = summaryButtons(order.status);
-  // 사유 팝업이 실제로 떠 있을 때만 true. 상태가 바뀌어 막히면 사유 팝업이 사라지므로 Esc도 다시 이쪽이 받는다.
+  // 팝업을 연 시각. 0시를 넘겨 열려 있으면 버튼이 낡을 수 있으나 최종 판단은 서버(too-late)가 한다.
+  const [openedAt, setOpenedAt] = useState(() => Date.now());
+  const buttons = summaryButtons(order.status, order.paidAt, openedAt);
+  // 사유 팝업이 실제로 떠 있을 때만 true. 상태가 바뀌어 [주문취소]가 없어지면 사유 팝업이 사라지므로 Esc도 다시 이쪽이 받는다.
   const cancelShown = cancelOpen && buttons.cancel === "enabled";
 
   // 닫으면 열기 전 자리(눌렀던 카드)로 초점을 돌린다.
@@ -256,7 +258,7 @@ export function OrderSummaryDialog({
           }}
         />
       )}
-      {/* 다른 PC가 제조완료로 바꿔 [주문취소]가 막히면 사유 팝업도 같이 사라진다 (Q17). */}
+      {/* 다른 PC가 처리해 [주문취소]가 보이지 않게 되면(취소됨 · 지난 날 픽업완료) 사유 팝업도 같이 사라진다. */}
       {cancelShown && (
         <CancelReasonDialog
           orderId={order.orderId}
@@ -264,6 +266,11 @@ export function OrderSummaryDialog({
           onCancelled={onClose}
           onError={onError}
           onRequest={onCancelRequest}
+          onTooLate={() => {
+            // 닫고 지금 시각으로 버튼을 다시 판단한다: 지난 날 픽업완료면 [주문취소]가 사라진다 (T18, 사용자 결정 A-1).
+            setCancelOpen(false);
+            setOpenedAt(Date.now());
+          }}
         />
       )}
     </>
