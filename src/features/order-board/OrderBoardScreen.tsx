@@ -194,6 +194,22 @@ export function OrderBoardScreen() {
     previous.current = statusSnapshot(orders);
   }, [orders, addBanner]);
 
+  // 5초 [완료 취소] 배너 동안 그 주문을 취소하면(T18) 되돌릴 수 없으니 배너를 상태에서 뺀다.
+  // 화면에서만 거르면 5초 타이머(배너가 붙어 있을 때만 돈다)가 꺼져 배너가 상태에 계속 쌓인다.
+  const hasStalePickupBanner = banners.some(
+    (b) =>
+      b.kind === "pickup" &&
+      orders.find((o) => o.orderId === b.orderId)?.status !== "picked-up",
+  );
+  if (hasStalePickupBanner) {
+    setBanners((list) =>
+      list.filter(
+        (b) =>
+          b.kind !== "pickup" ||
+          orders.find((o) => o.orderId === b.orderId)?.status === "picked-up",
+      ),
+    );
+  }
   const lingering = useMemo(
     () =>
       new Set(banners.filter((b) => b.kind === "pickup").map((b) => b.orderId)),

@@ -510,12 +510,12 @@ describe("상세 (3장)", () => {
       ),
     ).toBeInTheDocument();
     await press(button("제조완료"));
-    expect(button("주문취소")).toBeDisabled(); // 제조완료부터는 취소 막힘 (Q17)
+    expect(button("주문취소")).toBeEnabled(); // 제조완료도 취소할 수 있다 (T18)
     await press(button("픽업완료"));
     expect(
       screen.getByRole("heading", { name: /#1\s*픽업완료/ }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "주문취소" })).toBeNull();
+    expect(button("주문취소")).toBeEnabled(); // 결제한 날 픽업완료도 취소할 수 있다 (T18)
     expect(button("영수증 인쇄")).toBeDisabled();
     await press(button(HISTORY_TEXTS.back));
     const row = screen.getAllByRole("listitem")[0];
@@ -550,6 +550,62 @@ describe("상세 (3장)", () => {
     expect(
       screen.queryByRole("button", { name: /주문접수|제조완료|픽업완료/ }),
     ).toBeNull();
+  });
+
+  it("지난 날 픽업완료 상세에는 [주문취소]가 없고 [영수증 인쇄]만 있다 (T18)", async () => {
+    await openHistory();
+    await press(button("최근 한 달"));
+    await press(mainTabFor("픽업완료"));
+    await press(screen.getAllByRole("listitem")[0].querySelector("button")!);
+    expect(button("영수증 인쇄")).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "주문취소" })).toBeNull();
+  });
+
+  it("오늘 픽업완료를 상세에서 취소하면 「취소」 탭으로 가고 「픽업완료」 탭에서 빠진다 (T18)", async () => {
+    await openOrder(1);
+    for (const name of ["주문접수", "제조완료", "픽업완료"]) {
+      await press(button(name));
+    }
+    await press(button("주문취소"));
+    await press(screen.getByRole("radio", { name: "재료가 소진되었습니다" }));
+    await press(
+      within(
+        screen.getByRole("dialog", { name: "주문을 취소하시겠습니까?" }),
+      ).getByRole("button", { name: "주문취소" }),
+    );
+    expect(
+      screen.getByRole("heading", { name: /#1\s*매장취소/ }),
+    ).toBeInTheDocument();
+    await press(button(HISTORY_TEXTS.back));
+    const rows = () =>
+      screen.queryAllByRole("listitem").map((li) => li.textContent ?? "");
+    await press(mainTabFor("취소"));
+    expect(rows().some((t) => t.startsWith("#1"))).toBe(true);
+    await press(mainTabFor("픽업완료"));
+    expect(rows().some((t) => t.startsWith("#1"))).toBe(false);
+  });
+
+  it("0시가 지나 too-late를 받으면 사유 팝업만 닫히고 상세는 열린 채 [주문취소]가 사라진다 (T18, 사용자 결정 A-1)", async () => {
+    await openOrder(1);
+    for (const name of ["주문접수", "제조완료", "픽업완료"]) {
+      await press(button(name));
+    }
+    await press(button("주문취소"));
+    await press(screen.getByRole("radio", { name: "재료가 소진되었습니다" }));
+    vi.setSystemTime(new Date(Date.now() + 24 * 60 * 60 * 1000)); // 사유를 고르는 사이 0시가 지남
+    await press(
+      within(
+        screen.getByRole("dialog", { name: "주문을 취소하시겠습니까?" }),
+      ).getByRole("button", { name: "주문취소" }),
+    );
+    expect(
+      screen.getByText("#1 취소할 수 있는 시간이 지났습니다."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(
+      screen.getByRole("heading", { name: /#1\s*픽업완료/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "주문취소" })).toBeNull();
   });
 
   it("지난 취소 주문: 고객취소는 사유 없이 취소 시각 · 누가만, 영수증 인쇄만", async () => {

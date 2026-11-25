@@ -50,7 +50,12 @@ const WIDGET_STEP = {
 export type OrderLogAction =
   "accept" | "cancel" | "complete" | "pickup" | "undo-pickup";
 export type OrderLogResult =
-  "success" | "already-handled" | "customer-cancelled" | "failed" | "timeout";
+  | "success"
+  | "already-handled"
+  | "customer-cancelled"
+  | "too-late"
+  | "failed"
+  | "timeout";
 /** 서버 요청 종류. 실패 로그에서 어느 요청이었는지만 남긴다. */
 export type SyncRequestKind =
   "connect" | "fetch" | "heartbeat" | "ack" | "accepting" | "confirm";
@@ -66,6 +71,7 @@ const ORDER_RESULT: Record<OrderLogResult, string> = {
   success: "성공",
   "already-handled": "다른 PC가 먼저 처리",
   "customer-cancelled": "고객이 먼저 취소",
+  "too-late": "취소 시간 지남",
   failed: "실패",
   timeout: "시간 초과",
 };

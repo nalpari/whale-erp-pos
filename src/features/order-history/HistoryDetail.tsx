@@ -80,6 +80,8 @@ export function HistoryDetail({
   const [failed, setFailed] = useState(false);
   const [loadKey, setLoadKey] = useState(0);
   const [cancelOpen, setCancelOpen] = useState(false);
+  // 상세를 연 시각. 0시를 넘겨 열려 있으면 버튼이 낡을 수 있으나 최종 판단은 서버(too-late)가 한다.
+  const [openedAt, setOpenedAt] = useState(() => Date.now());
   const [receiptOpen, setReceiptOpen] = useState(false);
   const print = usePrintForms();
   // 이 화면이 열릴 때 「영수증」 체크 여부를 다시 읽는다 (프린터설정에서 바꿨을 수 있다).
@@ -150,7 +152,9 @@ export function HistoryDetail({
   const busy = !!inFlight[orderId];
   // 최신 상태를 다시 불러오지 못한 동안 보이는 내용은 낡았을 수 있어 상태 버튼을 막는다 (조용한 실패 방지).
   const blocked = busy || failed;
-  const buttons = view ? summaryButtons(view.status) : null;
+  const buttons = view
+    ? summaryButtons(view.status, view.paidAt, openedAt)
+    : null;
   const cancelled =
     view?.status === "store-cancelled" || view?.status === "customer-cancelled";
 
@@ -441,6 +445,11 @@ export function HistoryDetail({
             onToast(BOARD_TEXTS.failureToast(view.pickupNumber, message));
             reload(); // 고객이 먼저 취소했을 수 있다
             onChanged();
+          }}
+          onTooLate={() => {
+            // 닫고 지금 시각으로 버튼을 다시 판단한다 (T18, 사용자 결정 A-1). 상태는 위 reload가 다시 받는다.
+            setCancelOpen(false);
+            setOpenedAt(Date.now());
           }}
         />
       )}
