@@ -157,6 +157,14 @@ describe("splitOrders (Q01 · Q17 · Q19 · Q21)", () => {
     const { board } = splitOrders(orders, base);
     expect(board.map((o) => o.orderId)).toEqual(["p2", "p3", "p1"]);
   });
+  it("5초 배너 동안 취소된 주문은 첫 탭에 남지 않는다 (T18)", () => {
+    const { board } = splitOrders(orders, {
+      ...base,
+      lingering: new Set(["c2", "done-today"]),
+    });
+    expect(board.map((o) => o.orderId)).toContain("done-today");
+    expect(board.map((o) => o.orderId)).not.toContain("c2");
+  });
   it("오래된순이면 거꾸로", () => {
     const { board } = splitOrders(orders, { ...base, sort: "oldest" });
     expect(board.map((o) => o.orderId)).toEqual(["p1", "p3", "p2"]);

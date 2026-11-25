@@ -6,6 +6,8 @@ export const ORDER_MESSAGES = {
   alreadyHandled: "다른 PC에서 이미 처리한 주문입니다.",
   /** 고객이 먼저 취소했다 (Q19). */
   customerCancelled: "고객이 이미 취소한 주문입니다.",
+  /** 결제한 날 0시가 지난 픽업완료는 취소할 수 없다 (T18). */
+  tooLate: "취소할 수 있는 시간이 지났습니다.",
   /** 서버 오류 · 시간 초과 · 인터넷 끊김 (Q51 ②). */
   failed: "처리하지 못했습니다. 잠시 뒤 다시 시도해 주세요.",
 } as const;

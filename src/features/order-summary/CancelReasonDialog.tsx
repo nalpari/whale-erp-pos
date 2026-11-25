@@ -23,6 +23,8 @@ interface Props {
   onError(orderId: string, message: string): void;
   /** 요청을 보내기 직전. 이 PC가 취소를 보낸 것을 부르는 쪽이 알아야, 그 결과로 팝업이 닫혀도 「다른 PC」 안내를 안 띄운다. */
   onRequest?(orderId: string): void;
+  /** 서버가 「취소할 시간이 지났다」고 거절했다 (T18). 부르는 쪽이 이 팝업을 닫고 최신 상태로 다시 그린다. onError 뒤에 불린다. */
+  onTooLate?(): void;
 }
 
 export function CancelReasonDialog({
@@ -31,6 +33,7 @@ export function CancelReasonDialog({
   onCancelled,
   onError,
   onRequest,
+  onTooLate,
 }: Props) {
   const { changeStatus, inFlight } = useOrders();
   const [selected, setSelected] = useState<ReasonChoice | null>(null);
@@ -87,6 +90,8 @@ export function CancelReasonDialog({
       orderId,
       "message" in result ? result.message : ORDER_MESSAGES.failed,
     );
+    // 다른 실패는 사유를 남긴 채 열어 두고, 시간이 지난 거절만 닫는다 (사용자 결정 A-1).
+    if (result.reason === "too-late") onTooLate?.();
   }
 
   const radio = "flex min-h-14 items-center gap-3 rounded-lg px-2 text-xl";
