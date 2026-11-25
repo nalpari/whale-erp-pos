@@ -3,7 +3,7 @@ type: Task Report
 title: T18 매장 취소 범위 넓히기
 description: 매장이 제조완료와 결제한 날 0시 전의 픽업완료 주문까지 취소할 수 있게 한다.
 tags: [order-summary, order-history, order-sync]
-status: draft
+status: stable
 generated:
   by: claude-code/claude-opus-5-5
   at: 2026-11-25T16:40:00+09:00
@@ -14,6 +14,9 @@ sources:
   - id: task
     resource: plane:WHALEERPPO-51
     title: "[F-ORDSUM] T18. 매장 취소 범위 넓히기"
+verified:
+  - by: human:yjnoh
+    at: 2026-11-25T18:30:00+09:00
 ---
 
 # 목표
@@ -42,7 +45,7 @@ sources:
 - 지휘 세션이 워크트리에서 다시 실행(2026-11-25): `pnpm lint` · `pnpm typecheck` · `pnpm format:check` · `pnpm test`(61파일 812건, A-1 수정 뒤) · `pnpm build` 모두 통과. Rust는 바꾸지 않아 작업 세션 결과(fmt · clippy · test 53건 통과)를 그대로 적는다.
 - ② superpowers:requesting-code-review (Opus): 지적 5건 → 고침 3 · 보류 2(too-late 뒤 사유 팝업 처리는 사용자 결정 필요, `startOfDay` 두 곳 중복은 기존 것)
 - ③ pr-review-toolkit:review-pr (Opus, code-reviewer · pr-test-analyzer · silent-failure-hunter): 중요 3 · 사소 11 → 테스트 중요 3건과 배너 문제 · 주석 고침, 나머지 보류(문구 고정 · 백엔드 협의 전 가정)
-- 실제 창 확인은 아직 안 함
+- 실제 창 확인(2026-11-25, 사용자): 제조완료 취소, 픽업완료 탭에서 그날 주문 취소, 주문내역 취소 탭 이동, 지난 날 픽업완료에 [주문취소] 없음 모두 정상. 0시 거절은 테스트로만 확인
 
 # 결정 사항
 - 그날 픽업완료 버튼은 화면이 PC 시계로 오늘 결제한 주문인지 보고 보이고, 최종 판단은 서버(거절 종류 `too-late`, 모의 서버 가정)[^spec]
@@ -56,6 +59,7 @@ sources:
 - 2026-11-25 작업 세션 보고: 구현 + ① ② ③ 완료 → 지휘 세션이 diff 확인 · ① 화면 쪽 다시 실행해 통과 확인
 - 2026-11-25 작업 세션 질문: too-late 뒤 사유 팝업 처리 → 사용자 A-1(닫고 최신 상태로 다시 그림), 스펙 12장에 적고 작업 세션에 수정 요청
 - 2026-11-25 작업 세션 보고: A-1 반영(`CancelReasonDialog` onTooLate), ② 지적 3건 → 고침 1 · 보류 2(PC · 서버 시계 차이, 테스트 겹침) → 지휘 세션이 ① 화면 쪽 다시 실행해 통과(812건)
-- 2026-11-25 사용자 "커밋해" (A-1, 실제 창 확인은 머지 뒤 B-1)
+- 2026-11-25 사용자 "커밋해" (A-1, 실제 창 확인은 머지 뒤 B-1) → 커밋 `91830da` · `93f3492`, `main` 머지 `24c7a14`
+- 2026-11-25 사용자 실제 창 확인 정상 → OKF 승인(stable)
 
 [^spec]: `docs/specs/SPEC-order-summary.md` 12장 (2026-11-25 승인)
