@@ -11,22 +11,32 @@ import {
   summaryButtons,
 } from "./summary-logic";
 
-describe("상태별 버튼 표 (Q27)", () => {
+describe("상태별 버튼 표 (Q27, T18 12장)", () => {
+  const NOW = new Date(2026, 10, 25, 15, 0).getTime();
+  const TODAY = new Date(2026, 10, 25, 0, 0).getTime();
   const cases: [
     OrderStatus,
+    number,
     ReturnType<typeof summaryButtons>["cancel"],
     string | null,
   ][] = [
-    ["pending", "enabled", "accept"],
-    ["preparing", "enabled", "complete"],
-    ["ready", "disabled", "pickup"],
-    ["picked-up", "hidden", null],
+    ["pending", NOW, "enabled", "accept"],
+    ["preparing", NOW, "enabled", "complete"],
+    ["ready", NOW, "enabled", "pickup"],
+    ["picked-up", TODAY, "enabled", null], // 오늘 0시 정각에 결제 = 오늘
+    ["picked-up", NOW - 1000, "enabled", null],
+    ["picked-up", TODAY - 1, "hidden", null], // 어제 23:59:59.999
+    ["store-cancelled", NOW, "hidden", null],
+    ["customer-cancelled", NOW, "hidden", null],
   ];
-  it.each(cases)("%s: 취소 %s, 다음 단계 %s", (status, cancel, action) => {
-    const b = summaryButtons(status);
-    expect(b.cancel).toBe(cancel);
-    expect(b.next?.action ?? null).toBe(action);
-  });
+  it.each(cases)(
+    "%s (결제 %s): 취소 %s, 다음 단계 %s",
+    (status, paidAt, cancel, action) => {
+      const b = summaryButtons(status, paidAt, NOW);
+      expect(b.cancel).toBe(cancel);
+      expect(b.next?.action ?? null).toBe(action);
+    },
+  );
 });
 
 describe("처리 단계 표시", () => {

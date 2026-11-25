@@ -12,7 +12,11 @@ export const ACTION_TRANSITIONS: Record<
   { from: OrderStatus[]; to: OrderStatus }
 > = {
   accept: { from: ["pending"], to: "preparing" },
-  cancel: { from: ["pending", "preparing"], to: "store-cancelled" },
+  // 제조완료 · 픽업완료에서도 취소한다 (T18). 픽업완료는 결제한 날 0시 전까지만이고, 그 판단은 서버(화면은 버튼만 숨김).
+  cancel: {
+    from: ["pending", "preparing", "ready", "picked-up"],
+    to: "store-cancelled",
+  },
   complete: { from: ["preparing"], to: "ready" },
   pickup: { from: ["ready"], to: "picked-up" },
   "undo-pickup": { from: ["picked-up"], to: "ready" },

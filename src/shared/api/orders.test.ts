@@ -77,6 +77,43 @@ describe("모의 서버", () => {
     expect(r2.kind).toBe("customer-cancelled");
   });
 
+  it("제조완료 · 오늘 픽업완료는 취소되고, 결제가 오늘 0시 전인 픽업완료는 too-late로 거절한다 (T18, 가정)", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 10, 25, 23, 50));
+      const backend = createMockOrderBackend({ delayMs: 0 });
+      backend.dev.addOrders(3);
+      const ids = (await backend.api.fetchOrders()).map((o) => o.orderId);
+      const send = (i: number, action: "complete" | "pickup" | "cancel") =>
+        backend.api.changeStatus({
+          orderId: ids[i],
+          action,
+          reason: action === "cancel" ? "시험" : undefined,
+          idempotencyKey: `k-${i}-${action}`,
+        });
+      for (const i of [0, 1, 2]) {
+        await backend.api.changeStatus({
+          orderId: ids[i],
+          action: "accept",
+          idempotencyKey: `k-${i}-accept`,
+        });
+        await send(i, "complete");
+      }
+      await send(1, "pickup");
+      await send(2, "pickup");
+
+      expect((await send(0, "cancel")).kind).toBe("ok"); // 제조완료
+      expect((await send(1, "cancel")).kind).toBe("ok"); // 결제한 날 픽업완료
+
+      vi.setSystemTime(new Date(2026, 10, 26, 0, 10)); // 0시가 지났다
+      const late = await send(2, "cancel");
+      expect(late.kind).toBe("too-late");
+      expect(late.order.status).toBe("picked-up"); // 상태는 그대로
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("끊기면 요청이 실패하고 주문받기를 끄며, 이어지면 직전 상태로 되돌린다 (11장 I)", async () => {
     const backend = createMockOrderBackend({ delayMs: 0 });
     await backend.storeStatusApi.setAcceptingOrders(true);

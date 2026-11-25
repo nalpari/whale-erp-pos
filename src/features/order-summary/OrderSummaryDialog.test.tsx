@@ -182,7 +182,7 @@ describe("상태별 버튼 (2.3)", () => {
     ).toBeVisible();
 
     await press(btn("제조완료"));
-    expect(btn("주문취소")).toBeDisabled(); // 제조완료부터는 막힘 (Q17)
+    expect(btn("주문취소")).toBeEnabled(); // 제조완료도 취소할 수 있다 (T18)
     expect(btn("픽업완료")).toBeEnabled();
   });
 
@@ -196,7 +196,7 @@ describe("상태별 버튼 (2.3)", () => {
     expect(screen.queryByText(/다른 PC에서 이미 처리/)).toBeNull();
   });
 
-  it("픽업완료 카드를 열면 상태 버튼이 없고 인쇄만 막혀 있다", async () => {
+  it("오늘 결제한 픽업완료 카드는 [주문취소]만 있고 인쇄는 막혀 있다 (T18)", async () => {
     const backend = await openWith();
     await press(btn("주문접수"));
     await press(btn("제조완료"));
@@ -204,12 +204,101 @@ describe("상태별 버튼 (2.3)", () => {
     act(() => backend.dev.setConnected(true));
     await press(card(1));
     expect(btn("영수증 인쇄")).toBeDisabled();
-    expect(inSummary().queryByRole("button", { name: "주문취소" })).toBeNull();
+    expect(btn("주문취소")).toBeEnabled();
     expect(
       inSummary().queryByRole("button", {
         name: /주문접수|제조완료|픽업완료$/,
       }),
     ).toBeNull();
+  });
+
+  it("픽업완료 주문을 취소하면 [픽업완료] 탭에서 빠진다 (T18)", async () => {
+    const backend = await openWith();
+    await press(btn("주문접수"));
+    await press(btn("제조완료"));
+    await press(btn("픽업완료"));
+    act(() => backend.dev.setConnected(true));
+    await press(card(1));
+    await press(btn("주문취소"));
+    await press(inCancel().getByLabelText("영업이 종료되었습니다"));
+    await press(inCancel().getByRole("button", { name: "주문취소" }));
+    expect(summary()).toBeNull();
+    expect(screen.queryByRole("article", { name: "픽업번호 1" })).toBeNull();
+    expect((await backend.api.fetchOrders()).length).toBe(0);
+    expect(screen.queryByText(/완료 취소/)).toBeNull(); // 5초 배너도 같이 빠진다
+  });
+
+  it("서버가 too-late로 거절하면 「#1 취소할 수 있는 시간이 지났습니다.」 토스트, 상태는 그대로 (T18)", async () => {
+    const { backend } = renderBoard({
+      api: (b) => ({
+        changeStatus: async (request) =>
+          request.action === "cancel"
+            ? {
+                kind: "too-late",
+                order: (await b.api.fetchOrders())[0],
+              }
+            : b.api.changeStatus(request),
+      }),
+    });
+    await flush();
+    act(() => backend.dev.addOrders(1));
+    await flush();
+    await openCard(1);
+    await press(btn("주문접수"));
+    await press(btn("제조완료"));
+    await press(btn("주문취소"));
+    await press(inCancel().getByLabelText("영업이 종료되었습니다"));
+    await press(inCancel().getByRole("button", { name: "주문취소" }));
+    expect(
+      screen.getByText("#1 취소할 수 있는 시간이 지났습니다."),
+    ).toBeInTheDocument();
+    expect(cancelDialog()).toBeNull(); // too-late는 사유 팝업을 닫는다 (사용자 결정 A-1)
+    // 화면 상태도 그대로: 팝업이 열려 있고 제조완료의 다음 단계 버튼이 남아 있다.
+    expect(btn("픽업완료")).toBeEnabled();
+    expect(card(1)).toBeInTheDocument();
+    expect((await backend.api.fetchOrders())[0].status).toBe("ready");
+  });
+
+  it("0시가 지나 too-late를 받으면 사유 팝업만 닫히고, 요약 팝업은 열린 채 [주문취소]가 사라진다 (T18, 사용자 결정 A-1)", async () => {
+    const backend = await openWith();
+    await press(btn("주문접수"));
+    await press(btn("제조완료"));
+    await press(btn("픽업완료"));
+    act(() => backend.dev.setConnected(true));
+    await press(card(1));
+    await press(btn("주문취소"));
+    await press(inCancel().getByLabelText("영업이 종료되었습니다"));
+    // 사유를 고르는 사이 0시가 지났다: 모의 서버가 too-late로 거절한다.
+    vi.setSystemTime(new Date(Date.now() + 24 * 60 * 60 * 1000));
+    await press(inCancel().getByRole("button", { name: "주문취소" }));
+    expect(
+      screen.getByText("#1 취소할 수 있는 시간이 지났습니다."),
+    ).toBeInTheDocument();
+    expect(cancelDialog()).toBeNull();
+    expect(summary()).toBeInTheDocument();
+    expect(inSummary().queryByRole("button", { name: "주문취소" })).toBeNull();
+    expect((await backend.api.fetchOrders())[0].status).toBe("picked-up");
+  });
+
+  it("다른 실패(서버 오류)는 사유 팝업을 닫지 않는다", async () => {
+    const { backend } = renderBoard({
+      api: (b) => ({
+        changeStatus: (request) =>
+          request.action === "cancel"
+            ? Promise.reject(new Error("서버 오류"))
+            : b.api.changeStatus(request),
+      }),
+    });
+    await flush();
+    act(() => backend.dev.addOrders(1));
+    await flush();
+    await openCard(1);
+    await press(btn("주문취소"));
+    await press(inCancel().getByLabelText("영업이 종료되었습니다"));
+    await press(inCancel().getByRole("button", { name: "주문취소" }));
+    expect(screen.getByText(/처리하지 못했습니다/)).toBeInTheDocument();
+    expect(cancelDialog()).toBeInTheDocument();
+    expect(inCancel().getByLabelText("영업이 종료되었습니다")).toBeChecked(); // 사유도 남는다
   });
 
   it("다음 단계가 실패하면 「#번호 …」 토스트, 팝업과 상태는 그대로", async () => {
@@ -362,7 +451,7 @@ describe("열려 있는 동안 주문이 바뀌면 (2.5)", () => {
 });
 
 describe("경합 (리뷰 ②)", () => {
-  it("취소 사유 팝업이 떠 있는 동안 제조완료로 바뀌면 사유 팝업도 닫힌다", async () => {
+  it("취소 사유 팝업이 떠 있는 동안 제조완료로 바뀌어도 사유 팝업은 그대로다 (T18: 제조완료도 취소할 수 있다)", async () => {
     const backend = await openWith();
     await press(inSummary().getByRole("button", { name: "주문접수" }));
     await press(inSummary().getByRole("button", { name: "주문취소" }));
@@ -375,12 +464,8 @@ describe("경합 (리뷰 ②)", () => {
       });
     });
     await flush();
-    expect(cancelDialog()).toBeNull();
-    expect(
-      inSummary().getByRole("button", { name: "주문취소" }),
-    ).toBeDisabled();
-    fireEvent.keyDown(document, { key: "Escape" }); // 사유 팝업이 사라진 뒤에도 Esc로 닫힌다
-    expect(summary()).toBeNull();
+    expect(cancelDialog()).toBeInTheDocument();
+    expect(inSummary().getByRole("button", { name: "주문취소" })).toBeEnabled();
   });
 
   it("[픽업완료] 응답을 기다리다 다른 카드를 열어도, 응답이 와서 그 팝업이 닫히지 않는다", async () => {

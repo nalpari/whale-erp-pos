@@ -373,6 +373,32 @@ describe("상태 변경 (스펙 3.3)", () => {
     expect(orders.orders[0].status).toBe("preparing");
   });
 
+  it("서버가 too-late로 거절하면 상태를 바꾸지 않고 안내 문구를 돌려준다 (T18)", async () => {
+    const { backend, id } = await withOnePending();
+    for (const action of ["accept", "complete", "pickup"] as const) {
+      await act(async () => {
+        await orders.changeStatus(id, action);
+      });
+    }
+    vi.spyOn(backend.api, "changeStatus").mockResolvedValueOnce({
+      kind: "too-late",
+      order: { ...orders.orders[0] },
+    });
+
+    let outcome: StatusOutcome | undefined;
+    await act(async () => {
+      outcome = await orders.changeStatus(id, "cancel", "영업 종료");
+    });
+
+    expect(outcome).toEqual({
+      ok: false,
+      reason: "too-late",
+      message: ORDER_MESSAGES.tooLate,
+    });
+    expect(ORDER_MESSAGES.tooLate).toBe("취소할 수 있는 시간이 지났습니다.");
+    expect(orders.orders[0].status).toBe("picked-up");
+  });
+
   it("고객이 먼저 취소했으면 고객취소로 맞추고 문구를 돌려준다 (Q19)", async () => {
     const { backend, id } = await withOnePending();
     vi.spyOn(backend.api, "changeStatus").mockResolvedValueOnce({
