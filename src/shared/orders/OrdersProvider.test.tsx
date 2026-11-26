@@ -24,7 +24,12 @@ import {
 } from "../printer/printer-api";
 import { createMemoryTokenStore } from "../session/token-store";
 import type { SoundPlayer } from "../sound/sound-player";
-import { HEARTBEAT_MS, POLL_MS, type StatusOutcome } from "./order-sync";
+import {
+  HEARTBEAT_MS,
+  POLL_MS,
+  type RemakeOutcome,
+  type StatusOutcome,
+} from "./order-sync";
 import { ORDER_MESSAGES } from "./order-texts";
 import { OrdersProvider } from "./OrdersProvider";
 import { useOrders, type OrdersContextValue } from "./orders-context";
@@ -1328,5 +1333,139 @@ describe("로그 (스펙 7장)", () => {
     const all = logs.join("\n");
     expect(all).not.toContain("홍*동");
     expect(all).not.toContain("0000");
+  });
+});
+
+describe("재제조 (T21, SPEC-remake 4 · 5장)", () => {
+  const REASON = {
+    text: "직접 쓴 사유 010-1234",
+    fault: "store",
+    reasonNo: 5,
+  } as const;
+  const ITEMS = [{ itemIndex: 0, quantity: 1 }];
+
+  async function withReady() {
+    const backend = createMockOrderBackend({ delayMs: 0 });
+    await setup({ backend });
+    act(() => backend.dev.addOrders(1));
+    await flush();
+    const id = orders.orders[0].orderId;
+    for (const action of ["accept", "complete"] as const) {
+      await act(async () => {
+        await orders.changeStatus(id, action);
+      });
+    }
+    return { backend, id };
+  }
+
+  it("성공하면 서버 주문을 돌려주고 상태는 그대로다. 요청 중에는 같은 주문의 다른 요청을 받지 않는다", async () => {
+    const { backend, id } = await withReady();
+    const spy = vi.spyOn(backend.api, "requestRemake");
+    let outcome: Promise<RemakeOutcome> = Promise.resolve({
+      ok: false,
+      reason: "busy",
+    });
+    let during: StatusOutcome | undefined;
+    await act(async () => {
+      outcome = orders.remake(id, REASON, ITEMS);
+      during = await orders.changeStatus(id, "pickup");
+    });
+    expect(during).toEqual({ ok: false, reason: "busy" });
+    const result = await outcome;
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.order.status).toBe("ready");
+    expect(orders.orders[0].status).toBe("ready");
+    expect(orders.inFlight[id]).toBeUndefined();
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderId: id,
+        items: ITEMS,
+        reason: REASON.text,
+        fault: "store",
+      }),
+    );
+    const detail = await backend.historyApi.fetchDetail(id);
+    expect(detail.remakes).toHaveLength(1);
+  });
+
+  it("메뉴를 하나도 안 골랐으면 보내지 않는다", async () => {
+    const { backend, id } = await withReady();
+    const spy = vi.spyOn(backend.api, "requestRemake");
+    await expect(orders.remake(id, REASON, [])).resolves.toEqual({
+      ok: false,
+      reason: "not-allowed",
+    });
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("제조완료 · 픽업완료가 아니면 보내지 않는다", async () => {
+    const backend = createMockOrderBackend({ delayMs: 0 });
+    await setup({ backend });
+    act(() => backend.dev.addOrders(1));
+    await flush();
+    const spy = vi.spyOn(backend.api, "requestRemake");
+    await expect(
+      orders.remake(orders.orders[0].orderId, REASON, ITEMS),
+    ).resolves.toEqual({ ok: false, reason: "not-allowed" });
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("서버가 거절하면 최신 상태로 맞추고 「재제조할 수 없는 주문입니다.」", async () => {
+    const { backend, id } = await withReady();
+    vi.spyOn(backend.api, "requestRemake").mockResolvedValueOnce({
+      kind: "rejected",
+      order: {
+        ...orders.orders[0],
+        status: "store-cancelled",
+        updatedAt: 9e15,
+      },
+    });
+    let outcome: RemakeOutcome | undefined;
+    await act(async () => {
+      outcome = await orders.remake(id, REASON, ITEMS);
+    });
+    expect(outcome).toEqual({
+      ok: false,
+      reason: "rejected",
+      message: ORDER_MESSAGES.remakeRejected,
+    });
+    expect(ORDER_MESSAGES.remakeRejected).toBe("재제조할 수 없는 주문입니다.");
+    expect(orders.orders.find((o) => o.orderId === id)?.status).toBe(
+      "store-cancelled",
+    );
+  });
+
+  it("실패하면 실패 문구, 다시 누르면 같은 멱등키로 보낸다. 로그에는 주문 ID · 구분 · 사유 번호만 남는다", async () => {
+    const logs: string[] = [];
+    const log = await import("../log/log");
+    vi.spyOn(log, "logInfo").mockImplementation(async (m: string) => {
+      logs.push(m);
+    });
+    const { backend, id } = await withReady();
+    const spy = vi
+      .spyOn(backend.api, "requestRemake")
+      .mockRejectedValueOnce(new Error("끊김"));
+    let first: RemakeOutcome | undefined;
+    await act(async () => {
+      first = await orders.remake(id, REASON, ITEMS);
+    });
+    expect(first).toEqual({
+      ok: false,
+      reason: "failed",
+      message: ORDER_MESSAGES.failed,
+    });
+    await act(async () => {
+      await orders.remake(id, REASON, ITEMS);
+    });
+    expect(spy.mock.calls[1][0].idempotencyKey).toBe(
+      spy.mock.calls[0][0].idempotencyKey,
+    );
+    expect(logs).toContain(
+      `재제조 요청: ${id}, 매장 과실, 사유 5, 메뉴 1줄 1개, 실패`,
+    );
+    expect(logs).toContain(
+      `재제조 요청: ${id}, 매장 과실, 사유 5, 메뉴 1줄 1개, 성공`,
+    );
+    expect(logs.join("\n")).not.toContain(REASON.text);
   });
 });

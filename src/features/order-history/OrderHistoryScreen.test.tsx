@@ -559,6 +559,38 @@ describe("상세 (3장)", () => {
     await press(screen.getAllByRole("listitem")[0].querySelector("button")!);
     expect(button("영수증 인쇄")).toBeDisabled();
     expect(screen.queryByRole("button", { name: "주문취소" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "재제조" })).toBeNull(); // T21
+  });
+
+  it("[재제조] (T21): 제조완료 · 오늘 픽업완료에 보이고, 성공하면 처리 이력에 「재제조」 줄과 사유가 쌓인다", async () => {
+    await openOrder(1);
+    await press(button("주문접수"));
+    expect(screen.queryByRole("button", { name: "재제조" })).toBeNull();
+    await press(button("제조완료"));
+    await press(button("픽업완료"));
+    expect(button("재제조")).not.toHaveClass("bg-blue-600");
+    for (const reason of ["이물질", "맛 · 품질 문제"]) {
+      await press(button("재제조"));
+      const dialog = screen.getByRole("dialog", {
+        name: "재제조하시겠습니까?",
+      });
+      await press(within(dialog).getByRole("checkbox"));
+      await press(within(dialog).getByRole("radio", { name: reason }));
+      await press(within(dialog).getByRole("button", { name: "재제조" }));
+    }
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByText("#1 재제조를 등록했습니다.")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /#1\s*픽업완료/ }),
+    ).toBeInTheDocument(); // 상태는 그대로
+    const history = screen.getByRole("region", { name: "처리 이력" });
+    expect(within(history).getAllByText("재제조")).toHaveLength(2);
+    expect(within(history).getByText("이물질")).toBeInTheDocument();
+    expect(within(history).getByText("맛 · 품질 문제")).toBeInTheDocument();
+    // 고른 메뉴 · 수량
+    expect(
+      within(history).getAllByText("아이스 아메리카노(시험) × 1"),
+    ).toHaveLength(2);
   });
 
   it("오늘 픽업완료를 상세에서 취소하면 「취소」 탭으로 가고 「픽업완료」 탭에서 빠진다 (T18)", async () => {

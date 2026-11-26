@@ -10,6 +10,7 @@ import { BOARD_TEXTS, STATUS_LABELS } from "../order-board/board-texts";
 import { formatClock } from "../order-board/order-board-logic";
 import { PickupText } from "../order-board/OrderCard";
 import { CancelReasonDialog } from "./CancelReasonDialog";
+import { RemakeDialog } from "./RemakeDialog";
 import {
   buildSteps,
   formatDateTime,
@@ -49,6 +50,7 @@ export function OrderSummaryDialog({
 }: Props) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [remakeOpen, setRemakeOpen] = useState(false);
   const print = usePrintForms();
   const historyApi = useOrderHistoryApi();
   // 인쇄 버튼이 있는 팝업이 열릴 때 「영수증」 체크 여부를 다시 읽는다 (프린터설정에서 바꿨을 수 있다).
@@ -63,6 +65,8 @@ export function OrderSummaryDialog({
   const buttons = summaryButtons(order.status, order.paidAt, openedAt);
   // 사유 팝업이 실제로 떠 있을 때만 true. 상태가 바뀌어 [주문취소]가 없어지면 사유 팝업이 사라지므로 Esc도 다시 이쪽이 받는다.
   const cancelShown = cancelOpen && buttons.cancel === "enabled";
+  // 상태가 바뀌어 [재제조]가 없어지면(취소됨 등) 재제조 팝업도 같이 사라진다.
+  const remakeShown = remakeOpen && buttons.remake;
 
   // 닫으면 열기 전 자리(눌렀던 카드)로 초점을 돌린다.
   useEffect(() => {
@@ -74,15 +78,15 @@ export function OrderSummaryDialog({
     return () => previous?.focus();
   }, []);
 
-  // Esc는 맨 위 팝업만 닫는다. 취소 사유 · 영수증 미리보기 팝업이 열려 있으면 그쪽이 받는다.
+  // Esc는 맨 위 팝업만 닫는다. 취소 사유 · 재제조 · 영수증 미리보기 팝업이 열려 있으면 그쪽이 받는다.
   useEffect(() => {
-    if (cancelShown || receiptOpen) return;
+    if (cancelShown || receiptOpen || remakeShown) return;
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [cancelShown, receiptOpen, onClose]);
+  }, [cancelShown, receiptOpen, remakeShown, onClose]);
 
   async function next() {
     if (!buttons.next) return;
@@ -234,6 +238,16 @@ export function OrderSummaryDialog({
                 {SUMMARY_TEXTS.cancel}
               </button>
             )}
+            {buttons.remake && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setRemakeOpen(true)}
+                className={GRAY}
+              >
+                {SUMMARY_TEXTS.remake}
+              </button>
+            )}
             {buttons.next && (
               <button
                 type="button"
@@ -256,6 +270,19 @@ export function OrderSummaryDialog({
             setReceiptOpen(false);
             onToast(PRINT_TEXTS.receiptPrinted);
           }}
+        />
+      )}
+      {remakeShown && (
+        <RemakeDialog
+          orderId={order.orderId}
+          pickupNumber={order.pickupNumber}
+          items={order.items}
+          onClose={(result) => {
+            setRemakeOpen(false);
+            // 거절이면 지금 시각으로 버튼을 다시 판단한다: 0시가 지난 픽업완료면 [재제조] · [주문취소]가 사라진다.
+            if (result === "rejected") setOpenedAt(Date.now());
+          }}
+          onToast={onToast}
         />
       )}
       {/* 다른 PC가 처리해 [주문취소]가 보이지 않게 되면(취소됨 · 지난 날 픽업완료) 사유 팝업도 같이 사라진다. */}

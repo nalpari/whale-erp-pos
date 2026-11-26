@@ -2,7 +2,7 @@
 // 아래 요청 · 응답 형태와 칸 이름은 모두 가정이다. 백엔드 요청 문서 3.7 · 7장과 맞추고, 협의 뒤 이 파일만 바꾼다.
 // 걸러 세는 일은 서버가 한다고 가정하므로, 모의 구현이 그 일을 흉내 낸다. 화면은 직접 세지 않는다.
 import { addDays, sameDayLastMonth, startOfDay } from "../date-days";
-import type { Order, OrderStatus } from "./orders";
+import type { Order, OrderStatus, RemakeFault, RemakeItem } from "./orders";
 
 export type HistoryTab =
   "all" | "pending" | "preparing" | "ready" | "picked-up" | "cancelled"; // 매장취소 + 고객취소 (Q17 · Q19)
@@ -95,10 +95,21 @@ export interface CancelInfo {
   reason: string | null;
 }
 
+/** 재제조 한 번 (SPEC-remake 7장, 가정). 같은 주문에 여러 번 쌓인다. */
+export interface RemakeRecord {
+  at: number;
+  /** 다시 만든 메뉴 줄과 수량. */
+  items: RemakeItem[];
+  reason: string;
+  fault: RemakeFault;
+}
+
 export interface HistoryOrder extends Omit<Order, "items"> {
   items: HistoryItem[];
   payment: Payment;
   cancel: CancelInfo | null;
+  /** 오래된 것이 앞. 없으면 빈 배열. */
+  remakes: RemakeRecord[];
   /** 이 고객이 이 점포에서 결제한 누적 주문 수(이번 주문 포함, 취소 제외, Q29). 1이면 첫 주문. */
   orderCount: number;
 }
@@ -172,6 +183,7 @@ const DISCOUNT_KINDS: DiscountKind[] = [
 export function toHistoryOrder(
   order: Order,
   cancel: CancelInfo | null,
+  remakes: RemakeRecord[],
 ): HistoryOrder {
   const items: HistoryItem[] = order.items.map((item) => ({
     name: item.name,
@@ -182,7 +194,7 @@ export function toHistoryOrder(
       price: OPTION_PRICES[name] ?? 0,
     })),
   }));
-  return withPayment({ ...order, items }, cancel, order.pickupNumber);
+  return withPayment({ ...order, items, remakes }, cancel, order.pickupNumber);
 }
 
 function withPayment(
@@ -277,6 +289,7 @@ function pastOrders(today: number): HistoryOrder[] {
             updatedAt: paidAt + 15 * 60_000,
             paidAt,
             pickupChoice: "20min",
+            remakes: [],
             items: menus.map((m, k) => ({
               name: m.name,
               quantity: 1 + ((seed + k) % 2),

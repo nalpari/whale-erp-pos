@@ -4,11 +4,9 @@ import { useEffect, useId, useRef, useState } from "react";
 import { ORDER_MESSAGES } from "../../shared/orders/order-texts";
 import { useOrders } from "../../shared/orders/orders-context";
 import { CANCEL_TEXTS } from "./summary-texts";
+import { ReasonTextInput } from "./ReasonTextInput";
 import {
-  CANCEL_REASON_MAX,
   CUSTOM_REASON,
-  clampReason,
-  countChars,
   resolveReason,
   type ReasonChoice,
 } from "./summary-logic";
@@ -38,16 +36,8 @@ export function CancelReasonDialog({
   const { changeStatus, inFlight } = useOrders();
   const [selected, setSelected] = useState<ReasonChoice | null>(null);
   const [custom, setCustom] = useState("");
-  const [tooLong, setTooLong] = useState(false);
   const [pending, setPending] = useState(false);
   const backRef = useRef<HTMLButtonElement>(null);
-  // 한글 조합 중에 값을 잘라 넣으면 글자가 깨지므로, 조합이 끝난 뒤에 자른다.
-  const composing = useRef(false);
-  function applyCustom(raw: string) {
-    const next = clampReason(raw);
-    setCustom(next.text);
-    setTooLong(next.truncated);
-  }
   const titleId = useId();
   const busy = pending || !!inFlight[orderId];
   const reason = resolveReason(selected, custom);
@@ -134,36 +124,13 @@ export function CancelReasonDialog({
             {CANCEL_TEXTS.custom}
           </label>
         </div>
-        <input
-          type="text"
-          aria-label={CANCEL_TEXTS.customLabel}
+        <ReasonTextInput
+          label={CANCEL_TEXTS.customLabel}
           value={custom}
           disabled={selected !== CUSTOM_REASON || busy}
-          onChange={(e) => {
-            // maxLength 대신 직접 자른다: 이모지 · 합친 글자를 1자로 세는 기준(Q40)이 브라우저 기본과 다르다.
-            if (composing.current) setCustom(e.target.value);
-            else applyCustom(e.target.value);
-          }}
-          onCompositionStart={() => {
-            composing.current = true;
-          }}
-          onCompositionEnd={(e) => {
-            composing.current = false;
-            applyCustom(e.currentTarget.value);
-          }}
-          className="mt-2 min-h-14 w-full rounded-lg border border-gray-300 px-3 text-xl disabled:bg-gray-100"
+          onChange={setCustom}
+          notice={CANCEL_TEXTS.customNotice}
         />
-        <p className="mt-1 text-base text-gray-600">
-          {CANCEL_TEXTS.customNotice}{" "}
-          <span aria-hidden="true">
-            ({countChars(custom)}/{CANCEL_REASON_MAX})
-          </span>
-        </p>
-        {tooLong && (
-          <p role="status" className="text-base font-bold text-red-600">
-            {CANCEL_TEXTS.tooLong}
-          </p>
-        )}
         <div className="mt-6 grid grid-cols-2 gap-4">
           <button
             ref={backRef}
