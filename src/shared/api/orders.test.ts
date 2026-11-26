@@ -114,6 +114,85 @@ describe("모의 서버", () => {
     }
   });
 
+  it("재제조: 제조완료 · 오늘 픽업완료는 기록을 쌓고 상태는 그대로, 취소됐거나 0시가 지났으면 거절한다 (T21, 가정)", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 10, 25, 23, 50));
+      const backend = createMockOrderBackend({ delayMs: 0 });
+      backend.dev.addOrders(3);
+      const ids = (await backend.api.fetchOrders()).map((o) => o.orderId);
+      for (const i of [0, 1, 2]) {
+        for (const action of ["accept", "complete"] as const) {
+          await backend.api.changeStatus({
+            orderId: ids[i],
+            action,
+            idempotencyKey: `k-${i}-${action}`,
+          });
+        }
+      }
+      await backend.api.changeStatus({
+        orderId: ids[1],
+        action: "pickup",
+        idempotencyKey: "k-1-pickup",
+      });
+      backend.dev.customerCancels(ids[2]);
+      const remake = (i: number, key: string, reason = "이물질") =>
+        backend.api.requestRemake({
+          orderId: ids[i],
+          items: [{ itemIndex: 0, quantity: 1 }],
+          reason,
+          fault: "store",
+          idempotencyKey: key,
+        });
+
+      const first = await remake(0, "r1");
+      expect(first.kind).toBe("ok");
+      expect(first.order.status).toBe("ready");
+      expect((await remake(0, "r1")).kind).toBe("ok"); // 같은 키: 한 번만 기록
+      await remake(0, "r2", "고객 주문 실수");
+      expect((await remake(1, "r3")).kind).toBe("ok");
+      const rejected = await remake(2, "r4");
+      expect(rejected.kind).toBe("rejected");
+      expect(rejected.order.status).toBe("customer-cancelled");
+
+      const detail = await backend.historyApi.fetchDetail(ids[0]);
+      expect(detail.remakes.map((r) => r.reason)).toEqual([
+        "이물질",
+        "고객 주문 실수",
+      ]);
+      expect(detail.remakes[0].items).toEqual([{ itemIndex: 0, quantity: 1 }]);
+      expect(detail.status).toBe("ready");
+
+      // 가정: 없는 줄 · 주문 수량을 넘는 수량 · 빈 목록은 화면 버그로 보고 오류
+      for (const items of [
+        [],
+        [{ itemIndex: 9, quantity: 1 }],
+        [{ itemIndex: 0, quantity: 2 }], // 짧은 주문은 1잔
+        [{ itemIndex: 0, quantity: 0 }],
+        [
+          { itemIndex: 0, quantity: 1 },
+          { itemIndex: 0, quantity: 1 },
+        ], // 같은 줄 두 번
+      ]) {
+        await expect(
+          backend.api.requestRemake({
+            orderId: ids[0],
+            items,
+            reason: "이물질",
+            fault: "store",
+            idempotencyKey: `bad-${JSON.stringify(items)}`,
+          }),
+        ).rejects.toThrow();
+      }
+
+      vi.setSystemTime(new Date(2026, 10, 26, 0, 10)); // 0시가 지났다
+      expect((await remake(1, "r5")).kind).toBe("rejected");
+      expect((await remake(0, "r6")).kind).toBe("ok"); // 제조완료는 날짜와 상관없음
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("끊기면 요청이 실패하고 주문받기를 끄며, 이어지면 직전 상태로 되돌린다 (11장 I)", async () => {
     const backend = createMockOrderBackend({ delayMs: 0 });
     await backend.storeStatusApi.setAcceptingOrders(true);

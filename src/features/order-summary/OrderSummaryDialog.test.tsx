@@ -20,7 +20,12 @@ import { createFakeWindow } from "../../test/fakes";
 import { AppShell } from "../app-shell/AppShell";
 import { AppShellProvider } from "../app-shell/AppShellContext";
 import { BOARD_TEXTS } from "../order-board/board-texts";
-import { CANCEL_TEXTS } from "./summary-texts";
+import {
+  OrdersContext,
+  type OrdersContextValue,
+} from "../../shared/orders/orders-context";
+import { RemakeDialog } from "./RemakeDialog";
+import { CANCEL_TEXTS, REMAKE_TEXTS } from "./summary-texts";
 
 const STORE: Session = {
   accountType: "store",
@@ -637,5 +642,226 @@ describe("사라질 때 안내 (B-2)", () => {
     });
     await flush();
     expect(screen.getByText(handled)).toBeInTheDocument();
+  });
+});
+
+describe("재제조 (T21, SPEC-remake)", () => {
+  const btn = (name: string) => inSummary().getByRole("button", { name });
+  const remakeDialog = () =>
+    screen.queryByRole("dialog", { name: REMAKE_TEXTS.title });
+  const inRemake = () => within(remakeDialog()!);
+  const pickFirstMenu = () => press(inRemake().getAllByRole("checkbox")[0]);
+
+  async function openReady(api?: (b: MockOrderBackend) => Partial<OrderApi>) {
+    const { backend } = renderBoard({ api });
+    await flush();
+    act(() => backend.dev.addOrders(1));
+    await flush();
+    await openCard(1);
+    await press(btn("주문접수"));
+    await press(btn("제조완료"));
+    return backend;
+  }
+
+  it("접수대기 · 제조중에는 없고, 제조완료에서 강조 없이 보인다 (44px 이상)", async () => {
+    await openWith();
+    expect(inSummary().queryByRole("button", { name: "재제조" })).toBeNull();
+    await press(btn("주문접수"));
+    expect(inSummary().queryByRole("button", { name: "재제조" })).toBeNull();
+    await press(btn("제조완료"));
+    expect(btn("재제조")).toBeEnabled();
+    expect(btn("재제조")).not.toHaveClass("bg-blue-600");
+    expect(btn("재제조")).toHaveClass("min-h-14");
+  });
+
+  it("메뉴와 사유를 모두 골라야 [재제조]가 눌리고, 직접 입력은 비면 막히며 50자 · 줄바꿈 없이 들어간다", async () => {
+    await openReady();
+    await press(btn("재제조"));
+    const confirm = () => inRemake().getByRole("button", { name: "재제조" });
+    expect(confirm()).toBeDisabled();
+    expect(inRemake().getByRole("button", { name: "닫기" })).toHaveFocus();
+    for (const r of REMAKE_TEXTS.reasons) {
+      expect(inRemake().getByLabelText(r.label)).toBeInTheDocument();
+    }
+    await press(inRemake().getByLabelText("이물질"));
+    expect(confirm()).toBeDisabled(); // 메뉴를 아직 안 골랐다
+    await pickFirstMenu();
+    expect(confirm()).toBeEnabled();
+    await pickFirstMenu(); // 해제하면 다시 막힌다
+    expect(confirm()).toBeDisabled();
+    await pickFirstMenu();
+
+    await press(inRemake().getByLabelText("직접 입력"));
+    expect(confirm()).toBeDisabled();
+    const input = inRemake().getByLabelText(REMAKE_TEXTS.customLabel);
+    fireEvent.change(input, { target: { value: "가\n".repeat(60) } });
+    expect(input).toHaveValue("가".repeat(50));
+    expect(screen.getByText(CANCEL_TEXTS.tooLong)).toBeInTheDocument();
+    expect(confirm()).toBeEnabled();
+    fireEvent.change(input, { target: { value: "   " } });
+    expect(confirm()).toBeDisabled();
+
+    await press(inRemake().getByRole("button", { name: "닫기" }));
+    expect(remakeDialog()).toBeNull();
+    expect(summary()).toBeInTheDocument();
+  });
+
+  it("Esc는 재제조 팝업만 닫고, 요청 중에는 닫지 않는다 (리뷰 ③)", async () => {
+    let release = () => {};
+    await openReady((b) => ({
+      requestRemake: (request) =>
+        new Promise((resolve, reject) => {
+          release = () =>
+            void b.api.requestRemake(request).then(resolve, reject);
+        }),
+    }));
+    await press(btn("재제조"));
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(remakeDialog()).toBeNull();
+    expect(summary()).toBeInTheDocument();
+
+    await press(btn("재제조"));
+    await pickFirstMenu();
+    await press(inRemake().getByLabelText("이물질"));
+    await press(inRemake().getByRole("button", { name: "재제조" }));
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(remakeDialog()).toBeInTheDocument(); // 요청 중
+    expect(summary()).toBeInTheDocument();
+    release();
+    await flush();
+    expect(remakeDialog()).toBeNull();
+  });
+
+  it("성공하면 팝업을 닫고 「#1 재제조를 등록했습니다.」, 상태는 그대로이며 사유와 구분이 서버로 간다", async () => {
+    let sent: unknown = null;
+    await openReady((b) => ({
+      requestRemake: (request) => {
+        sent = request;
+        return b.api.requestRemake(request);
+      },
+    }));
+    await press(btn("재제조"));
+    await pickFirstMenu();
+    await press(inRemake().getByLabelText("고객 주문 실수"));
+    await press(inRemake().getByRole("button", { name: "재제조" }));
+    expect(remakeDialog()).toBeNull();
+    expect(screen.getByText("#1 재제조를 등록했습니다.")).toBeInTheDocument();
+    expect(summary()).toBeInTheDocument();
+    expect(btn("픽업완료")).toBeEnabled(); // 제조완료 그대로
+    expect(sent).toMatchObject({
+      items: [{ itemIndex: 0, quantity: 1 }],
+      reason: "고객 주문 실수",
+      fault: "customer",
+    });
+  });
+
+  it("메뉴마다 한 줄 · 처음엔 해제, 체크하면 주문 수량으로 시작하고 − / +는 1 ~ 주문 수량, 고른 줄 · 수량만 서버로 간다", async () => {
+    let sent: unknown = null;
+    const { backend } = renderBoard({
+      api: (b) => ({
+        requestRemake: (request) => {
+          sent = request;
+          return b.api.requestRemake(request);
+        },
+      }),
+    });
+    await flush();
+    act(() => backend.dev.addOrders(3)); // 3번째: 메뉴 5줄, 첫 줄은 2잔 + 옵션
+    await flush();
+    await openCard(3);
+    await press(btn("주문접수"));
+    await press(btn("제조완료"));
+    await press(btn("재제조"));
+    const boxes = inRemake().getAllByRole("checkbox");
+    expect(boxes).toHaveLength(5);
+    boxes.forEach((b) => expect(b).not.toBeChecked());
+    expect(
+      inRemake().getByText(
+        "샷 추가, 시럽 빼기, 얼음 적게, 컵 두 개로 나눠 담기",
+      ),
+    ).toBeInTheDocument();
+    const name = "아이스 아메리카노(시험)";
+    expect(inRemake().queryByLabelText(REMAKE_TEXTS.quantity(name))).toBeNull();
+
+    await press(boxes[0]);
+    const qty = () => inRemake().getByLabelText(REMAKE_TEXTS.quantity(name));
+    const minus = () =>
+      inRemake().getByRole("button", { name: REMAKE_TEXTS.decrease(name) });
+    const plus = () =>
+      inRemake().getByRole("button", { name: REMAKE_TEXTS.increase(name) });
+    expect(qty()).toHaveTextContent("2");
+    expect(plus()).toBeDisabled(); // 주문 수량을 넘지 못한다
+    expect(plus()).toHaveClass("size-14"); // 44px 이상
+    await press(minus());
+    expect(qty()).toHaveTextContent("1");
+    expect(minus()).toBeDisabled(); // 1 아래로 못 간다
+    await press(plus());
+    await press(minus());
+
+    await press(boxes[4]); // 초코 쿠키 3개
+    await press(inRemake().getByLabelText("이물질"));
+    await press(inRemake().getByRole("button", { name: "재제조" }));
+    expect(sent).toMatchObject({
+      items: [
+        { itemIndex: 0, quantity: 1 },
+        { itemIndex: 4, quantity: 3 },
+      ],
+    });
+  });
+
+  it("실패하면 팝업을 닫지 않고 고른 사유를 남긴 채 「처리하지 못했습니다…」", async () => {
+    await openReady(() => ({
+      requestRemake: () => Promise.reject(new Error("서버 오류")),
+    }));
+    await press(btn("재제조"));
+    await pickFirstMenu();
+    await press(inRemake().getByLabelText("이물질"));
+    await press(inRemake().getByRole("button", { name: "재제조" }));
+    expect(screen.getByText(`#1 ${ORDER_MESSAGES.failed}`)).toBeInTheDocument();
+    expect(remakeDialog()).toBeInTheDocument();
+    expect(inRemake().getByLabelText("이물질")).toBeChecked();
+  });
+
+  it("보낼 수 없는 상태(not-allowed)면 아무 반응 없이 두지 않고 실패 문구를 보인다 (리뷰 ②)", async () => {
+    const toasts: string[] = [];
+    const remake = vi.fn(async () => ({
+      ok: false as const,
+      reason: "not-allowed" as const,
+    }));
+    render(
+      <OrdersContext.Provider
+        value={{ remake, inFlight: {} } as unknown as OrdersContextValue}
+      >
+        <RemakeDialog
+          orderId="o1"
+          pickupNumber={7}
+          items={[{ name: "아메리카노", quantity: 1 }]}
+          onClose={() => {}}
+          onToast={(m) => toasts.push(m)}
+        />
+      </OrdersContext.Provider>,
+    );
+    await press(screen.getByRole("checkbox"));
+    await press(screen.getByLabelText("이물질"));
+    await press(screen.getByRole("button", { name: "재제조" }));
+    expect(remake).toHaveBeenCalledTimes(1);
+    expect(toasts).toEqual([`#7 ${ORDER_MESSAGES.failed}`]);
+  });
+
+  it("거절되면 팝업을 닫고 「#1 재제조할 수 없는 주문입니다.」", async () => {
+    await openReady((b) => ({
+      requestRemake: async (request) => {
+        const result = await b.api.requestRemake(request);
+        return { kind: "rejected", order: result.order };
+      },
+    }));
+    await press(btn("재제조"));
+    await pickFirstMenu();
+    await press(inRemake().getByLabelText("이물질"));
+    await press(inRemake().getByRole("button", { name: "재제조" }));
+    expect(remakeDialog()).toBeNull();
+    expect(
+      screen.getByText("#1 재제조할 수 없는 주문입니다."),
+    ).toBeInTheDocument();
   });
 });

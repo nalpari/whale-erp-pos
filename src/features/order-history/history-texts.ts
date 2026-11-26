@@ -86,5 +86,6 @@ export const HISTORY_TEXTS = {
   printReceipt: "영수증 인쇄",
   printOrder: "주문서 인쇄",
   cancel: "주문취소",
+  remake: "재제조",
   busy: "처리 중…",
 } as const;

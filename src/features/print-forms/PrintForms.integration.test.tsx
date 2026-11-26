@@ -303,3 +303,86 @@ describe("요약 팝업의 인쇄 버튼", () => {
     expect(within(preview).getByText("웨일커피 시험점")).toBeInTheDocument();
   });
 });
+
+describe("재제조 주문서 (T21)", () => {
+  async function remakeFromSummary(app: ReturnType<typeof renderApp>) {
+    await acceptFirst(app);
+    await press(card(1));
+    const dialog = screen.getByRole("dialog", { name: /^#1/ });
+    await press(within(dialog).getByRole("button", { name: "제조완료" }));
+    app.printed.length = 0;
+    await press(within(dialog).getByRole("button", { name: "재제조" }));
+    const remake = screen.getByRole("dialog", { name: "재제조하시겠습니까?" });
+    await press(within(remake).getByRole("checkbox"));
+    await press(within(remake).getByRole("radio", { name: "이물질" }));
+    await press(within(remake).getByRole("button", { name: "재제조" }));
+  }
+
+  it("성공하면 「주문서」 프린터 모두로 「[재제조]」 · 「사유」 주문서가 나가고 상태는 그대로다", async () => {
+    const app = renderApp(
+      settings(slot("A"), slot("B"), slot("C", { printOrder: false })),
+    );
+    await remakeFromSummary(app);
+    expect(app.printed.map((p) => p.printerName)).toEqual(["A", "B"]);
+    expect(firstText(app.printed[0].doc)).toMatch(/^\[재제조\] \d\d:\d\d$/);
+    expect(app.printed[0].doc.lines[1].text).toBe("사유: 이물질");
+    expect(screen.getByText("#1 재제조를 등록했습니다.")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /#1\s*제조완료/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("서버가 거절하면 주문서를 뽑지 않는다 (리뷰 ③)", async () => {
+    const app = renderApp(settings(slot("A")));
+    const real = app.backend.api.requestRemake.bind(app.backend.api);
+    vi.spyOn(app.backend.api, "requestRemake").mockImplementation(
+      async (request) => ({
+        kind: "rejected",
+        order: (await real(request)).order,
+      }),
+    );
+    await remakeFromSummary(app);
+    expect(app.printed).toEqual([]);
+    expect(
+      screen.getByText("#1 재제조할 수 없는 주문입니다."),
+    ).toBeInTheDocument();
+  });
+
+  it("주문내역 상세에서 오늘 픽업완료를 재제조해도 「주문서」 프린터로 나간다 (리뷰 ③)", async () => {
+    const app = renderApp(settings(slot("A")));
+    await acceptFirst(app);
+    await press(card(1));
+    const summaryDialog = screen.getByRole("dialog", { name: /^#1/ });
+    await press(
+      within(summaryDialog).getByRole("button", { name: "제조완료" }),
+    );
+    await press(
+      within(summaryDialog).getByRole("button", { name: "픽업완료" }),
+    );
+    await press(screen.getByRole("tab", { name: "주문내역" }));
+    await press(
+      screen
+        .getAllByRole("listitem")
+        .map((li) => within(li).getByRole("button"))
+        .find((b) => b.textContent?.startsWith("#1"))!,
+    );
+    app.printed.length = 0;
+    await press(screen.getByRole("button", { name: "재제조" }));
+    const remake = screen.getByRole("dialog", { name: "재제조하시겠습니까?" });
+    await press(within(remake).getByRole("checkbox"));
+    await press(within(remake).getByRole("radio", { name: "맛 · 품질 문제" }));
+    await press(within(remake).getByRole("button", { name: "재제조" }));
+    expect(app.printed.map((p) => p.printerName)).toEqual(["A"]);
+    expect(firstText(app.printed[0].doc)).toMatch(/^\[재제조\] \d\d:\d\d$/);
+  });
+
+  it("서버가 실패하면 주문서를 뽑지 않는다", async () => {
+    const app = renderApp(settings(slot("A")));
+    vi.spyOn(app.backend.api, "requestRemake").mockRejectedValue(
+      new Error("서버 오류"),
+    );
+    await remakeFromSummary(app);
+    expect(app.printed).toEqual([]);
+    expect(screen.getByText(/#1 처리하지 못했습니다/)).toBeInTheDocument();
+  });
+});

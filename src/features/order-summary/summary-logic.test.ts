@@ -19,22 +19,25 @@ describe("상태별 버튼 표 (Q27, T18 12장)", () => {
     number,
     ReturnType<typeof summaryButtons>["cancel"],
     string | null,
+    boolean,
   ][] = [
-    ["pending", NOW, "enabled", "accept"],
-    ["preparing", NOW, "enabled", "complete"],
-    ["ready", NOW, "enabled", "pickup"],
-    ["picked-up", TODAY, "enabled", null], // 오늘 0시 정각에 결제 = 오늘
-    ["picked-up", NOW - 1000, "enabled", null],
-    ["picked-up", TODAY - 1, "hidden", null], // 어제 23:59:59.999
-    ["store-cancelled", NOW, "hidden", null],
-    ["customer-cancelled", NOW, "hidden", null],
+    ["pending", NOW, "enabled", "accept", false],
+    ["preparing", NOW, "enabled", "complete", false],
+    ["ready", NOW, "enabled", "pickup", true],
+    ["ready", TODAY - 1, "enabled", "pickup", true], // 제조완료는 날짜와 상관없이 재제조
+    ["picked-up", TODAY, "enabled", null, true], // 오늘 0시 정각에 결제 = 오늘
+    ["picked-up", NOW - 1000, "enabled", null, true],
+    ["picked-up", TODAY - 1, "hidden", null, false], // 어제 23:59:59.999
+    ["store-cancelled", NOW, "hidden", null, false],
+    ["customer-cancelled", NOW, "hidden", null, false],
   ];
   it.each(cases)(
-    "%s (결제 %s): 취소 %s, 다음 단계 %s",
-    (status, paidAt, cancel, action) => {
+    "%s (결제 %s): 취소 %s, 다음 단계 %s, 재제조 %s",
+    (status, paidAt, cancel, action, remake) => {
       const b = summaryButtons(status, paidAt, NOW);
       expect(b.cancel).toBe(cancel);
       expect(b.next?.action ?? null).toBe(action);
+      expect(b.remake).toBe(remake);
     },
   );
 });
