@@ -3,7 +3,7 @@ type: Task Report
 title: T13 AI챗봇 인기메뉴 설정 탭 숨김
 description: 픽업오더 앱이 AI 주문(챗봇)을 1차 범위에서 빼서, 환경설정의 「AI챗봇 인기메뉴 설정」 탭을 숨긴다.
 tags: [settings-ai-popular, app-shell, scope]
-status: draft
+status: stable
 generated:
   by: claude-code/claude-opus-5-5
   at: 2026-11-26T14:30:00+09:00
@@ -14,6 +14,9 @@ sources:
   - id: task
     resource: plane:WHALEERPPO-14
     title: T13 환경설정 — AI챗봇 인기메뉴 설정
+verified:
+  - by: human:yjnoh
+    at: 2026-11-26T15:15:00+09:00
 ---
 
 # 목표
@@ -40,7 +43,7 @@ sources:
 - 작업 세션 ①: lint · typecheck · format:check · build, Rust 검사 3종(cargo test 53개) 모두 통과
 - 지휘 세션이 다시 돌림: `pnpm typecheck` · `pnpm lint` 통과, `pnpm test` 파일 60 통과 · 1 skip, 테스트 841 통과 · 5 skip(AiPopularTab 5개)
 - 리뷰 (Opus 5.5 서브에이전트): ② 지적 2건 → 고침 1(쓸모없는 `as const` 제거) · 보류 1(`SETTINGS_TABS[0]` 타입 보장 약해짐: `satisfies`로 바꾸면 id 타입이 다시 좁아져 타입 검사가 깨짐, 탭 2개라 실제 위험 없음). ③ code-reviewer · pr-test-analyzer · comment-analyzer 지적 3건 → 고침 2(skip 주석에 AppShell.test 되돌리기 안내, tabs.ts에 지운 줄 남김) · 보류 1(테스트 주석이 제목과 겹침, 낮음)
-- 실제 창: `docs/test-scenarios/T13-settings-ai-popular.md` 「H. 탭 숨김」. 2026-11-26 사용자가 Linux 실제 창에서 H1(하위 탭 2개) 확인
+- 실제 창: `docs/test-scenarios/T13-settings-ai-popular.md` 「H. 탭 숨김」. 2026-11-26 사용자가 Linux 실제 창에서 H1~H5 모두 통과 확인
 
 # 결정 사항
 - 탭을 숨기고 코드는 남긴다: 재영 결정(2026-11-26, 버즈)으로 고객 앱의 AI 주문이 1차 범위에서 빠졌다. 앱에 챗봇이 없으면 인기메뉴를 보여 줄 곳이 없다. 사용자가 「서비스 준비중」 안내 · 코드 삭제 대신 숨김을 골랐다(A-1)[^spec]
@@ -56,5 +59,7 @@ sources:
 - 2026-11-26T14:45+09:00 저장소 문서에 「1차 범위에서 뺌」 표시: AGENTS.md 범위 · 확정 사항, SPEC-settings-ai-popular 상태, specs README, T13 시나리오
 - 2026-11-26T14:52+09:00 명세 보관소 F-AIPOPM · S-AIPICK · R-STRINF · PRD · UF-PSTORE에 「1차 범위에서 뺌」 표시 승인 반영. DC-SPAIPM은 머지 뒤 스펙 사본을 다시 만들 때 같이 고친다
 - 2026-11-26T15:20+09:00 작업 세션 보고: 완료 기준 4개 됨, AiPopularTab 테스트 skip 처리 확인 요청 → 지휘 세션이 diff 확인 · typecheck · lint · test 다시 돌림
+- 2026-11-26T15:00+09:00 사용자 "커밋" → 커밋 `a749ebb` · `642e538`, main 머지 `0fc7e11`. 버즈 스레드에 반영 내용 답장
+- 2026-11-26T15:15+09:00 사용자가 main에서 H1~H5 통과 확인 → 보고서 승인(stable)
 
 [^spec]: SPEC-settings-ai-popular 맨 위 「1차 범위에서 뺌」

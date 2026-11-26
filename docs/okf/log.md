@@ -2,7 +2,7 @@
 
 ## 2026-11-26
 
-- T13 AI챗봇 인기메뉴 설정 탭 숨김 보고서 추가 (`2026-11-26-hide-ai-popular.md`)
+- T13 AI챗봇 인기메뉴 설정 탭 숨김 보고서 추가 · 사용자 승인 (`2026-11-26-hide-ai-popular.md`, status: stable)
 - T22 「환불」 표시 보고서 추가 · 사용자 승인 (`2026-11-26-refund.md`, status: stable)
 - T21 재제조 보고서 추가 · 사용자 승인 (`2026-11-26-remake.md`, status: stable)
 
