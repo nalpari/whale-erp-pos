@@ -18,6 +18,8 @@ export interface SummaryButtons {
   cancel: "enabled" | "disabled" | "hidden";
   /** 파란 강조 하나. 픽업완료 · 취소 상태에는 없다. */
   next: { action: NextAction; label: string } | null;
+  /** [재제조] (T21): 제조완료와 오늘 결제한 픽업완료. 강조 없음. */
+  remake: boolean;
 }
 
 /**
@@ -28,29 +30,34 @@ export function summaryButtons(
   paidAt: number,
   now: number,
 ): SummaryButtons {
+  const paidToday = paidAt >= startOfDay(now);
   switch (status) {
     case "pending":
       return {
         cancel: "enabled",
         next: { action: "accept", label: "주문접수" },
+        remake: false,
       };
     case "preparing":
       return {
         cancel: "enabled",
         next: { action: "complete", label: "제조완료" },
+        remake: false,
       };
     case "ready":
       return {
         cancel: "enabled",
         next: { action: "pickup", label: "픽업완료" },
+        remake: true,
       };
     case "picked-up":
       return {
-        cancel: paidAt >= startOfDay(now) ? "enabled" : "hidden",
+        cancel: paidToday ? "enabled" : "hidden",
         next: null,
+        remake: paidToday,
       };
     default:
-      return { cancel: "hidden", next: null };
+      return { cancel: "hidden", next: null, remake: false };
   }
 }
 

@@ -53,6 +53,7 @@ function fakeOrders(pendingOrderCount: number): OrdersContextValue {
     sound: createNoopSoundPlayer(),
     inFlight: {},
     changeStatus: async () => ({ ok: true }),
+    remake: async () => ({ ok: false, reason: "not-allowed" }),
     refresh: async () => true,
     pickedUpAt: () => undefined,
     onNewOrder: () => () => {},

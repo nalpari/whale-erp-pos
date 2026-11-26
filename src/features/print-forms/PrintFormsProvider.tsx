@@ -12,6 +12,7 @@ import type {
   HistoryOrder,
   ReceiptStore,
 } from "../../shared/api/order-history";
+import type { RemakeItem } from "../../shared/api/orders";
 import { logInfo } from "../../shared/log/log";
 import { logMessages } from "../../shared/log/log-messages";
 import { useOrders } from "../../shared/orders/orders-context";
@@ -290,6 +291,29 @@ export function PrintFormsProvider({ children }: { children: ReactNode }) {
     [dispatch, retry],
   );
 
+  // 기존 미출력 기록은 이 재제조 주문서 결과로 바뀐다: 성공하면 지우고, 실패하면 다시 인쇄도 재제조 주문서로 낸다(주방이 재제조인지 알아야 한다).
+  // 같은 주문을 출력하는 중이면 버리지 않고 끝난 뒤에 낸다: 서버에는 재제조가 등록됐으므로 주문서가 빠지면 안 된다 (원칙 1).
+  // 프린터별 출력은 30초 제한(print-timeout)이 있어 보통 오래 기다리지 않는다 (설정 읽기에는 제한이 없다).
+  const printRemake = useCallback(
+    async (
+      order: OrderFormInput & { orderId: string },
+      reason: string,
+      items: RemakeItem[],
+    ) => {
+      while (printingRef.current[order.orderId]) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+      // 기다리는 사이 로그아웃했다면 이전 점포의 주문서를 내지 않는다.
+      if (!latest.current.loggedIn) return "failed";
+      return dispatch(
+        order.orderId,
+        order.pickupNumber,
+        buildOrderLines(order, { remake: { at: Date.now(), reason, items } }),
+      );
+    },
+    [dispatch],
+  );
+
   const dismiss = useCallback(
     (orderId: string) =>
       commitFailures((prev) =>
@@ -382,6 +406,7 @@ export function PrintFormsProvider({ children }: { children: ReactNode }) {
       receiptPaperWidth,
       refreshReceiptEnabled,
       printOrder,
+      printRemake,
       retry,
       dismiss,
       printReceipt,
@@ -393,6 +418,7 @@ export function PrintFormsProvider({ children }: { children: ReactNode }) {
       receiptPaperWidth,
       refreshReceiptEnabled,
       printOrder,
+      printRemake,
       retry,
       dismiss,
       printReceipt,

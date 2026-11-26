@@ -1,6 +1,7 @@
 // 로그에 남기는 문장을 만드는 곳. 개인정보(비밀번호 · 토큰 · 점포코드 · 웨일ERP 아이디 · PC 이름)가
 // 문장에 섞이지 않도록, 인자는 정해진 종류만 받고 표에 없는 값은 "알 수 없음"으로 바꾼다 (SPEC-logging 2.4).
 import type { AccountType } from "../api/auth";
+import type { RemakeFault } from "../api/orders";
 import { errorSummary } from "../error-summary";
 
 export type LoginFailReason =
@@ -56,6 +57,17 @@ export type OrderLogResult =
   | "too-late"
   | "failed"
   | "timeout";
+export type RemakeLogResult = "success" | "rejected" | "failed" | "timeout";
+const REMAKE_RESULT: Record<RemakeLogResult, string> = {
+  success: "성공",
+  rejected: "거절",
+  failed: "실패",
+  timeout: "시간 초과",
+};
+const REMAKE_FAULT: Record<RemakeFault, string> = {
+  store: "매장 과실",
+  customer: "고객 실수",
+};
 /** 서버 요청 종류. 실패 로그에서 어느 요청이었는지만 남긴다. */
 export type SyncRequestKind =
   "connect" | "fetch" | "heartbeat" | "ack" | "accepting" | "confirm";
@@ -127,9 +139,22 @@ export const logMessages = {
     result: OrderLogResult,
   ) =>
     `주문 상태 변경: ${orderId}, ${pick(ORDER_ACTION, action)}, ${pick(ORDER_RESULT, result)}`,
+  /** 재제조 (T21). 직접 입력한 사유 글은 받지 않는다: 사유 번호만. */
+  remakeRequested: (
+    orderId: string,
+    fault: RemakeFault,
+    reasonNo: number,
+    // 메뉴 이름 대신 줄 수 · 총수량만 남겨 로그를 짧게 한다.
+    menu: { lines: number; total: number },
+    result: RemakeLogResult,
+  ) =>
+    `재제조 요청: ${orderId}, ${pick(REMAKE_FAULT, fault)}, 사유 ${reasonNo}, 메뉴 ${menu.lines}줄 ${menu.total}개, ${pick(REMAKE_RESULT, result)}`,
   syncRequestFailed: (kind: SyncRequestKind, timedOut: boolean) =>
     `${pick(SYNC_REQUEST, kind)} 요청 ${timedOut ? "시간 초과" : "실패"}`,
   listenerFailed: (orderId: string) => `주문 신호 처리 중 오류: ${orderId}`,
+  /** 재제조 화면에서 생긴 뜻밖의 예외 (T21). 오류 본문은 남기지 않는다. */
+  remakeUnexpected: (orderId: string, step: "request" | "print") =>
+    `재제조 처리 중 오류: ${orderId}, ${step === "request" ? "요청" : "출력"}`,
   soundFailed: (kind: "new-order" | "warning") =>
     `${kind === "new-order" ? "새 주문" : "경고"} 알림음 재생 실패`,
   // 위젯 실패는 어느 단계인지만 남긴다 (원인 본문 · 주문 내용은 남기지 않는다).

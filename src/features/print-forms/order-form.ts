@@ -1,5 +1,5 @@
 // 주문서 줄 목록 (T12 스펙 3.1). 순수 함수: 화면 · 프린터 · 시계를 모른다.
-import type { Order } from "../../shared/api/orders";
+import type { Order, RemakeItem } from "../../shared/api/orders";
 import { RULE, type PrintLine } from "../../shared/printer/print-lines";
 import { formatClock, pickupSchedule } from "../order-board/order-board-logic";
 import { formatDateTime } from "../order-summary/summary-logic";
@@ -31,13 +31,31 @@ export function pickupLabel(order: Pick<Order, "pickupChoice" | "paidAt">) {
   return pickupSchedule(order, order.paidAt).label.replace(/ 픽업$/, "");
 }
 
-/** reprintAt이 있으면 맨 위에 「[재출력] HH:mm」(출력 시각)을 찍는다. */
+/**
+ * reprintAt이 있으면 맨 위에 「[재출력] HH:mm」(출력 시각)을 찍는다.
+ * remake가 있으면 대신 「[재제조] HH:mm」과 「사유: …」를 찍고, 메뉴는 고른 줄 · 수량만 찍는다: 둘은 겹치지 않는다 (print-forms 13장).
+ */
 export function buildOrderLines(
   order: OrderFormInput,
-  options: { reprintAt?: number } = {},
+  options: {
+    reprintAt?: number;
+    remake?: { at: number; reason: string; items: RemakeItem[] };
+  } = {},
 ): PrintLine[] {
   const lines: PrintLine[] = [];
-  if (options.reprintAt !== undefined) {
+  if (options.remake) {
+    lines.push(
+      {
+        text: FORM_TEXTS.remake(formatClock(options.remake.at)),
+        bold: true,
+        size: 12,
+      },
+      {
+        text: `${FORM_TEXTS.remakeReason}: ${options.remake.reason}`,
+        bold: true,
+      },
+    );
+  } else if (options.reprintAt !== undefined) {
     lines.push({
       text: FORM_TEXTS.reprint(formatClock(options.reprintAt)),
       bold: true,
@@ -62,7 +80,13 @@ export function buildOrderLines(
     });
   }
   lines.push(RULE);
-  order.items.forEach((item, index) => {
+  const items = options.remake
+    ? options.remake.items.flatMap(({ itemIndex, quantity }) => {
+        const item = order.items[itemIndex];
+        return item ? [{ ...item, quantity }] : [];
+      })
+    : order.items;
+  items.forEach((item, index) => {
     if (index > 0) lines.push(RULE);
     lines.push({
       text: `${item.name} × ${item.quantity}`,

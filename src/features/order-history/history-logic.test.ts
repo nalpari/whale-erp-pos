@@ -225,6 +225,8 @@ const base = {
   paidAt: 100,
   statusTimes: { preparingAt: null, readyAt: null, pickedUpAt: null },
   cancel: null,
+  remakes: [],
+  items: [{ name: "아메리카노", quantity: 2, unitPrice: 4500, options: [] }],
 } as unknown as HistoryOrder;
 
 describe("메뉴 금액 · 처리 이력", () => {
@@ -245,6 +247,41 @@ describe("메뉴 금액 · 처리 이력", () => {
       statusTimes: { preparingAt: 200, readyAt: 300, pickedUpAt: null },
     });
     expect(e.map((x) => x.label)).toEqual(["결제(주문)", "제조중", "제조완료"]);
+  });
+
+  it("재제조마다 「재제조」 줄과 사유가 붙고, 모든 줄은 시각 순이다 (T21)", () => {
+    const e = historyEntries({
+      ...base,
+      statusTimes: { preparingAt: 200, readyAt: 300, pickedUpAt: 500 },
+      remakes: [
+        {
+          at: 400,
+          items: [
+            { itemIndex: 0, quantity: 1 },
+            { itemIndex: 9, quantity: 1 },
+          ],
+          reason: "이물질",
+          fault: "store",
+        },
+        { at: 600, items: [], reason: "고객 주문 실수", fault: "customer" },
+      ],
+      cancel: {
+        at: 700,
+        by: "store",
+        reason: "매장 사정으로 주문을 취소합니다",
+      },
+    });
+    expect(e.map((x) => [x.label, x.note])).toEqual([
+      ["결제(주문)", undefined],
+      ["제조중", undefined],
+      ["제조완료", undefined],
+      ["재제조", "이물질"],
+      ["픽업완료", undefined],
+      ["재제조", "고객 주문 실수"],
+      ["매장취소", "매장 사정으로 주문을 취소합니다"],
+    ]);
+    // 고른 메뉴 · 수량. 주문에 없는 줄(9)은 뺀다.
+    expect(e[3].menu).toBe("아메리카노 × 1");
   });
 
   it("취소면 취소 시각 · 누가 · 사유가 붙는다", () => {
