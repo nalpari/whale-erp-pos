@@ -12,7 +12,7 @@ import type {
   HistoryOrder,
   ReceiptStore,
 } from "../../shared/api/order-history";
-import type { RemakeItem } from "../../shared/api/orders";
+import { isCancelledStatus, type RemakeItem } from "../../shared/api/orders";
 import { logInfo } from "../../shared/log/log";
 import { logMessages } from "../../shared/log/log-messages";
 import { useOrders } from "../../shared/orders/orders-context";
@@ -81,11 +81,11 @@ export function PrintFormsProvider({ children }: { children: ReactNode }) {
     if (!loggedIn) commitFailures(() => ({}));
   }, [loggedIn, commitFailures]);
 
-  // 「미출력」 주문이 취소되면(매장 · 고객 · 자동) 그 주문의 띠와 기록을 지운다: 취소된 주문서를 다시 내지 않게 한다 (사용자 결정 2026-11-19).
+  // 「미출력」 주문이 취소되면(매장 · 고객 · 자동 · 환불) 그 주문의 띠와 기록을 지운다: 취소된 주문서를 다시 내지 않게 한다 (사용자 결정 2026-11-19).
   useEffect(() => {
     const cancelledIds = Object.keys(failuresRef.current).filter((id) => {
       const status = orders?.find((o) => o.orderId === id)?.status;
-      return status === "store-cancelled" || status === "customer-cancelled";
+      return !!status && isCancelledStatus(status);
     });
     if (cancelledIds.length === 0) return;
     commitFailures((prev) => {

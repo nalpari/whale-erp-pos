@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import type { OrderEvent } from "./order-feed";
-import { createMockOrderBackend } from "./orders";
+import {
+  createMockOrderBackend,
+  isCancelledStatus,
+  type OrderStatus,
+} from "./orders";
 
 describe("모의 서버", () => {
   it("상태가 바뀔 때마다 상태별 시각을 채우고, 완료 취소하면 픽업완료 시각을 지운다 (T05 결정 B)", async () => {
@@ -237,6 +241,62 @@ describe("모의 서버", () => {
     const times = orders.map((o) => o.updatedAt);
     expect([...times].sort((x, y) => x - y)).toEqual(times);
     expect(new Set(times).size).toBe(times.length);
+  });
+
+  it("[가장 최근 취소 → 환불 완료]: 가장 최근 취소 주문이 환불로 바뀌고 취소 정보에 환불 시각이 붙는다 (T22, 가정)", async () => {
+    const backend = createMockOrderBackend({ delayMs: 0 });
+    const events: OrderEvent[] = [];
+    backend.subscribe(
+      (e) => events.push(e),
+      () => {},
+    );
+    backend.dev.addOrders(3);
+    const ids = (await backend.api.fetchOrders()).map((o) => o.orderId);
+    backend.dev.customerCancels(ids[0]);
+    await backend.api.changeStatus({
+      orderId: ids[1],
+      action: "cancel",
+      reason: "재료 소진",
+      idempotencyKey: "k1",
+    });
+
+    backend.dev.refundLatestCancelled();
+
+    const refunded = await backend.historyApi.fetchDetail(ids[1]);
+    expect(refunded.status).toBe("refunded");
+    expect(refunded.cancel).toMatchObject({ by: "store", reason: "재료 소진" });
+    expect(refunded.cancel?.refundedAt).toBe(refunded.updatedAt);
+    expect((await backend.historyApi.fetchDetail(ids[0])).status).toBe(
+      "customer-cancelled",
+    );
+    const last = events[events.length - 1];
+    expect(last.type === "order-updated" && last.order.status).toBe("refunded");
+    // 환불도 처리할 주문 조회에 없다
+    expect((await backend.api.fetchOrders()).map((o) => o.orderId)).toEqual([
+      ids[2],
+    ]);
+    // 이미 환불된 주문은 다시 고르지 않는다
+    backend.dev.refundLatestCancelled();
+    expect((await backend.historyApi.fetchDetail(ids[0])).status).toBe(
+      "refunded",
+    );
+  });
+
+  it("isCancelledStatus: 매장취소 · 고객취소 · 환불만 취소로 본다 (T22)", () => {
+    const all: OrderStatus[] = [
+      "pending",
+      "preparing",
+      "ready",
+      "picked-up",
+      "store-cancelled",
+      "customer-cancelled",
+      "refunded",
+    ];
+    expect(all.filter(isCancelledStatus)).toEqual([
+      "store-cancelled",
+      "customer-cancelled",
+      "refunded",
+    ]);
   });
 
   it("전체 주문 삭제는 취소 · 픽업완료까지 모두 지우고 구독자에게 알린다", async () => {

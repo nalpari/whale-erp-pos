@@ -3,13 +3,10 @@ import type {
   HistoryOrder,
   ReceiptStore,
 } from "../../shared/api/order-history";
+import { isCancelledStatus } from "../../shared/api/orders";
 import { RULE, type PrintLine } from "../../shared/printer/print-lines";
 import { formatDateTime } from "../order-summary/summary-logic";
 import { FORM_TEXTS } from "./print-texts";
-
-export function isCancelled(status: HistoryOrder["status"]): boolean {
-  return status === "store-cancelled" || status === "customer-cancelled";
-}
 
 /** 천 단위 쉼표. 취소 영수증은 금액을 모두 마이너스로 찍는다 (Q50 ③). 0은 부호를 붙이지 않는다. */
 export function money(amount: number, negative: boolean): string {
@@ -24,7 +21,7 @@ export function buildReceiptLines(
   order: HistoryOrder,
   store: ReceiptStore,
 ): PrintLine[] {
-  const cancelled = isCancelled(order.status);
+  const cancelled = isCancelledStatus(order.status); // 환불도 취소 영수증 (SPEC-order-history 12.1)
   const m = (amount: number) => money(amount, cancelled);
   const pay = order.payment;
   const pair = (label: string, value: string): PrintLine => ({

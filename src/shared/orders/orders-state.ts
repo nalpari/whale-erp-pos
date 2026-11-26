@@ -1,5 +1,10 @@
 // 주문 목록의 순수 함수 모음 (SPEC-order-sync 2.1 · 3.2 · 5장). 시간 · 서버 · 화면을 모른다.
-import type { Order, OrderAction, OrderStatus } from "../api/orders";
+import {
+  isCancelledStatus,
+  type Order,
+  type OrderAction,
+  type OrderStatus,
+} from "../api/orders";
 
 /** orderId · eventId를 기억하는 개수. 며칠 켜 두어도 메모리가 늘지 않게 최근 것만 둔다 (스펙 3.2-2). */
 export const SEEN_LIMIT = 1000;
@@ -23,10 +28,6 @@ export const ACTION_TRANSITIONS: Record<
 };
 
 const PENDING_STATUSES: OrderStatus[] = ["pending", "preparing", "ready"];
-const CANCELLED_STATUSES: OrderStatus[] = [
-  "store-cancelled",
-  "customer-cancelled",
-];
 
 export function canApplyAction(
   status: OrderStatus,
@@ -73,7 +74,7 @@ export type OrdersAction =
       orders: Order[];
       silent: boolean;
       fromSeq: number;
-      /** 오늘 0시(ms). 이보다 전에 취소된 주문은 치운다. */
+      /** 오늘 0시(ms). 마지막 변경(updatedAt)이 이보다 전인 취소 · 환불 주문은 치운다. */
       dayStart: number;
     }
   /** 실시간 사건(기본) 또는 상태 변경 응답(source: "response")으로 받은 주문 하나. */
@@ -156,17 +157,17 @@ export function ordersReducer(
         silent: action.silent,
         countDropped: false,
       });
-      // 조회 전에 있던 주문이 응답에 없으면 서버에서 사라진 것이다(예: 0시 자동 픽업완료).
-      // 조회 도중 들어온 주문(touched > fromSeq)과 오늘 취소된 주문(응답에 원래 없다)은 남긴다.
+      // 조회 전에 있던 주문이 응답에 없으면 서버에서 사라진 것이다(예: 어제 픽업완료 · 서버가 지운 주문).
+      // 조회 도중 들어온 주문(touched > fromSeq)과 오늘 바뀐 취소 · 환불 주문(응답에 원래 없다)은 남긴다.
       const present = new Set(action.orders.map((o) => o.orderId));
       const orders = { ...merged.orders };
       const touched = { ...merged.touched };
       const pickedUpAt = { ...merged.pickedUpAt };
       for (const id of Object.keys(orders)) {
         if (present.has(id)) continue;
-        // 취소된 주문은 응답에 원래 없으므로 오늘 것만 남긴다. 안 치우면 며칠 켜 두는 동안 쌓인다 (설계 원칙 5).
+        // 취소 · 환불 주문은 응답에 원래 없으므로 오늘 바뀐 것만 남긴다(어제 취소 · 오늘 환불도 오늘 하루 남는다). 안 치우면 며칠 켜 두는 동안 쌓인다 (설계 원칙 5).
         if (
-          CANCELLED_STATUSES.includes(orders[id].status) &&
+          isCancelledStatus(orders[id].status) &&
           orders[id].updatedAt >= action.dayStart
         ) {
           continue;

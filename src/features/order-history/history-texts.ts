@@ -30,6 +30,7 @@ export const STATUS_VIEW: Record<
   "picked-up": { label: "픽업완료", color: "text-gray-900" },
   "store-cancelled": { label: "매장취소", color: "text-red-600" },
   "customer-cancelled": { label: "고객취소", color: "text-red-600" },
+  refunded: { label: "환불", color: "text-red-600" }, // T22
 };
 
 export const DISCOUNT_LABELS: Record<DiscountKind, string> = {
