@@ -13,6 +13,7 @@ import { errorSummary } from "../../shared/error-summary";
 import { logInfo } from "../../shared/log/log";
 import { logMessages } from "../../shared/log/log-messages";
 import { ORDER_MESSAGES } from "../../shared/orders/order-texts";
+import { isCancelledStatus } from "../../shared/api/orders";
 import { usePrintForms } from "../print-forms/print-forms-context";
 import { PRINT_TEXTS } from "../print-forms/print-texts";
 import { ReceiptPreviewDialog } from "../print-forms/ReceiptPreviewDialog";
@@ -157,8 +158,7 @@ export function HistoryDetail({
   const buttons = view
     ? summaryButtons(view.status, view.paidAt, openedAt)
     : null;
-  const cancelled =
-    view?.status === "store-cancelled" || view?.status === "customer-cancelled";
+  const cancelled = !!view && isCancelledStatus(view.status);
 
   // [주문서 인쇄]는 접수대기에서 막히고 취소 주문에는 없다 (Q27). 주문서는 주문 목록의 Order 모양(옵션은 이름 글자)으로 낸다.
   const printing = !!print?.printing[orderId];

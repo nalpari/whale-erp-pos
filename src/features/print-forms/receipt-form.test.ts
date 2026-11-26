@@ -146,8 +146,12 @@ describe("영수증 줄 목록", () => {
     expect(out.join("\n")).not.toMatch(/승인|카드|결제수단/);
   });
 
-  it("취소 주문: 제목 「취소 영수증」, 금액은 모두 마이너스", () => {
-    for (const status of ["store-cancelled", "customer-cancelled"] as const) {
+  it("취소 · 환불 주문: 제목 「취소 영수증」, 금액은 모두 마이너스 (T22)", () => {
+    for (const status of [
+      "store-cancelled",
+      "customer-cancelled",
+      "refunded",
+    ] as const) {
       const out = rows(order({}, status));
       expect(out[0]).toBe("취소 영수증");
       expect(out).toContain("아메리카노 × 2 | -9,000");

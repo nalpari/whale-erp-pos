@@ -30,6 +30,7 @@ describe("상태별 버튼 표 (Q27, T18 12장)", () => {
     ["picked-up", TODAY - 1, "hidden", null, false], // 어제 23:59:59.999
     ["store-cancelled", NOW, "hidden", null, false],
     ["customer-cancelled", NOW, "hidden", null, false],
+    ["refunded", NOW, "hidden", null, false], // T22
   ];
   it.each(cases)(
     "%s (결제 %s): 취소 %s, 다음 단계 %s, 재제조 %s",

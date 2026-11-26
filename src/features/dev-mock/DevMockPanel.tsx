@@ -19,6 +19,7 @@ export function DevMockPanel({ dev }: Props) {
       () => void setTimeout(() => dev.addOrders(3), 5000),
     ],
     ["고객 취소(가장 오래된 접수대기)", dev.customerCancelsOldestPending],
+    ["가장 최근 취소 → 환불 완료", dev.refundLatestCancelled],
     ["다른 PC가 접수", dev.otherPcAcceptsOldestPending],
     [
       connected ? "연결 끊기" : "연결 잇기",

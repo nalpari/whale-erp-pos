@@ -218,9 +218,10 @@ describe("전체 조회가 사라진 주문을 치운다", () => {
     expect(Object.keys(state.touched)).toEqual(["today"]);
   });
 
-  it("오늘 취소된 주문은 응답에 없어도 남긴다", () => {
+  it("오늘 취소 · 환불된 주문은 응답에 없어도 남긴다", () => {
     const before = run([
       { type: "received", order: order("o1", "customer-cancelled") },
+      { type: "received", order: order("o2", "refunded") },
     ]);
     const state = ordersReducer(before, {
       type: "loaded",
@@ -230,6 +231,7 @@ describe("전체 조회가 사라진 주문을 치운다", () => {
       dayStart: 0,
     });
     expect(state.orders.o1).toBeDefined();
+    expect(state.orders.o2).toBeDefined();
   });
 });
 

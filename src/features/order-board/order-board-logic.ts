@@ -1,5 +1,6 @@
 // 주문접수 화면의 순수 함수 (SPEC-order-board 3장). 현재 시각은 늘 인자로 받는다 (가짜 시계로 시험).
 import {
+  isCancelledStatus,
   PICKUP_CHOICE_MINUTES,
   type Order,
   type OrderItem,
@@ -132,7 +133,7 @@ export function splitOrders(
   const board: Order[] = [];
   const pickedUp: Order[] = [];
   for (const o of orders) {
-    if (o.status === "store-cancelled" || o.status === "customer-cancelled") {
+    if (isCancelledStatus(o.status)) {
       continue; // 5초 배너 동안 취소해도 카드를 남기지 않는다 (T18: 픽업완료도 취소할 수 있다)
     }
     if (lingering.has(o.orderId)) {
@@ -143,7 +144,7 @@ export function splitOrders(
       o.status === "ready"
     ) {
       if (filters[o.status]) board.push(o);
-      // 오늘 결제한 것만 본다. updatedAt(서버 시각)은 0시에 서버가 자동 픽업완료한 어제 주문도 오늘로 만들어 쓰지 않는다 (사용자 결정 2026-11-18).
+      // 오늘 결제한 것만 본다. updatedAt(서버 시각)은 어제 주문을 오늘 픽업완료해도 오늘이 되어 쓰지 않는다 (사용자 결정 2026-11-18).
     } else if (o.status === "picked-up" && o.paidAt >= dayStart) {
       pickedUp.push(o);
     }

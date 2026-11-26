@@ -311,4 +311,16 @@ describe("메뉴 금액 · 처리 이력", () => {
       )?.label,
     ).toBe("자동 취소");
   });
+
+  it("환불이면 취소 줄 뒤에 「환불」 줄과 환불 시각이 붙는다 (T22)", () => {
+    const e = historyEntries({
+      ...base,
+      status: "refunded",
+      cancel: { at: 150, by: "auto", reason: null, refundedAt: 900 },
+    });
+    expect(e.slice(-2)).toEqual([
+      { label: "자동 취소", at: 150, note: undefined },
+      { label: "환불", at: 900 },
+    ]);
+  });
 });
