@@ -22,6 +22,7 @@ const DC_IDS = {
   "SPEC-soldout.md": "DC-SPSOLD",
   "SPEC-settings-ai-popular.md": "DC-SPAIPM",
   "SPEC-print-forms.md": "DC-SPPRFM",
+  "SPEC-remake.md": "DC-SPRMKE",
 };
 
 const [, , specDir, outDir] = process.argv;
