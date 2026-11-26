@@ -54,7 +54,8 @@ function mount(accountType: Session["accountType"]) {
 const popularTab = () =>
   screen.getByRole("tab", { name: "AI챗봇 인기메뉴 설정" });
 
-describe("[AI챗봇 인기메뉴 설정] 탭", () => {
+// 탭을 1차 범위에서 숨겨(2026-11-26) 건너뛴다. 탭 연결(MainContent)을 보는 테스트라 화면만 렌더해서는 못 살린다. 탭을 되살릴 때(tabs.ts SETTINGS_TABS 복구) skip을 떼고, AppShell.test의 환경설정 하위 탭 단언도 3개로 되돌린다.
+describe.skip("[AI챗봇 인기메뉴 설정] 탭", () => {
   it("탭을 누를 때마다(같은 탭 다시 누름 포함) 다시 조회한다", async () => {
     const api = mount("master");
     const spy = vi.spyOn(api, "loadList");
