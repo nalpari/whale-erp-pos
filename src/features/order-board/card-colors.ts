@@ -7,6 +7,7 @@ export const CARD_COLORS = {
   "picked-up": "border-gray-400 bg-gray-100",
   "store-cancelled": "border-gray-400 bg-gray-100",
   "customer-cancelled": "border-gray-400 bg-gray-100",
+  refunded: "border-gray-400 bg-gray-100",
 } as const;
 export const BUTTON_COLORS = {
   pending: "bg-yellow-500 text-gray-900",

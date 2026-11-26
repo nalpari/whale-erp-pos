@@ -8,7 +8,11 @@ import {
   useRef,
   useState,
 } from "react";
-import type { Order, OrderAction } from "../../shared/api/orders";
+import {
+  isCancelledStatus,
+  type Order,
+  type OrderAction,
+} from "../../shared/api/orders";
 import { ORDER_MESSAGES } from "../../shared/orders/order-texts";
 import { useOrders } from "../../shared/orders/orders-context";
 import { UNDO_WINDOW_MS } from "../../shared/orders/orders-state";
@@ -225,13 +229,9 @@ export function OrderBoardScreen() {
   // 고객 취소 배너는 위의 고객 취소 감지가 그대로 띄운다.
   const found = openId ? orders.find((o) => o.orderId === openId) : undefined;
   const openOrder =
-    found &&
-    found.status !== "store-cancelled" &&
-    found.status !== "customer-cancelled"
-      ? found
-      : undefined;
+    found && !isCancelledStatus(found.status) ? found : undefined;
   // 누르지 않았는데 팝업이 사라지면, 고객 취소(배너가 알린다)가 아닐 때 이유를 알린다 (사용자 결정 B-2).
-  // openId는 지우지 않는다(효과 안 setState 금지): 같은 id로 두 번 알리지 않게 notified로 막고, 카드를 새로 누를 때 다시 비운다. (0시 정리로 지워진 주문이 응답에 다시 들어오면 팝업이 다시 열릴 수 있으나, 서버 응답이 앞뒤가 안 맞을 때뿐이다.)
+  // openId는 지우지 않는다(효과 안 setState 금지): 같은 id로 두 번 알리지 않게 notified로 막고, 카드를 새로 누를 때 다시 비운다. (0시 뒤 조회로 지워진 어제 주문이 응답에 다시 들어오면 팝업이 다시 열릴 수 있으나, 서버 응답이 앞뒤가 안 맞을 때뿐이다.)
   useEffect(() => {
     if (!openId || openOrder || notified.current === openId) return;
     notified.current = openId;

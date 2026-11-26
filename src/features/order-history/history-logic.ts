@@ -235,6 +235,9 @@ export function historyEntries(order: HistoryOrder): HistoryEntry[] {
       at: order.cancel.at,
       note: order.cancel.reason ?? undefined,
     });
+    // 환불은 취소에 이어지는 줄로 보인다 (T22). 누가 취소했는지는 위 줄에 그대로 남는다.
+    if (order.cancel.refundedAt !== undefined)
+      entries.push({ label: "환불", at: order.cancel.refundedAt });
   }
   // 재제조는 제조완료 뒤 · 픽업완료 뒤 어디든 끼므로 시각으로 줄 세운다 (sort는 같은 시각이면 넣은 순서를 지킨다).
   return entries.sort((a, b) => a.at - b.at);

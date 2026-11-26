@@ -151,11 +151,20 @@ describe("splitOrders (Q01 · Q17 · Q19 · Q21)", () => {
     }),
     order("c1", { status: "customer-cancelled" }),
     order("c2", { status: "store-cancelled" }),
+    order("r1", { status: "refunded", updatedAt: NOW }),
   ];
 
-  it("첫 탭은 처리할 주문만, 최신순이 기본이다. 취소 · 픽업완료는 없다", () => {
-    const { board } = splitOrders(orders, base);
+  it("첫 탭은 처리할 주문만, 최신순이 기본이다. 취소 · 환불 · 픽업완료는 없다", () => {
+    const { board, pickedUp } = splitOrders(orders, base);
     expect(board.map((o) => o.orderId)).toEqual(["p2", "p3", "p1"]);
+    expect(pickedUp.map((o) => o.orderId)).not.toContain("r1"); // 환불은 픽업완료 탭에도 없다 (T22)
+  });
+  it("5초 배너 동안 환불로 바뀌어도 첫 탭에 남지 않는다 (T22)", () => {
+    const { board } = splitOrders(orders, {
+      ...base,
+      lingering: new Set(["r1"]),
+    });
+    expect(board.map((o) => o.orderId)).not.toContain("r1");
   });
   it("5초 배너 동안 취소된 주문은 첫 탭에 남지 않는다 (T18)", () => {
     const { board } = splitOrders(orders, {

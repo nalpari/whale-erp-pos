@@ -161,7 +161,7 @@ export function createOrderSync(deps: OrderSyncDeps): OrderSync {
       if (timedOutAccepts.get(orderId) !== key) continue;
       const order = deps.getState().orders[orderId];
       const pressKey = `${orderId}:accept`;
-      // 목록에서 사라졌거나 접수대기 · 제조중이 아니면 더 물을 이유가 없다 (취소 · 제조완료 · 픽업완료 · 0시 정리).
+      // 목록에서 사라졌거나 접수대기 · 제조중이 아니면 더 물을 이유가 없다 (취소 · 제조완료 · 픽업완료 · 조회에서 빠져 지워짐).
       if (
         !order ||
         (order.status !== "pending" && order.status !== "preparing")
