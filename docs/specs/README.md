@@ -24,7 +24,7 @@
 | `order-board` (개정) | T19 도착 예정 시각 | WHALEERPPO-52 | [SPEC-order-board.md](./SPEC-order-board.md) 12장 · print-forms 12장 | 승인 (2026-11-25, 대표님 결정) |
 | `settings-order` | T20 환경설정 — 주문설정 | WHALEERPPO-53 | [SPEC-settings-order.md](./SPEC-settings-order.md) | 승인 (2026-11-25, 대표님 결정) |
 | `remake` | T21 재제조 | WHALEERPPO-54 | [SPEC-remake.md](./SPEC-remake.md) · print-forms 13장 | 승인 (2026-11-25, Q62 답) |
-| `order-history` (개정) | T22 「환불」 · 자동 픽업완료 표시 | WHALEERPPO-55 | [SPEC-order-history.md](./SPEC-order-history.md) 12.1 · 12.2 | 승인 (2026-11-25, Q65 · Q66 답) |
+| `order-history` (개정) | T22 「환불」 표시 (자동 픽업완료는 2026-11-26 없앰) | WHALEERPPO-55 | [SPEC-order-history.md](./SPEC-order-history.md) 12.1 | 승인 (2026-11-25 Q66, 2026-11-26 자동 픽업완료 뺌) |
 
 빌드 순서: `project-skeleton` → `app-shell` → `login` → `settings-printer` → `logging` → `order-sync` → `order-board` → `order-summary` → `desktop-widget` → `settings-widget` → `order-history` → `store-info` → `soldout` → `settings-ai-popular` → `print-forms`
 
