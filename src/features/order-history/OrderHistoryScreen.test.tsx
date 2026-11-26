@@ -235,6 +235,8 @@ describe("목록 · 탭 · 요약 (2.3 · 2.4)", () => {
     const text = screen.getAllByRole("listitem").map((li) => li.textContent);
     expect(text.some((t) => t?.includes("매장취소"))).toBe(true);
     expect(text.some((t) => t?.includes("고객취소"))).toBe(true);
+    // 환불도 취소 탭에 빨간 「환불」로 보인다 (T22)
+    expect(screen.getAllByText("환불")[0]).toHaveClass("text-red-600");
     await press(mainTabFor("픽업완료"));
     expect(
       screen.getByText(/^총 \d+건 · 결제 합계 ₩[\d,]+$/),
@@ -465,7 +467,7 @@ describe("상세 (3장)", () => {
     expect(within(basic).getByText("2611180000010003")).toBeInTheDocument(); // 16자리
     expect(within(basic).getByText("***-****-0000")).toBeInTheDocument();
     expect(within(basic).getByText(/홍\*동/)).toBeInTheDocument();
-    expect(within(basic).getByText("4번째 주문")).toBeInTheDocument();
+    expect(within(basic).getByText("3번째 주문")).toBeInTheDocument(); // 같은 고객의 앞선 #1 · #2 + 이번 주문
     expect(within(basic).getByText(/픽업$/)).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "요청사항" })).toHaveTextContent(
       "얼음 조금만",
@@ -481,7 +483,7 @@ describe("상세 (3장)", () => {
   });
 
   it("첫 주문이면 「첫 주문」, 요청사항이 없으면 칸이 없다", async () => {
-    await openOrder(4, 4); // seed 4 → 누적 1회, 단순 주문
+    await openOrder(1, 1); // 이 고객의 첫 주문, 단순 주문
     expect(screen.getByText("첫 주문")).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "요청사항" })).toBeNull();
     expect(screen.queryByText(/할인$/)).toBeNull(); // 안 쓴 할인 줄은 없다
@@ -550,6 +552,53 @@ describe("상세 (3장)", () => {
     expect(
       screen.queryByRole("button", { name: /주문접수|제조완료|픽업완료/ }),
     ).toBeNull();
+  });
+
+  it("취소 주문이 환불되면 상세가 「환불」로 바뀌고, 취소 줄 · 사유 뒤에 환불 시각이 붙고, 취소 영수증만 있다 (T22)", async () => {
+    const view = await openOrder(1, 1, {
+      printerSettings: {
+        version: 1,
+        slots: [
+          {
+            printerName: "SEWOO",
+            purpose: "",
+            printOrder: false,
+            printReceipt: true,
+            paperWidth: 80,
+          },
+          null,
+          null,
+        ],
+      },
+    });
+    await press(button("주문취소"));
+    const dialog = screen.getByRole("dialog", {
+      name: "주문을 취소하시겠습니까?",
+    });
+    await press(
+      within(dialog).getByRole("radio", { name: "재료가 소진되었습니다" }),
+    );
+    await press(within(dialog).getByRole("button", { name: "주문취소" }));
+
+    act(() => view.backend.dev.refundLatestCancelled());
+    await flush();
+
+    expect(
+      screen.getByRole("heading", { name: /#1\s*환불/ }),
+    ).toBeInTheDocument();
+    const history = screen.getByRole("region", { name: "처리 이력" });
+    const lines = within(history)
+      .getAllByRole("listitem")
+      .map((li) => li.textContent);
+    expect(lines.slice(-2)).toEqual([
+      expect.stringMatching(/^매장취소.*재료가 소진되었습니다$/),
+      expect.stringMatching(/^환불2026-11-19 \d\d:\d\d$/),
+    ]);
+    expect(screen.queryByRole("button", { name: "주문서 인쇄" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "주문취소" })).toBeNull();
+    await press(button("영수증 인쇄"));
+    const preview = screen.getByRole("dialog", { name: "영수증 미리보기" });
+    expect(within(preview).getByText("취소 영수증")).toBeInTheDocument();
   });
 
   it("지난 날 픽업완료 상세에는 [주문취소]가 없고 [영수증 인쇄]만 있다 (T18)", async () => {

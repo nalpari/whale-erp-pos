@@ -17,7 +17,20 @@ export type OrderStatus =
   | "ready" // 제조완료
   | "picked-up" // 픽업완료
   | "store-cancelled" // 매장취소
-  | "customer-cancelled"; // 고객취소
+  | "customer-cancelled" // 고객취소
+  /** 매장취소 · 고객취소(자동 취소 포함) 뒤 환불이 끝난 주문. 서버가 바꿔 주문 변경으로 알린다 — 매장 프로그램이 보내는 요청은 없다 (T22, Q66. 상태 이름은 가정). */
+  | "refunded"; // 환불
+
+/** 취소된 주문(매장취소 · 고객취소 · 환불). 처리할 주문 목록 · 위젯에서 빠지고, 주문내역에서는 「취소」 탭에 들어간다. */
+export function isCancelledStatus(
+  status: OrderStatus,
+): status is "store-cancelled" | "customer-cancelled" | "refunded" {
+  return (
+    status === "store-cancelled" ||
+    status === "customer-cancelled" ||
+    status === "refunded"
+  );
+}
 
 /** 점원이 누르는 동작. 허용되는 상태 변경은 `orders-state.ts`의 표가 정한다. */
 export type OrderAction =
@@ -239,7 +252,10 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
     reason?: string,
   ): Order {
     const at = stamp();
-    if (status === "store-cancelled" || status === "customer-cancelled") {
+    if (status === "refunded") {
+      const cancel = cancels.get(order.orderId);
+      if (cancel) cancels.set(order.orderId, { ...cancel, refundedAt: at });
+    } else if (isCancelledStatus(status)) {
       cancels.set(order.orderId, {
         at,
         by: status === "store-cancelled" ? "store" : "customer",
@@ -264,10 +280,7 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
   const api: OrderApi = {
     async fetchOrders() {
       await guard();
-      return [...orders.values()].filter(
-        (o) =>
-          o.status !== "store-cancelled" && o.status !== "customer-cancelled",
-      );
+      return [...orders.values()].filter((o) => !isCancelledStatus(o.status));
     },
     async ackOrders() {
       await guard();
@@ -417,6 +430,19 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
       customerCancelsOldestPending() {
         const order = oldestPending();
         if (order) update(order, "customer-cancelled");
+      },
+      /** 가장 최근에 취소된(아직 환불 전) 주문의 환불이 끝난다 (T22). */
+      refundLatestCancelled() {
+        const latest = [...cancels.entries()]
+          .filter(([id]) => {
+            const status = orders.get(id)?.status;
+            return (
+              status === "store-cancelled" || status === "customer-cancelled"
+            );
+          })
+          .sort(([, a], [, b]) => b.at - a.at)[0];
+        const order = latest && orders.get(latest[0]);
+        if (order) update(order, "refunded");
       },
       /** 가장 오래된 접수대기 주문을 다른 PC가 접수한다. */
       otherPcAcceptsOldestPending() {

@@ -2,10 +2,16 @@
 // 아래 요청 · 응답 형태와 칸 이름은 모두 가정이다. 백엔드 요청 문서 3.7 · 7장과 맞추고, 협의 뒤 이 파일만 바꾼다.
 // 걸러 세는 일은 서버가 한다고 가정하므로, 모의 구현이 그 일을 흉내 낸다. 화면은 직접 세지 않는다.
 import { addDays, sameDayLastMonth, startOfDay } from "../date-days";
-import type { Order, OrderStatus, RemakeFault, RemakeItem } from "./orders";
+import {
+  isCancelledStatus,
+  type Order,
+  type OrderStatus,
+  type RemakeFault,
+  type RemakeItem,
+} from "./orders";
 
 export type HistoryTab =
-  "all" | "pending" | "preparing" | "ready" | "picked-up" | "cancelled"; // 매장취소 + 고객취소 (Q17 · Q19)
+  "all" | "pending" | "preparing" | "ready" | "picked-up" | "cancelled"; // 매장취소 + 고객취소 + 환불 (Q17 · Q19 · T22)
 
 export const PAGE_SIZES = [20, 50, 100] as const;
 export type PageSize = (typeof PAGE_SIZES)[number];
@@ -93,6 +99,8 @@ export interface CancelInfo {
   at: number;
   by: "store" | "customer" | "auto";
   reason: string | null;
+  /** 환불이 끝난 시각. 상태가 「환불」일 때만 있다 (T22, 칸 이름은 가정 · 백엔드 협의). */
+  refundedAt?: number;
 }
 
 /** 재제조 한 번 (SPEC-remake 7장, 가정). 같은 주문에 여러 번 쌓인다. */
@@ -110,7 +118,7 @@ export interface HistoryOrder extends Omit<Order, "items"> {
   cancel: CancelInfo | null;
   /** 오래된 것이 앞. 없으면 빈 배열. */
   remakes: RemakeRecord[];
-  /** 이 고객이 이 점포에서 결제한 누적 주문 수(이번 주문 포함, 취소 제외, Q29). 1이면 첫 주문. */
+  /** 이 고객이 이 점포에서 결제한 누적 주문 수(이번 주문 포함, 취소 · 환불 제외, Q29 · T22). 1이면 첫 주문. */
   orderCount: number;
 }
 
@@ -140,9 +148,7 @@ const TABS: HistoryTab[] = [
 ];
 
 function tabOf(status: OrderStatus): HistoryTab {
-  return status === "store-cancelled" || status === "customer-cancelled"
-    ? "cancelled"
-    : status;
+  return isCancelledStatus(status) ? "cancelled" : status;
 }
 
 /** 서버가 하는 검색을 흉내 낸다: 16자리는 주문번호, 그 밖의 숫자는 픽업번호 또는 휴대폰 끝 4자리. */
@@ -235,7 +241,7 @@ function withPayment(
   return {
     ...base,
     cancel,
-    orderCount: (seed % 4) + 1,
+    orderCount: 1, // 모의 서버(createMockOrderHistoryApi)가 조회 때 센다
     payment: {
       orderAmount,
       discounts,
@@ -269,14 +275,19 @@ function pastOrders(today: number): HistoryOrder[] {
     for (let i = 0; i < count; i += 1) {
       const seed = n * 7 + i;
       const paidAt = day + (9 * 60 + i * 37) * 60_000;
-      // 열 번에 한 번은 매장취소, 열 번 중 한 번은 고객취소. 지난 날은 처리 중인 주문이 없다 (0시에 서버가 픽업완료로 바꿈, Q21).
-      const status: OrderStatus =
-        seed % 10 === 3
+      // 열 번에 한 번은 매장취소, 열 번 중 한 번은 고객취소. 그중 절반은 환불까지 끝났다 (T22).
+      // 모의 데이터는 단순하게 지난 날을 픽업완료 · 취소 · 환불만 만든다(실제로는 0시 자동 픽업완료가 없어 제조중 · 제조완료가 남을 수 있다).
+      const cancelBy =
+        seed % 10 === 3 ? "store" : seed % 10 === 7 ? "customer" : null;
+      const refunded = cancelBy !== null && seed % 20 >= 10;
+      const status: OrderStatus = refunded
+        ? "refunded"
+        : cancelBy === "store"
           ? "store-cancelled"
-          : seed % 10 === 7
+          : cancelBy === "customer"
             ? "customer-cancelled"
             : "picked-up";
-      const cancelled = status !== "picked-up";
+      const cancelled = cancelBy !== null;
       const menus = MENUS.slice(seed % 3, (seed % 3) + 1 + (seed % 4));
       result.push(
         withPayment(
@@ -286,7 +297,8 @@ function pastOrders(today: number): HistoryOrder[] {
             orderNumber: `${yymmdd}000001${String(1001 + i)}`,
             pickupNumber: i + 1,
             status,
-            updatedAt: paidAt + 15 * 60_000,
+            // 환불이 마지막 변경이다 (아래 refundedAt과 같게)
+            updatedAt: paidAt + (refunded ? 60 : 15) * 60_000,
             paidAt,
             pickupChoice: "20min",
             remakes: [],
@@ -308,14 +320,15 @@ function pastOrders(today: number): HistoryOrder[] {
               pickedUpAt: cancelled ? null : paidAt + 15 * 60_000,
             },
           },
-          cancelled
+          cancelBy
             ? {
                 at: paidAt + 5 * 60_000,
-                by: status === "store-cancelled" ? "store" : "customer",
+                by: cancelBy,
                 reason:
-                  status === "store-cancelled"
+                  cancelBy === "store"
                     ? CANCEL_REASONS[seed % CANCEL_REASONS.length]
                     : null,
+                ...(refunded && { refundedAt: paidAt + 60 * 60_000 }),
               }
             : null,
           seed,
@@ -346,7 +359,20 @@ export function createMockOrderHistoryApi(
   }
   const all = () => {
     const today = startOfDay(now());
-    return [...pastOrders(today), ...options.todayOrders()];
+    const orders = [...pastOrders(today), ...options.todayOrders()];
+    // 서버가 하는 「N번째 주문」 셈을 흉내 낸다: 같은 고객(끝 4자리)의 앞선 주문 중 취소 · 환불을 뺀 수 + 이번 주문 (Q29 · HST-08).
+    // shortcut: 모의 데이터(최근 한 달)만 센다. 실제 서버는 기간 제한 없이 센다.
+    return orders.map((o) => ({
+      ...o,
+      orderCount:
+        1 +
+        orders.filter(
+          (p) =>
+            p.phoneLast4 === o.phoneLast4 &&
+            p.paidAt < o.paidAt &&
+            !isCancelledStatus(p.status),
+        ).length,
+    }));
   };
 
   return {
@@ -371,7 +397,7 @@ export function createMockOrderHistoryApi(
       const inTab = inScope.filter(
         (o) => query.tab === "all" || tabOf(o.status) === query.tab,
       );
-      const isCancelled = (o: HistoryOrder) => tabOf(o.status) === "cancelled";
+      const isCancelled = (o: HistoryOrder) => isCancelledStatus(o.status);
       const summed =
         query.tab === "cancelled"
           ? inTab

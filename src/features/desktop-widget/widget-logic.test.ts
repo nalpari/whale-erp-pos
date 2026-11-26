@@ -46,6 +46,7 @@ describe("pickWidgetOrders", () => {
       order("a", "picked-up", 1),
       order("b", "store-cancelled", 2),
       order("c", "customer-cancelled", 3),
+      order("d", "refunded", 4), // 환불도 위젯에 없다 (T22)
     ];
     expect(pickWidgetOrders(list, none)).toEqual([]);
   });
