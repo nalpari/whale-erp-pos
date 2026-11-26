@@ -20,6 +20,7 @@ import { useOrders } from "../../shared/orders/orders-context";
 import { BOARD_TEXTS } from "../order-board/board-texts";
 import { pickupSchedule } from "../order-board/order-board-logic";
 import { CancelReasonDialog } from "../order-summary/CancelReasonDialog";
+import { RemakeDialog } from "../order-summary/RemakeDialog";
 import {
   formatDateTime,
   formatPhone,
@@ -80,6 +81,7 @@ export function HistoryDetail({
   const [failed, setFailed] = useState(false);
   const [loadKey, setLoadKey] = useState(0);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [remakeOpen, setRemakeOpen] = useState(false);
   // 상세를 연 시각. 0시를 넘겨 열려 있으면 버튼이 낡을 수 있으나 최종 판단은 서버(too-late)가 한다.
   const [openedAt, setOpenedAt] = useState(() => Date.now());
   const [receiptOpen, setReceiptOpen] = useState(false);
@@ -368,11 +370,16 @@ export function HistoryDetail({
 
         <Section title={HISTORY_TEXTS.history}>
           <ul className="text-lg">
-            {historyEntries(view).map((e) => (
-              <li key={e.label} className="flex flex-wrap gap-x-4">
+            {historyEntries(view).map((e, i) => (
+              <li key={i} className="flex flex-wrap gap-x-4">
                 <span className="w-28 text-gray-500">{e.label}</span>
                 <span>{formatDateTime(e.at)}</span>
                 {e.note && <span className="break-words">{e.note}</span>}
+                {e.menu && (
+                  <span className="w-full pl-32 break-words text-gray-700">
+                    {e.menu}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
@@ -410,6 +417,16 @@ export function HistoryDetail({
             {HISTORY_TEXTS.cancel}
           </button>
         )}
+        {buttons?.remake && (
+          <button
+            type="button"
+            disabled={blocked}
+            onClick={() => setRemakeOpen(true)}
+            className={GRAY}
+          >
+            {HISTORY_TEXTS.remake}
+          </button>
+        )}
         {buttons?.next && (
           <button
             type="button"
@@ -430,6 +447,26 @@ export function HistoryDetail({
             setReceiptOpen(false);
             onToast(PRINT_TEXTS.receiptPrinted);
           }}
+        />
+      )}
+      {remakeOpen && view && buttons?.remake && (
+        <RemakeDialog
+          orderId={orderId}
+          pickupNumber={view.pickupNumber}
+          items={view.items.map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            options: item.options.map((o) => o.name),
+          }))}
+          onClose={(result) => {
+            setRemakeOpen(false);
+            if (result === "back") return;
+            // 성공이면 처리 이력에 재제조 줄이, 거절이면 서버의 최신 상태가 보이게 다시 불러온다.
+            if (result === "rejected") setOpenedAt(Date.now());
+            reload();
+            onChanged();
+          }}
+          onToast={onToast}
         />
       )}
       {cancelOpen && buttons?.cancel === "enabled" && (

@@ -136,6 +136,9 @@ export function OrdersProvider({
               ok: false,
               reason: "not-allowed",
             } satisfies StatusOutcome)) as ChangeStatus,
+      remake: (orderId, reason, items) =>
+        syncRef.current?.remake(orderId, reason, items) ??
+        Promise.resolve({ ok: false, reason: "not-allowed" } as const),
       refresh: () => syncRef.current?.refresh() ?? Promise.resolve(false),
       pickedUpAt: (orderId) => state.pickedUpAt[orderId],
       onNewOrder: (listener) => {

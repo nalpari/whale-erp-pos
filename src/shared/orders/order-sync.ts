@@ -1,13 +1,20 @@
 // 주문 수신 · 재연결 · 상태 변경 요청을 한 곳에서 돌린다 (SPEC-order-sync 3장). React를 모른다.
 // OrdersProvider가 로그인 때 만들고 로그아웃 때 멈춘다.
 import type { OrderFeed, OrderEvent } from "../api/order-feed";
-import type { Order, OrderAction, OrderApi } from "../api/orders";
+import type {
+  Order,
+  OrderAction,
+  OrderApi,
+  RemakeFault,
+  RemakeItem,
+} from "../api/orders";
 import type { StoreStatusApi } from "../api/store-status";
 import { RequestTimeoutError, withTimeout } from "../api/with-timeout";
 import { logInfo } from "../log/log";
 import {
   logMessages,
   type OrderLogResult,
+  type RemakeLogResult,
   type SyncRequestKind,
 } from "../log/log-messages";
 import type { SoundPlayer } from "../sound/sound-player";
@@ -40,6 +47,19 @@ export type StatusOutcome =
       message: string;
     };
 
+/** [재제조]에 고른 사유. reasonNo는 팝업 목록의 1부터 번호(직접 입력 포함)로, 로그에 글 대신 남긴다. */
+export interface RemakeReason {
+  text: string;
+  fault: RemakeFault;
+  reasonNo: number;
+}
+
+export type RemakeOutcome =
+  /** order: 서버가 돌려준 주문. 재제조 주문서를 이것으로 뽑는다. */
+  | { ok: true; order: Order }
+  | { ok: false; reason: "not-allowed" | "busy" }
+  | { ok: false; reason: "rejected" | "failed"; message: string };
+
 export interface OrderSyncDeps {
   orderApi: OrderApi;
   orderFeed: OrderFeed;
@@ -61,6 +81,11 @@ export interface OrderSync {
   /** [새로고침]: 전체 다시 조회. 못 했으면 false (화면이 실패 문구를 보인다). */
   refresh(): Promise<boolean>;
   changeStatus: ChangeStatus;
+  remake(
+    orderId: string,
+    reason: RemakeReason,
+    items: RemakeItem[],
+  ): Promise<RemakeOutcome>;
 }
 
 /** [주문취소]는 사유가 있어야 보낸다 (Q17). 다른 동작에는 사유를 받지 않는다. */
@@ -560,5 +585,91 @@ export function createOrderSync(deps: OrderSyncDeps): OrderSync {
     }
   }
 
-  return { start, stop, refresh, changeStatus: changeStatus as ChangeStatus };
+  /** [재제조] (SPEC-remake 4 · 5장). 상태는 바꾸지 않는다. 같은 주문의 요청 중 잠금 · 멱등키 재사용은 changeStatus와 같다. */
+  async function remake(
+    orderId: string,
+    { text, fault, reasonNo }: RemakeReason,
+    items: RemakeItem[],
+  ): Promise<RemakeOutcome> {
+    const state = deps.getState();
+    const order = state.orders[orderId];
+    const reason = text.trim();
+    // 0시 판단은 서버가 한다. 여기서는 상태만 본다.
+    if (
+      !reason ||
+      items.length === 0 ||
+      !order ||
+      (order.status !== "ready" && order.status !== "picked-up")
+    ) {
+      return { ok: false, reason: "not-allowed" };
+    }
+    if (state.inFlight[orderId]) return { ok: false, reason: "busy" };
+    deps.commit({ type: "request-started", orderId });
+    // shortcut: 실패 뒤 사유 · 메뉴를 바꿔 다시 눌러도 같은 키다. 서버가 앞 요청을 처리했다면 기록(재고 포함)은 앞 값으로 한 번만 남고, 주문서는 새 사유로 나와 둘이 어긋날 수 있다. 백엔드 협의 때 다시 본다.
+    const pressKey = `${orderId}:remake`;
+    let idempotencyKey = retryKeys.get(pressKey);
+    if (!idempotencyKey) {
+      requestCounter += 1;
+      idempotencyKey = `${pressKey}:${Date.now()}:${requestCounter}`;
+      retryKeys.set(pressKey, idempotencyKey);
+    }
+    // 직접 입력한 글은 개인정보가 섞일 수 있어 로그에 남기지 않는다: 사유 번호만.
+    const log = (result: RemakeLogResult) =>
+      void logInfo(
+        logMessages.remakeRequested(
+          orderId,
+          fault,
+          reasonNo,
+          {
+            lines: items.length,
+            total: items.reduce((n, i) => n + i.quantity, 0),
+          },
+          result,
+        ),
+      );
+    try {
+      const result = await withTimeout(
+        deps.orderApi.requestRemake({
+          orderId,
+          items,
+          reason,
+          fault,
+          idempotencyKey,
+        }),
+      );
+      retryKeys.delete(pressKey);
+      if (!disposed) {
+        afterCommit(
+          deps.commit({
+            type: "received",
+            order: result.order,
+            source: "response",
+          }),
+        );
+      }
+      if (result.kind === "ok") {
+        log("success");
+        return { ok: true, order: result.order };
+      }
+      log("rejected");
+      return {
+        ok: false,
+        reason: "rejected",
+        message: ORDER_MESSAGES.remakeRejected,
+      };
+    } catch (error) {
+      log(error instanceof RequestTimeoutError ? "timeout" : "failed");
+      return { ok: false, reason: "failed", message: ORDER_MESSAGES.failed };
+    } finally {
+      if (!disposed) deps.commit({ type: "request-finished", orderId });
+    }
+  }
+
+  return {
+    start,
+    stop,
+    refresh,
+    changeStatus: changeStatus as ChangeStatus,
+    remake,
+  };
 }

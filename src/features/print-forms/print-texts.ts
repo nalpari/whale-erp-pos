@@ -38,6 +38,8 @@ export const PRINT_TEXTS = {
 export const FORM_TEXTS = {
   orderTitle: "픽업오더 주문서 (주방 / 바리스타용)",
   reprint: (time: string) => `[재출력] ${time}`,
+  remake: (time: string) => `[재제조] ${time}`,
+  remakeReason: "사유",
   orderNumber: "주문번호",
   orderedAt: "주문일시",
   customer: "주문자",

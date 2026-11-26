@@ -4,6 +4,7 @@ import type {
   HistoryOrder,
   ReceiptStore,
 } from "../../shared/api/order-history";
+import type { RemakeItem } from "../../shared/api/orders";
 import type { PrintLine } from "../../shared/printer/print-lines";
 import type { PaperWidth } from "../../shared/printer/printer-settings";
 import type { OrderFormInput } from "./order-form";
@@ -54,6 +55,16 @@ export interface PrintFormsValue {
    */
   printOrder(
     order: OrderFormInput & { orderId: string },
+  ): Promise<OrderPrintResult>;
+  /**
+   * [재제조]가 서버에서 성공했을 때 (T21). 「주문서」 체크된 슬롯 모두로 「[재제조]」 주문서를 낸다.
+   * 실패 처리는 주문서와 같고, 다시 인쇄도 「[재제조]」 주문서다.
+   */
+  printRemake(
+    order: OrderFormInput & { orderId: string },
+    reason: string,
+    /** 고른 메뉴 줄 · 수량. 이것만 찍는다. */
+    items: RemakeItem[],
   ): Promise<OrderPrintResult>;
   /** 띠의 [다시 인쇄]: 실패한 슬롯에만 낸다. */
   retry(orderId: string): Promise<OrderPrintResult>;

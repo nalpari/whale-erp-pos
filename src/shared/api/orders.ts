@@ -7,6 +7,7 @@ import {
   createMockOrderHistoryApi,
   toHistoryOrder,
   type CancelInfo,
+  type RemakeRecord,
 } from "./order-history";
 import type { StoreStatusApi } from "./store-status";
 
@@ -93,12 +94,41 @@ export type StatusChangeResult =
   /** 픽업완료 주문의 취소 시간(결제한 날 0시)이 지났다. 상태는 그대로 (T18, 거절 종류 이름은 가정 · 백엔드 협의). */
   | { kind: "too-late"; order: Order };
 
+/** 재제조 구분 (Q62): 매장 과실(실제 클레임) / 고객 실수. 이름은 가정 · 백엔드 협의. */
+export type RemakeFault = "store" | "customer";
+
+/**
+ * 다시 만들 메뉴 한 줄 (SPEC-remake 3 · 7장). 서버가 이만큼 재고를 뺀다고 가정한다.
+ * itemIndex: 주문 메뉴(Order.items) 줄의 순번(0부터). 메뉴 줄 ID가 아직 없어 순번으로 가리킨다(가정, 백엔드 협의 때 바꾼다).
+ */
+export interface RemakeItem {
+  itemIndex: number;
+  /** 1 ~ 그 줄의 주문 수량. */
+  quantity: number;
+}
+
+/** [재제조] 요청 (SPEC-remake 4 · 7장). 상태를 바꾸지 않고 기록만 쌓는다. 형태는 가정이다. */
+export interface RemakeRequest {
+  orderId: string;
+  /** 하나 이상. */
+  items: RemakeItem[];
+  /** 고른 사유 문구 또는 직접 입력한 글. */
+  reason: string;
+  fault: RemakeFault;
+  idempotencyKey: string;
+}
+
+/** 서버 오류 · 시간 초과 · 끊김은 예외. rejected: 취소됐거나 결제한 날 0시가 지난 픽업완료라 받지 않았다 (거절 종류 이름은 가정). */
+export type RemakeResult =
+  { kind: "ok"; order: Order } | { kind: "rejected"; order: Order };
+
 export interface OrderApi {
   /** 처리할 주문 전체(접수대기 · 제조중 · 제조완료)와 오늘 픽업완료 (스펙 3.1-2). */
   fetchOrders(): Promise<Order[]>;
   /** 새 주문 수신 확인. */
   ackOrders(orderIds: string[]): Promise<void>;
   changeStatus(request: StatusChangeRequest): Promise<StatusChangeResult>;
+  requestRemake(request: RemakeRequest): Promise<RemakeResult>;
   /** 연결 신호 (15초마다, 스펙 3.4). */
   sendHeartbeat(): Promise<void>;
   /** 서버가 가진 점포의 주문받기 상태. */
@@ -122,6 +152,9 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
   const results = new Map<string, StatusChangeResult>();
   // 주문내역 상세가 보이는 취소 시각 · 누가 · 사유 (주문내역 SPEC 3장).
   const cancels = new Map<string, CancelInfo>();
+  // 재제조 기록 (주문내역 상세 처리 이력, SPEC-remake 6장)과 그 멱등 결과.
+  const remakes = new Map<string, RemakeRecord[]>();
+  const remakeResults = new Map<string, RemakeResult>();
   const subscribers = new Set<{
     onEvent(e: OrderEvent): void;
     onClose(): void;
@@ -277,6 +310,47 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
       results.set(request.idempotencyKey, result);
       return result;
     },
+    async requestRemake(request) {
+      await guard();
+      const cached = remakeResults.get(request.idempotencyKey);
+      if (cached) return cached;
+      const order = orders.get(request.orderId);
+      if (!order) throw new Error("모의 서버: 없는 주문");
+      // 가정: 서버는 주문에 있는 줄 · 주문 수량 안의 수량만 받는다. 어긋나면 화면 버그라 오류로 본다(입력값은 문구에 넣지 않는다).
+      const itemsValid =
+        request.items.length > 0 &&
+        // 같은 줄이 두 번 오면 합계가 주문 수량을 넘을 수 있다.
+        new Set(request.items.map((i) => i.itemIndex)).size ===
+          request.items.length &&
+        request.items.every(
+          (i) =>
+            Number.isInteger(i.quantity) &&
+            i.quantity >= 1 &&
+            i.quantity <= (order.items[i.itemIndex]?.quantity ?? 0),
+        );
+      if (!itemsValid) throw new Error("모의 서버: 잘못된 재제조 메뉴");
+      // 가정: 서버는 제조완료와 결제한 날 0시 전의 픽업완료만 받는다 (SPEC-remake 2 · 5장).
+      const allowed =
+        order.status === "ready" ||
+        (order.status === "picked-up" &&
+          order.paidAt >= startOfDay(Date.now()));
+      let result: RemakeResult;
+      if (allowed) {
+        const list = remakes.get(order.orderId) ?? [];
+        list.push({
+          at: stamp(),
+          items: request.items.map((i) => ({ ...i })),
+          reason: request.reason,
+          fault: request.fault,
+        });
+        remakes.set(order.orderId, list);
+        result = { kind: "ok", order };
+      } else {
+        result = { kind: "rejected", order };
+      }
+      remakeResults.set(request.idempotencyKey, result);
+      return result;
+    },
   };
 
   const storeStatusApi: StoreStatusApi = {
@@ -303,7 +377,11 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
   const historyApi = createMockOrderHistoryApi({
     todayOrders: () =>
       [...orders.values()].map((o) =>
-        toHistoryOrder(o, cancels.get(o.orderId) ?? null),
+        toHistoryOrder(
+          o,
+          cancels.get(o.orderId) ?? null,
+          remakes.get(o.orderId) ?? [],
+        ),
       ),
     delayMs,
     isConnected: () => connected,
@@ -376,6 +454,8 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
         orders.clear();
         results.clear();
         cancels.clear();
+        remakes.clear();
+        remakeResults.clear();
         lastCreated = null;
         pickupBase = orderSeq;
         emit({ eventId: nextEventId(), type: "orders-cleared" });

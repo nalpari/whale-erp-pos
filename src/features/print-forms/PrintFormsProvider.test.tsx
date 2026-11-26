@@ -1,6 +1,14 @@
 // 출력 연결 (T12 스펙 3 · 4 · 5장 · 9장): 자동 출력 · 수동 출력 · 다시 인쇄 · 실패 처리 · 영수증.
 import { act, render } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  onTestFinished,
+  vi,
+} from "vitest";
 import { createMockAuthApi, type Session } from "../../shared/api/auth";
 import {
   toHistoryOrder,
@@ -237,7 +245,7 @@ describe("30초 안에 끝나지 않으면 결과를 확인할 수 없음 (Q47)"
     await act(async () => {
       const pending = t
         .value()
-        .printReceipt(toHistoryOrder(ORDER, null), RECEIPT_STORE)
+        .printReceipt(toHistoryOrder(ORDER, null, []), RECEIPT_STORE)
         .then((r) => (result = r));
       await vi.advanceTimersByTimeAsync(PRINT_TIMEOUT_MS);
       await pending;
@@ -477,7 +485,7 @@ describe("[주문서 인쇄]", () => {
 });
 
 describe("영수증", () => {
-  const detail = toHistoryOrder(ORDER, null);
+  const detail = toHistoryOrder(ORDER, null, []);
 
   it("「영수증」 체크된 슬롯 중 번호가 가장 앞선 한 대로만 낸다", async () => {
     const t = setup(
@@ -533,5 +541,72 @@ describe("영수증", () => {
     );
     await act(async () => t.value().refreshReceiptEnabled());
     expect(t.value().receiptEnabled).toBe(true);
+  });
+});
+
+describe("재제조 주문서 (T21, print-forms 13장)", () => {
+  it("「주문서」 체크된 슬롯 모두에 「[재제조] HH:mm」 · 「사유」와 함께, 「[재출력]」 없이 낸다", async () => {
+    const t = setup(
+      settings(slot("A"), slot("B"), slot("C", { printOrder: false })),
+    );
+    let result = "";
+    await act(async () => {
+      result = await t
+        .value()
+        .printRemake(ORDER, "맛 · 품질 문제", [{ itemIndex: 0, quantity: 1 }]);
+    });
+    expect(result).toBe("ok");
+    expect(t.printed.map((p) => p.printerName)).toEqual(["A", "B"]);
+    const lines = texts(t.printed[0].doc);
+    expect(lines[0]).toMatch(/^\[재제조\] \d\d:\d\d$/);
+    expect(lines[1]).toBe("사유: 맛 · 품질 문제");
+    expect(lines.join("\n")).not.toContain("재출력");
+  });
+
+  it("같은 주문을 출력하는 중이면 버리지 않고, 끝난 뒤에 낸다 (리뷰 ②)", async () => {
+    vi.useFakeTimers();
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+    let finish = () => {};
+    let calls = 0;
+    const t = setup(settings(slot("A")), () =>
+      ++calls === 1
+        ? new Promise<void>((resolve) => (finish = resolve))
+        : Promise.resolve(),
+    );
+    let remake: Promise<string> | undefined;
+    await act(async () => {
+      void t.value().printOrder(ORDER);
+      await Promise.resolve();
+      remake = t
+        .value()
+        .printRemake(ORDER, "이물질", [{ itemIndex: 0, quantity: 1 }]);
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(t.printed).toHaveLength(1); // 앞 출력이 끝나기 전에는 내지 않는다
+    let result = "";
+    await act(async () => {
+      finish();
+      await vi.advanceTimersByTimeAsync(1000);
+      result = await remake!;
+    });
+    expect(result).toBe("ok");
+    expect(t.printed).toHaveLength(2);
+    expect(texts(t.printed[1].doc)[1]).toBe("사유: 이물질");
+  });
+
+  it("실패하면 주문서 실패 규칙대로 알리고, 다시 인쇄도 재제조 주문서다", async () => {
+    const t = setup(settings(slot("A"), slot("B")), failOn("B"));
+    await act(async () => {
+      await t
+        .value()
+        .printRemake(ORDER, "이물질", [{ itemIndex: 0, quantity: 1 }]);
+    });
+    expect(t.sound.playWarning).toHaveBeenCalledTimes(1);
+    expect(t.value().unprinted.has(ORDER.orderId)).toBe(true);
+    expect(
+      texts({ lines: t.value().failures[0].lines } as PrintDocument)[1],
+    ).toBe("사유: 이물질");
   });
 });

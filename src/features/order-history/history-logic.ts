@@ -194,8 +194,10 @@ export function lineTotal(item: HistoryItem): number {
 export interface HistoryEntry {
   label: string;
   at: number;
-  /** 취소 사유 (직접 입력은 고객에게 보인 문구 그대로). */
+  /** 취소 사유 (직접 입력은 고객에게 보인 문구 그대로) · 재제조 사유. */
   note?: string;
+  /** 재제조한 메뉴 · 수량 「메뉴 × 1, 메뉴 × 2」 (T21). */
+  menu?: string;
 }
 
 const CANCEL_BY_LABEL = {
@@ -204,7 +206,7 @@ const CANCEL_BY_LABEL = {
   auto: "자동 취소",
 } as const;
 
-/** 처리 이력 (3장 6): 결제 · 제조중 · 제조완료 · 픽업완료 시각, 취소면 취소 시각 · 누가 · 사유. 시각이 없는 단계는 뺀다. */
+/** 처리 이력 (3장 6): 결제 · 제조중 · 제조완료 · 픽업완료 시각, 재제조마다 시각 · 사유(T21), 취소면 취소 시각 · 누가 · 사유. 시각이 없는 단계는 뺀다. 시각 순. */
 export function historyEntries(order: HistoryOrder): HistoryEntry[] {
   const t = order.statusTimes;
   const entries: HistoryEntry[] = [{ label: "결제(주문)", at: order.paidAt }];
@@ -213,6 +215,20 @@ export function historyEntries(order: HistoryOrder): HistoryEntry[] {
   if (t.readyAt !== null) entries.push({ label: "제조완료", at: t.readyAt });
   if (t.pickedUpAt !== null)
     entries.push({ label: "픽업완료", at: t.pickedUpAt });
+  for (const r of order.remakes) {
+    entries.push({
+      label: "재제조",
+      at: r.at,
+      note: r.reason,
+      // 줄 번호가 주문 메뉴에 없으면(서버 · 화면이 어긋남) 그 줄만 뺀다.
+      menu: r.items
+        .flatMap(({ itemIndex, quantity }) => {
+          const item = order.items[itemIndex];
+          return item ? [`${item.name} × ${quantity}`] : [];
+        })
+        .join(", "),
+    });
+  }
   if (order.cancel) {
     entries.push({
       label: CANCEL_BY_LABEL[order.cancel.by],
@@ -220,5 +236,6 @@ export function historyEntries(order: HistoryOrder): HistoryEntry[] {
       note: order.cancel.reason ?? undefined,
     });
   }
-  return entries;
+  // 재제조는 제조완료 뒤 · 픽업완료 뒤 어디든 끼므로 시각으로 줄 세운다 (sort는 같은 시각이면 넣은 순서를 지킨다).
+  return entries.sort((a, b) => a.at - b.at);
 }
