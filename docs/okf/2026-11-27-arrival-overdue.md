@@ -26,7 +26,7 @@ sources:
 - 60분 이상 지나면 「(1시간 이상 지남)」(빨강). 어제 주문이 남아도 「710분 지남」이 보이지 않는다(B-1).
 - 카드 · 요약 팝업 · 위젯 · 주문내역이 같은 함수라 함께 바뀐다. 주문서 · 영수증의 「도착예정: HH:mm」은 그대로.
 - 카드 시각 갱신을 켠 시각 기준 60초마다에서 매분 0초로 바꿨다. 절전 · 시계 변경 뒤에도 다음 번에 다시 맞춘다(② · ③ 지적).
-- 「3분 뒤 자동 취소」 경고는 분 단위 갱신을 쓰지 않고 경고 시각(`autoCancelAt − 3분`, 초 단위)에 한 번 울리는 타이머로 띄운다(⑤ 블로커). 앱을 다시 켠 뒤에도 초 단위로 맞는다.
+- 「3분 뒤 자동 취소」 경고는 분 단위 갱신을 쓰지 않고 경고 시각(`autoCancelAt − 3분`, 초 단위)에 맞춰 띄운다(⑤ 블로커). 타이머를 이어 걸어 시계 변경 · 절전 뒤에도 경고 시각에 뜬다(⑤ 재실행 블로커).
 
 # 작업 방법
 - 진행: 지휘 세션 pos-boss, 작업 세션 `t19-arrival-overdue-98`(Sonnet 5.5), 워크트리 `~/.whale-smart-pos-worktrees/T19-arrival-overdue`, 브랜치 `fix/WHALEERPPO-52-arrival-overdue`. ② `t19-arrival-overdue-2e` · ③ `t19-arrival-overdue-fe`(각각 새 Opus 5.5 세션)
@@ -39,17 +39,17 @@ sources:
 - `src/features/order-board/order-board-logic.test.ts`: 경계 사례 6개(초가 붙은 도착 전후 · 59 · 60 · 710분 · 90분 뒤)
 - `src/features/order-board/use-now.ts`: 간격 경계에 맞춘 setTimeout 이어 걸기, effect 시작에서 경계를 넘었으면 한 번 보정(⑤ 참고 1, 이유를 단 eslint-disable 한 줄)
 - `src/features/order-board/use-now.test.ts`(새 파일): 15:47:30에 켜면 15:48:00 갱신, +37초 어긋난 뒤 다시 0초, 그린 뒤 effect 전 경계 넘김 보정, 언마운트 시 타이머 0개
-- `src/features/order-board/OrderBoardScreen.test.tsx`: 시작 시각을 15:25:30으로 고정하고 경고가 정확히 15:37:30에 뜨는지(1초 전 없음) 확인
-- `src/features/order-board/OrderCard.tsx`: `AutoCancelWarning`이 경고 시각 단발 타이머로 다시 그림
+- `src/features/order-board/OrderBoardScreen.test.tsx`: 시작 시각을 15:25:30으로 고정하고 경고가 정확히 15:37:30에 뜨는지(1초 전 없음) 확인, 「타이머가 일찍 울려도 경고 시각에 뜬다」 추가
+- `src/features/order-board/OrderCard.tsx`: `AutoCancelWarning`이 경고 시각까지 타이머를 이어 걸어(최대 1분 대기) 다시 그림. 시계가 뒤로 가거나 일찍 울려도 경고 시각에 뜬다
 - `docs/specs/SPEC-order-board.md` 12장: 「60분 이상 지남」 표 줄, 분 기준 · 1시간 이상 지남 규칙
 - `docs/test-scenarios/T19-arrival-time.md`: 분 경계 설명, A4 문구, A5 · A6 추가
 
 # 검증
-- 작업 세션 ①(⑤ 블로커 수정 뒤): `pnpm lint` · `pnpm typecheck` · `pnpm format:check` · `pnpm build` 통과, `pnpm test` 62파일 861개 통과 · 5개 건너뜀(기존). Rust는 안 건드려 생략
-- pos-boss 재실행: `pnpm lint` 통과, order-board · desktop-widget · order-history · order-summary 13파일 271개 통과
+- 작업 세션 ①(⑤ 블로커 수정 뒤): `pnpm lint` · `pnpm typecheck` · `pnpm format:check` · `pnpm build` 통과, `pnpm test` 62파일 862개 통과 · 5개 건너뜀(기존). Rust는 안 건드려 생략
+- pos-boss 재실행: `pnpm lint` 통과, order-board · desktop-widget · order-history · order-summary 13파일 272개 통과
 - 브라우저(`pnpm dev`, agent-browser): 13:24:38에 「13:29 도착 (5분 뒤)」 · 「13:34 도착 (10분 뒤)」 → 13:25:04에 「4분 뒤」 · 「9분 뒤」로 분 경계에서 바뀜 (시나리오 A6)
 - 「1분 지남」 · 「1시간 이상 지남」은 실제로 기다려야 보여서 가짜 시계 테스트로 확인 (시나리오 A4 · A5)
-- ② Critical 0 · Important 0 · Minor 3, ③ 중요 1 · 사소 2, ④ 0건, ⑤ 블로커 1 · 참고 3 (히스토리 참고)
+- ② Critical 0 · Important 0 · Minor 3, ③ 중요 1 · 사소 2, ④ 0건, ⑤ 블로커 1 · 참고 3, ⑤ 재실행 블로커 1 (히스토리 참고)
 
 # 결정 사항
 - 분 기준 계산 (A-1), 60분 이상은 「1시간 이상 지남」 (B-1): 2026-11-27 사용자 결정[^spec]
@@ -76,5 +76,8 @@ sources:
 - 2026-11-27T16:20+09:00 ⑤ 최종 게이트(Opus 5.5, ip-code-review-claude, PR 댓글): 블로커 1 — 분 경계 갱신 때문에 자동 취소 경고가 최대 59초 늦게 뜸(이번 변경의 회귀, ② 때 「예전과 같음」 보고는 틀렸음) · 참고 3(렌더-effect 틈, 위젯 카운트다운 간격, arrivalAt NaN). ⑤ 세션 닫음
 - 2026-11-27T16:25+09:00 사용자 A-1(코드 동결 예외): 경고는 경고 시각 단발 타이머로, useNow는 effect 시작에서 한 번 갱신 → 작업 세션에 지시. 위젯 카운트다운은 그대로, NaN은 T17
 - 2026-11-27T16:45+09:00 작업 세션 ⑤ 블로커 고침: AutoCancelWarning 단발 타이머, useNow effect 시작 보정, 테스트 2개 수정 · 추가, ① 통과 861. pos-boss가 diff 확인 · lint · 관련 테스트 271개 재실행 통과
+- 2026-11-27T17:00+09:00 사용자 규칙 추가(PR에 작업 내용 · 해결 방안 댓글, 블로커면 그 단계 재리뷰) → PR #2에 작업 내용 · 지적 해결 표 댓글, ⑤ 재실행(Opus 5.5)
+- 2026-11-27T17:15+09:00 ⑤ 재실행: 앞 블로커는 정상 조건에서 풀림. 새 블로커 1 — AutoCancelWarning 타이머가 한 번만 걸려 시계가 뒤로 가거나 일찍 울리면 경고가 안 뜸(useNow 매분 확인을 뺀 회귀). 작업 세션에 이어 걸기(최대 60초 대기)로 고치게 함. ⑤ 세션 닫음
+- 2026-11-27T17:35+09:00 작업 세션 ⑤ 재실행 블로커 고침: AutoCancelWarning 이어 걸기(최대 1분), 「일찍 울림」 테스트 추가, ① 통과 862. pos-boss가 diff 확인 · lint · 관련 테스트 272개 재실행 통과
 
 [^spec]: SPEC-order-board 12장
