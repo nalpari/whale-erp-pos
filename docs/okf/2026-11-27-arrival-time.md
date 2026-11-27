@@ -3,7 +3,7 @@ type: Task Report
 title: T19 도착 예정 시각
 description: 고객이 고른 픽업 예정 선택지 대신 서버가 주는 도착 예정 시각을 카드 · 요약 · 위젯 · 주문내역 · 주문서 · 영수증에 보인다.
 tags: [order-board, order-summary, desktop-widget, order-history, print-forms]
-status: draft
+status: stable
 generated:
   by: claude-code/claude-opus-5-5
   at: 2026-11-27T11:00:00+09:00
@@ -17,6 +17,9 @@ sources:
   - id: task
     resource: plane:WHALEERPPO-52
     title: T19 도착 예정 시각
+verified:
+  - by: human:yjnoh
+    at: 2026-11-27T12:40:00+09:00
 ---
 
 # 목표
@@ -65,5 +68,6 @@ sources:
 - 2026-11-27 사용자: 분 경계 그대로(A-1), 위젯 · 출력은 자동 테스트로 대신(B-2)
 - 2026-11-27 사용자 "커밋해" → 커밋 `f466a54` · `c3aafcf`. 공개 사본에 필터한 브랜치를 올려 PR #1 생성. PR 봇이 없어(15분 무응답) 사용자 결정으로 PR에서 추가 리뷰 없이 머지
 - 2026-11-27 사용자 "머지까지 해" → 로컬 main 머지, 필터한 main 푸시로 PR #1 Merged
+- 2026-11-27 GitHub를 로컬 main 전체로 맞춤(docs 포함, origin 연결). 사용자 보고서 승인(stable)
 
 [^spec]: SPEC-order-board 12장
