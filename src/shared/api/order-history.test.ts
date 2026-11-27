@@ -102,7 +102,7 @@ describe("모의 주문내역 서버", () => {
       updatedAt: today + n * 60_000,
       paidAt: today + n * 60_000,
       autoCancelAt: today + (n + 15) * 60_000,
-      pickupChoice: "now",
+      arrivalAt: today + (n + 15) * 60_000,
       items: [{ name: "카페라떼(시험)", quantity: 1 }],
       customerName: "홍*동",
       phoneLast4: "0000",

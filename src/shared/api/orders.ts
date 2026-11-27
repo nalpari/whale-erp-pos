@@ -37,24 +37,6 @@ export function isCancelledStatus(
 export type OrderAction =
   "accept" | "cancel" | "complete" | "pickup" | "undo-pickup";
 
-/**
- * 고객이 고른 픽업 값 (Q26, T04 11장 B). 값 이름은 모두 가정이다. 백엔드 요청 문서(협의 전 초안) 3.6의 예시 "20min"에 맞춰 두었다.
- * 매장은 결제 시각 + 이 값으로 픽업 예정 시각을 계산한다.
- */
-export type PickupChoice =
-  "now" | "5min" | "10min" | "20min" | "30min" | "40min" | "1hour-plus";
-
-/** 고른 값이 결제 시각에 더하는 분. "1시간 이상"은 1시간으로 계산한다 (Q26). */
-export const PICKUP_CHOICE_MINUTES: Readonly<Record<PickupChoice, number>> = {
-  now: 0,
-  "5min": 5,
-  "10min": 10,
-  "20min": 20,
-  "30min": 30,
-  "40min": 40,
-  "1hour-plus": 60,
-};
-
 export interface OrderItem {
   name: string;
   quantity: number;
@@ -82,8 +64,8 @@ export interface Order {
   paidAt: number;
   /** 서버가 이 주문을 자동 취소할 예정 시각(ms). 주문이 들어올 때의 자동 취소 시간으로 정한다 (SPEC-settings-order 5장, 13장 D). */
   autoCancelAt: number;
-  /** 고객이 고른 픽업 값 (Q26). 예정 시각 = paidAt + 고른 분. */
-  pickupChoice: PickupChoice;
+  /** 고객 도착 예정 시각(ms). 가정: 서버가 결제 시각 + 고객이 고른 분(5분 단위, 도착 최소 시간 이상)으로 계산해 준다 (SPEC-order-board 12장). */
+  arrivalAt: number;
   items: OrderItem[];
   note?: string;
   /** 서버가 가려서 준다고 가정한 값 (개인정보 규칙). */
@@ -209,7 +191,6 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
   const nextEventId = () => `mock-event-${++eventSeq}`;
 
   // 개발용 화면 확인을 위해 값이 고르게 돌고, 세 번에 한 번은 긴 메뉴 · 옵션 · 요청사항을 넣는다.
-  const PICKUP_CHOICES = Object.keys(PICKUP_CHOICE_MINUTES) as PickupChoice[];
   function newOrder(): Order {
     orderSeq += 1;
     const at = stamp();
@@ -222,7 +203,12 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
       updatedAt: at,
       paidAt: at,
       autoCancelAt: at + orderSettingsApi.current().autoCancelMinutes * 60_000,
-      pickupChoice: PICKUP_CHOICES[(orderSeq - 1) % PICKUP_CHOICES.length],
+      // 고객이 도착 최소 시간부터 5분 단위로 고른 것처럼 돌린다: 최소 + 0 · 5 · … · 30분.
+      arrivalAt:
+        at +
+        (orderSettingsApi.current().arrivalMinMinutes +
+          5 * ((orderSeq - 1) % 7)) *
+          60_000,
       items: long
         ? [
             {

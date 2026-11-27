@@ -15,7 +15,7 @@ export interface WidgetCardView {
   /** picked-up은 [픽업완료] 직후 5초 동안 보이는 「완료 취소」 카드다. */
   status: "pending" | "preparing" | "ready" | "picked-up";
   paidAt: number;
-  pickupChoice: Order["pickupChoice"];
+  arrivalAt: Order["arrivalAt"];
   note?: string;
   items: Array<{ name: string; quantity: number }>;
   /** 이 주문의 요청이 진행 중이라 버튼을 막는다. */

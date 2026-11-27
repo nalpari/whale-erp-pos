@@ -1,5 +1,11 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AUTO_OFF_BANNER } from "../../shared/orders/order-texts";
 import { WidgetScreen } from "./WidgetScreen";
 import type { WidgetCardView, WidgetView } from "./widget-protocol";
@@ -10,7 +16,7 @@ function card(patch: Partial<WidgetCardView> = {}): WidgetCardView {
     pickupNumber: 12,
     status: "pending",
     paidAt: new Date(2026, 10, 19, 13, 21).getTime(),
-    pickupChoice: "now",
+    arrivalAt: new Date(2026, 10, 19, 13, 36).getTime(),
     items: [{ name: "아이스 아메리카노(시험)", quantity: 2 }],
     busy: false,
     ...patch,
@@ -31,6 +37,20 @@ function setup(v: WidgetView) {
 }
 
 describe("WidgetScreen", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("도착 시각: 도착 전 「N분 뒤」, 지나면 빨간 「N분 지남」 (12장)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 19, 13, 30));
+    setup(view());
+    const c = screen.getByLabelText("픽업번호 12");
+    expect(c).toHaveTextContent("13:36 도착 (6분 뒤)");
+    vi.setSystemTime(new Date(2026, 10, 19, 13, 40));
+    cleanup();
+    setup(view());
+    expect(screen.getByText("4분 지남")).toHaveClass("text-red-600");
+  });
+
   it("주문서 출력에 실패한 카드에만 「미출력」 꼬리표를 보인다 (T12)", () => {
     setup(
       view({
@@ -62,7 +82,7 @@ describe("WidgetScreen", () => {
     );
     const c = screen.getByLabelText("픽업번호 12");
     expect(c).toHaveTextContent("접수대기");
-    expect(c).toHaveTextContent("주문시간 13:21 | 지금 픽업");
+    expect(c).toHaveTextContent("주문시간 13:21 | 13:36 도착");
     expect(c).toHaveTextContent("#12");
     expect(c).toHaveTextContent("얼음 조금만");
     expect(c).toHaveTextContent("+ 외 1개");

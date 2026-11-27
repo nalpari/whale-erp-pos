@@ -18,7 +18,7 @@ function order(id: string, status: Order["status"], paidAt: number): Order {
     updatedAt: paidAt,
     paidAt,
     autoCancelAt: paidAt + 15 * 60_000,
-    pickupChoice: "now",
+    arrivalAt: paidAt + 15 * 60_000,
     items: [{ name: "아메리카노(시험)", quantity: 1 }],
     customerName: "홍*동",
     phoneLast4: "1234",
@@ -113,6 +113,7 @@ describe("buildWidgetView", () => {
     const view = buildWidgetView([order("a", "pending", 1)], base);
     expect(view.visible).toBe(true);
     expect(view.cards).toHaveLength(1);
+    expect(view.cards[0].arrivalAt).toBe(1 + 15 * 60_000); // 도착 시각을 그대로 넘긴다 (12장)
   });
   it("주문서 출력에 실패한 주문의 카드에만 「미출력」 표시를 싣는다 (T12)", () => {
     const view = buildWidgetView(

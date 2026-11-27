@@ -1,7 +1,7 @@
 // 주문서 줄 목록 (T12 스펙 3.1). 순수 함수: 화면 · 프린터 · 시계를 모른다.
 import type { Order, RemakeItem } from "../../shared/api/orders";
 import { RULE, type PrintLine } from "../../shared/printer/print-lines";
-import { formatClock, pickupSchedule } from "../order-board/order-board-logic";
+import { arrivalClock, formatClock } from "../order-board/order-board-logic";
 import { formatDateTime } from "../order-summary/summary-logic";
 import { FORM_TEXTS } from "./print-texts";
 
@@ -11,7 +11,7 @@ export type OrderFormInput = Pick<
   | "pickupNumber"
   | "orderNumber"
   | "paidAt"
-  | "pickupChoice"
+  | "arrivalAt"
   | "customerName"
   | "phoneLast4"
   | "note"
@@ -24,11 +24,6 @@ export function customerLabel(
   order: Pick<Order, "customerName" | "phoneLast4">,
 ) {
   return `${order.customerName} (${order.phoneLast4})`;
-}
-
-/** 「지금」 또는 「HH:mm」. 화면의 pickupSchedule(Q26)을 그대로 쓰고 뒤의 「 픽업」만 뗀다. */
-export function pickupLabel(order: Pick<Order, "pickupChoice" | "paidAt">) {
-  return pickupSchedule(order, order.paidAt).label.replace(/ 픽업$/, "");
 }
 
 /**
@@ -69,7 +64,7 @@ export function buildOrderLines(
     { text: `${FORM_TEXTS.orderNumber}: ${order.orderNumber}` },
     { text: `${FORM_TEXTS.orderedAt}: ${formatDateTime(order.paidAt)}` },
     { text: `${FORM_TEXTS.customer}: ${customerLabel(order)}` },
-    { text: `${FORM_TEXTS.pickupAt}: ${pickupLabel(order)}` },
+    { text: `${FORM_TEXTS.arrivalAt}: ${arrivalClock(order)}` },
   );
   // 요청사항이 없으면 그 줄을 찍지 않는다.
   if (order.note) {

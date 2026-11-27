@@ -149,7 +149,7 @@ describe("받기 (스펙 3.1 · 3.2)", () => {
       updatedAt: 100 + i,
       paidAt: 100 + i,
       autoCancelAt: 100 + i + 15 * 60_000,
-      pickupChoice: "10min",
+      arrivalAt: 100 + i + 10 * 60_000,
       items: [{ name: "시험", quantity: 1 }],
       customerName: "홍*동",
       phoneLast4: "0000",

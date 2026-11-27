@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { Order, OrderStatus, PickupChoice } from "../../shared/api/orders";
+import type { Order, OrderStatus } from "../../shared/api/orders";
 import {
   countByStatus,
   formatClock,
   menuSummary,
-  pickupSchedule,
+  arrivalSchedule,
   showAutoCancelWarning,
   splitOrders,
   startOfDay,
@@ -26,7 +26,7 @@ function order(
     updatedAt: PAID,
     paidAt: PAID,
     autoCancelAt: PAID + 15 * MIN,
-    pickupChoice: "now",
+    arrivalAt: PAID + 20 * MIN,
     items: [{ name: "아메리카노", quantity: 1 }],
     customerName: "홍*동",
     phoneLast4: "0000",
@@ -58,54 +58,31 @@ describe("menuSummary (Q24)", () => {
   });
 });
 
-describe("pickupSchedule (Q26, 결제 15:25)", () => {
-  const at = (choice: PickupChoice, afterMin: number, afterSec = 0) =>
-    pickupSchedule(
-      order("a", { pickupChoice: choice }),
-      PAID + afterMin * MIN + afterSec * 1000,
-    );
+describe("arrivalSchedule (12장, 15:25 결제 · 20분 고름 → 15:45 도착)", () => {
+  const at = (afterMin: number, afterSec = 0) =>
+    arrivalSchedule(order("a"), PAID + afterMin * MIN + afterSec * 1000);
 
-  it("지금: 방금 결제했으면 「지금 픽업」만", () => {
-    expect(at("now", 0, 30)).toEqual({ label: "지금 픽업" });
-  });
-  it("지금: 시간이 지나면 지난 분이 빨간 글자로 붙는다", () => {
-    expect(at("now", 3, 10)).toEqual({
-      label: "지금 픽업",
-      note: { text: "3분 지남", overdue: true },
-    });
-  });
-  it("5~40분: 예정 시각과 남은 분이 보이고 1분마다 줄어든다", () => {
-    expect(at("20min", 0)).toEqual({
-      label: "15:45 픽업",
+  it("도착 전: 「HH:mm 도착 (N분 뒤)」, 1분마다 줄어든다", () => {
+    expect(at(0)).toEqual({
+      label: "15:45 도착",
       note: { text: "20분 뒤", overdue: false },
     });
-    expect(at("20min", 1, 10).note?.text).toBe("19분 뒤");
-    expect(at("5min", 0).label).toBe("15:30 픽업");
-    expect(at("40min", 0).label).toBe("16:05 픽업");
+    expect(at(1, 10).note?.text).toBe("19분 뒤");
   });
-  it("5~40분: 예정 시각을 지난 지 1분이 안 됐으면 괄호가 없다", () => {
-    expect(at("20min", 20, 30)).toEqual({ label: "15:45 픽업" });
+  it("남은 시간이 1분 미만이면 올려서 「1분 뒤」(0분 뒤는 없다)", () => {
+    expect(at(19, 1).note?.text).toBe("1분 뒤");
+    expect(at(19, 59).note?.text).toBe("1분 뒤");
   });
-  it("모르는 값이 와도 NaN 대신 「지금 픽업」으로 본다", () => {
-    const o = order("a", { pickupChoice: "7min" as PickupChoice });
-    expect(pickupSchedule(o, PAID)).toEqual({ label: "지금 픽업" });
+  it("도착 시각 정각부터 1분 전까지는 괄호가 없다", () => {
+    expect(at(20)).toEqual({ label: "15:45 도착" });
+    expect(at(20, 59)).toEqual({ label: "15:45 도착" });
   });
-  it("1시간 이상: 결제 시각 + 1시간, 괄호는 「1시간 이상」", () => {
-    expect(at("1hour-plus", 0)).toEqual({
-      label: "16:25 픽업",
-      note: { text: "1시간 이상", overdue: false },
+  it("도착 시각이 지나면 괄호 안이 빨간 「N분 지남」(내림)", () => {
+    expect(at(21)).toEqual({
+      label: "15:45 도착",
+      note: { text: "1분 지남", overdue: true },
     });
-    expect(at("1hour-plus", 30).note?.text).toBe("1시간 이상");
-  });
-  it("예정 시각이 지나면 괄호 안이 빨간 「N분 지남」", () => {
-    expect(at("20min", 23, 30)).toEqual({
-      label: "15:45 픽업",
-      note: { text: "3분 지남", overdue: true },
-    });
-    expect(at("1hour-plus", 65).note).toEqual({
-      text: "5분 지남",
-      overdue: true,
-    });
+    expect(at(23, 30).note).toEqual({ text: "3분 지남", overdue: true });
   });
 });
 

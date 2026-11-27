@@ -4,7 +4,7 @@ export const SUMMARY_TEXTS = {
   steps: "처리 단계",
   orderedAt: "주문일시",
   orderNumber: "주문번호",
-  pickupAt: "픽업 예정",
+  arrivalAt: "도착 예정",
   customer: "고객명",
   phone: "연락처",
   note: "요청사항",

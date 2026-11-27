@@ -84,7 +84,7 @@ export function buildWidgetView(
     pickupNumber: o.pickupNumber,
     status: o.status as WidgetCardView["status"],
     paidAt: o.paidAt,
-    pickupChoice: o.pickupChoice,
+    arrivalAt: o.arrivalAt,
     note: o.note,
     items: o.items.map(({ name, quantity }) => ({ name, quantity })),
     busy: !!input.inFlight[o.orderId],
