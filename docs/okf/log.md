@@ -2,7 +2,7 @@
 
 ## 2026-11-27
 
-- T19 후속 도착 표시 정리 보고서 추가 (`2026-11-27-arrival-overdue.md`, status: draft)
+- T19 후속 도착 표시 정리 보고서 추가 · 사용자 승인 (`2026-11-27-arrival-overdue.md`, status: stable)
 - T19 도착 예정 시각 보고서 추가 · 사용자 승인 (`2026-11-27-arrival-time.md`, status: stable)
 - T20 환경설정 — 주문설정 보고서 추가 · 사용자 승인 (`2026-11-27-settings-order.md`, status: stable)
 
