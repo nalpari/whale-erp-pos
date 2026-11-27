@@ -7,6 +7,19 @@ import {
 } from "./orders";
 
 describe("모의 서버", () => {
+  it("새 주문의 autoCancelAt은 들어올 때의 자동 취소 시간을 따르고, 나중에 바꿔도 그대로다 (SPEC-settings-order 13장 B)", async () => {
+    const backend = createMockOrderBackend({ delayMs: 0 });
+    backend.dev.addOrders(1);
+    await backend.orderSettingsApi.save({
+      autoCancelMinutes: 5,
+      arrivalMinMinutes: 5,
+    });
+    backend.dev.addOrders(1);
+    const [first, second] = await backend.api.fetchOrders();
+    expect(first.autoCancelAt - first.paidAt).toBe(15 * 60_000);
+    expect(second.autoCancelAt - second.paidAt).toBe(5 * 60_000);
+  });
+
   it("상태가 바뀔 때마다 상태별 시각을 채우고, 완료 취소하면 픽업완료 시각을 지운다 (T05 결정 B)", async () => {
     const backend = createMockOrderBackend({ delayMs: 0 });
     backend.dev.addOrders(1);

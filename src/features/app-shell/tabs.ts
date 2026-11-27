@@ -8,13 +8,14 @@ export const MAIN_TABS = [
 ] as const;
 
 // 숨긴 탭의 id도 타입에 남겨 인기메뉴 분기(MainContent)가 그대로 컴파일되게 한다.
-export type SettingsTabId = "widget" | "printer" | "ai-popular-menu";
+export type SettingsTabId = "widget" | "printer" | "ai-popular-menu" | "order";
 
 export const SETTINGS_TABS: readonly { id: SettingsTabId; label: string }[] = [
   { id: "widget", label: "위젯설정" },
   { id: "printer", label: "프린터설정" },
   // 1차 범위에서 숨김(고객 앱 AI 주문 제외, 2026-11-26). 다음 차수에 아래 줄 주석을 풀고 AiPopularTab.test의 skip을 뗀다.
   // { id: "ai-popular-menu", label: "AI챗봇 인기메뉴 설정" },
+  { id: "order", label: "주문설정" },
 ];
 
 export type MainTabId = (typeof MAIN_TABS)[number]["id"];

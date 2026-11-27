@@ -9,6 +9,7 @@ import { createMockOrderFeed } from "../shared/api/order-feed";
 import { createMockOrderBackend } from "../shared/api/orders";
 import { OrderHistoryApiContext } from "../shared/api/order-history-context";
 import { createMockStoreInfoApi } from "../shared/api/store-info";
+import { OrderSettingsApiContext } from "../shared/api/order-settings-context";
 import { createMockPopularApi } from "../shared/api/popular";
 import { PopularApiContext } from "../shared/api/popular-context";
 import { createMockSoldOutApi } from "../shared/api/soldout";
@@ -92,7 +93,11 @@ function App() {
                 <StoreInfoApiContext.Provider value={storeInfoApi}>
                   <SoldOutApiContext.Provider value={soldoutApi}>
                     <PopularApiContext.Provider value={popularApi}>
-                      <AppShell />
+                      <OrderSettingsApiContext.Provider
+                        value={backend.orderSettingsApi}
+                      >
+                        <AppShell />
+                      </OrderSettingsApiContext.Provider>
                     </PopularApiContext.Provider>
                   </SoldOutApiContext.Provider>
                 </StoreInfoApiContext.Provider>

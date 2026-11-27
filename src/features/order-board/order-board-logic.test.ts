@@ -25,6 +25,7 @@ function order(
     status: "pending",
     updatedAt: PAID,
     paidAt: PAID,
+    autoCancelAt: PAID + 15 * MIN,
     pickupChoice: "now",
     items: [{ name: "아메리카노", quantity: 1 }],
     customerName: "홍*동",
@@ -108,11 +109,15 @@ describe("pickupSchedule (Q26, 결제 15:25)", () => {
   });
 });
 
-describe("showAutoCancelWarning (Q20)", () => {
-  it("접수대기가 결제 뒤 12분부터 보인다", () => {
-    const o = order("a");
-    expect(showAutoCancelWarning(o, PAID + 11 * MIN + 59_000)).toBe(false);
-    expect(showAutoCancelWarning(o, PAID + 12 * MIN)).toBe(true);
+describe("showAutoCancelWarning (SPEC-settings-order 5장)", () => {
+  it.each([
+    [15, 12],
+    [5, 2],
+    [30, 27],
+  ])("자동 취소 %i분이면 결제 뒤 %i분부터 보인다", (cancelMin, warnMin) => {
+    const o = order("a", { autoCancelAt: PAID + cancelMin * MIN });
+    expect(showAutoCancelWarning(o, PAID + warnMin * MIN - 1)).toBe(false);
+    expect(showAutoCancelWarning(o, PAID + warnMin * MIN)).toBe(true);
   });
   it("접수대기가 아니면 오래돼도 보이지 않는다", () => {
     expect(
