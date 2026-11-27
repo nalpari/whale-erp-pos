@@ -3,6 +3,7 @@
 import { startOfDay } from "../date-days";
 import { ACTION_TRANSITIONS } from "../orders/orders-state";
 import type { OrderEvent } from "./order-feed";
+import { createMockOrderSettingsApi } from "./order-settings";
 import {
   createMockOrderHistoryApi,
   toHistoryOrder,
@@ -79,6 +80,8 @@ export interface Order {
   /** 마지막 변경 시각(ms). 순서가 바뀐 이벤트를 거르는 기준이다. */
   updatedAt: number;
   paidAt: number;
+  /** 서버가 이 주문을 자동 취소할 예정 시각(ms). 주문이 들어올 때의 자동 취소 시간으로 정한다 (SPEC-settings-order 5장, 13장 D). */
+  autoCancelAt: number;
   /** 고객이 고른 픽업 값 (Q26). 예정 시각 = paidAt + 고른 분. */
   pickupChoice: PickupChoice;
   items: OrderItem[];
@@ -181,6 +184,11 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
   let eventSeq = 0;
   let lastTimestamp = 0;
   let lastCreated: Order | null = null;
+  // 같은 서버가 가진 점포 주문설정. 새 주문은 들어올 때의 자동 취소 시간을 쓴다 (13장 B). 끊기면 읽기 · 저장도 실패한다.
+  const orderSettingsApi = createMockOrderSettingsApi({
+    delayMs,
+    shouldFail: () => !connected,
+  });
 
   const wait = () =>
     delayMs > 0
@@ -213,6 +221,7 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
       status: "pending",
       updatedAt: at,
       paidAt: at,
+      autoCancelAt: at + orderSettingsApi.current().autoCancelMinutes * 60_000,
       pickupChoice: PICKUP_CHOICES[(orderSeq - 1) % PICKUP_CHOICES.length],
       items: long
         ? [
@@ -403,6 +412,8 @@ export function createMockOrderBackend(options: MockOrderBackendOptions = {}) {
   return {
     api,
     storeStatusApi,
+    /** 점포 주문설정. 새 주문의 autoCancelAt이 이 값을 따른다. */
+    orderSettingsApi,
     /** 주문내역 조회. 오늘 주문은 이 모의 서버의 주문과 같다. */
     historyApi,
     /** 실시간 연결. 끊긴 상태면 던진다. 돌려주는 함수가 연결을 닫는다. */

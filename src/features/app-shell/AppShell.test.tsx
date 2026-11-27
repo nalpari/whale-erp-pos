@@ -202,7 +202,7 @@ describe("화면 틀 (스펙 2.1)", () => {
     }
   });
 
-  it("환경설정 하위 탭은 위젯설정 · 프린터설정 2개뿐이고 오갈 수 있다", () => {
+  it("환경설정 하위 탭은 위젯설정 · 프린터설정 · 주문설정 3개이고 오갈 수 있다", () => {
     renderShell({ session: STORE });
     fireEvent.click(screen.getByRole("tab", { name: "환경설정" }));
 
@@ -211,12 +211,12 @@ describe("화면 틀 (스펙 2.1)", () => {
       within(sub)
         .getAllByRole("tab")
         .map((t) => t.textContent),
-    ).toEqual(["위젯설정", "프린터설정"]);
+    ).toEqual(["위젯설정", "프린터설정", "주문설정"]);
     // AI챗봇 인기메뉴 설정은 1차 범위에서 숨겼다 (2026-11-26).
     expect(
       within(sub).queryByRole("tab", { name: "AI챗봇 인기메뉴 설정" }),
     ).toBeNull();
-    for (const name of ["프린터설정", "위젯설정"]) {
+    for (const name of ["프린터설정", "주문설정", "위젯설정"]) {
       fireEvent.click(within(sub).getByRole("tab", { name }));
       expect(within(sub).getByRole("tab", { name })).toHaveAttribute(
         "aria-selected",
