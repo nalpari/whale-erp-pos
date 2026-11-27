@@ -302,7 +302,7 @@ function pastOrders(today: number): HistoryOrder[] {
             paidAt,
             // 지난 주문의 자동 취소 시각은 모의 값이라 기본 15분으로 둔다 (주문내역은 이 값을 쓰지 않는다).
             autoCancelAt: paidAt + 15 * 60_000,
-            pickupChoice: "20min",
+            arrivalAt: paidAt + 20 * 60_000,
             remakes: [],
             items: menus.map((m, k) => ({
               name: m.name,

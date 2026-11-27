@@ -64,7 +64,7 @@ const ORDER: Order = {
   updatedAt: 1,
   paidAt: new Date(2026, 10, 19, 9, 30).getTime(),
   autoCancelAt: new Date(2026, 10, 19, 9, 45).getTime(),
-  pickupChoice: "now",
+  arrivalAt: new Date(2026, 10, 19, 9, 50).getTime(),
   items: [{ name: "아메리카노", quantity: 1, options: ["샷 추가"] }],
   note: "얼음 적게",
   customerName: "박*준",

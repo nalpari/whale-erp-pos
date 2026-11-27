@@ -19,7 +19,7 @@ import { PRINT_TEXTS } from "../print-forms/print-texts";
 import { ReceiptPreviewDialog } from "../print-forms/ReceiptPreviewDialog";
 import { useOrders } from "../../shared/orders/orders-context";
 import { BOARD_TEXTS } from "../order-board/board-texts";
-import { pickupSchedule } from "../order-board/order-board-logic";
+import { arrivalSchedule } from "../order-board/order-board-logic";
 import { CancelReasonDialog } from "../order-summary/CancelReasonDialog";
 import { RemakeDialog } from "../order-summary/RemakeDialog";
 import {
@@ -328,9 +328,9 @@ export function HistoryDetail({
               </dd>
               <dt className="text-gray-500">{HISTORY_TEXTS.phone}</dt>
               <dd>{formatPhone(view.phoneLast4)}</dd>
-              <dt className="text-gray-500">{HISTORY_TEXTS.pickupAt}</dt>
-              {/* 지난 주문에 「N분 지남」을 붙이지 않도록 결제 시각 기준 문구만 쓴다. */}
-              <dd>{pickupSchedule(view, view.paidAt).label}</dd>
+              <dt className="text-gray-500">{HISTORY_TEXTS.arrivalAt}</dt>
+              {/* 지난 주문이라 괄호(N분 뒤 · N분 지남) 없이 「HH:mm 도착」만 쓴다. */}
+              <dd>{arrivalSchedule(view, view.arrivalAt).label}</dd>
             </dl>
           </Section>
           <Section title={HISTORY_TEXTS.payment}>

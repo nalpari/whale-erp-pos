@@ -26,7 +26,7 @@ function order(
     updatedAt: PAID,
     paidAt: PAID,
     autoCancelAt: PAID + 15 * 60_000,
-    pickupChoice: "now",
+    arrivalAt: PAID + 20 * 60_000,
     customerName: "박*준",
     phoneLast4: "1234",
     statusTimes: { preparingAt: null, readyAt: null, pickedUpAt: null },
@@ -96,6 +96,7 @@ describe("영수증 줄 목록", () => {
       "사업자번호: 000-00-00000",
       "판매일자: 2026-11-19 09:30",
       "주문번호: 2611190000010108",
+      "도착예정: 09:50",
       "---",
       "아메리카노 × 2 | 9,000",
       "ㄴ 샷 추가 | 1,000",
@@ -155,6 +156,7 @@ describe("영수증 줄 목록", () => {
     ] as const) {
       const out = rows(order({}, status));
       expect(out[0]).toBe("취소 영수증");
+      expect(out).toContain("도착예정: 09:50"); // 원 주문 값
       expect(out).toContain("아메리카노 × 2 | -9,000");
       expect(out).toContain("주문금액 | -10,000");
       expect(out).toContain("쿠폰 할인 | -1,000");

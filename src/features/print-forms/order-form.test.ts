@@ -11,7 +11,7 @@ const ORDER: OrderFormInput = {
   pickupNumber: 108,
   orderNumber: "2611190000010108",
   paidAt: PAID,
-  pickupChoice: "20min",
+  arrivalAt: PAID + 20 * 60_000,
   customerName: "박*준",
   phoneLast4: "1234",
   items: [
@@ -38,7 +38,7 @@ describe("주문서 줄 목록", () => {
       "주문번호: 2611190000010108",
       "주문일시: 2026-11-19 09:30",
       "주문자: 박*준 (1234)",
-      "픽업예정: 09:50",
+      "도착예정: 09:50",
       "---",
       "아이스 아메리카노 × 2",
       "ㄴ 샷 추가",
@@ -52,12 +52,6 @@ describe("주문서 줄 목록", () => {
     const [, number] = buildOrderLines(ORDER);
     expect(number).toMatchObject({ text: "#108", bold: true, align: "center" });
     expect(number.size).toBeGreaterThan(20);
-  });
-
-  it("지금 픽업이면 「지금」", () => {
-    expect(texts({ ...ORDER, pickupChoice: "now" })).toContain(
-      "픽업예정: 지금",
-    );
   });
 
   it("요청사항이 있으면 굵게, 없으면 줄이 없다", () => {

@@ -27,7 +27,7 @@ function order(
     updatedAt,
     paidAt: updatedAt,
     autoCancelAt: updatedAt + 15 * 60_000,
-    pickupChoice: "10min",
+    arrivalAt: updatedAt + 10 * 60_000,
     items: [{ name: "시험 음료", quantity: 1 }],
     customerName: "홍*동",
     phoneLast4: "0000",

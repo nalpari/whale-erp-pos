@@ -8,7 +8,7 @@ import {
 } from "../order-board/board-texts";
 import { formatClock } from "../order-board/order-board-logic";
 import { BUTTON_COLORS, CARD_COLORS } from "../order-board/card-colors";
-import { PickupText } from "../order-board/OrderCard";
+import { ArrivalText } from "../order-board/OrderCard";
 import { useNow } from "../order-board/use-now";
 import { widgetMenu } from "./widget-logic";
 import type {
@@ -130,7 +130,7 @@ function OrderCardView({
       </header>
       <p className="flex justify-between text-base text-gray-700">
         <span>
-          주문시간 {formatClock(card.paidAt)} | <PickupText order={card} />
+          주문시간 {formatClock(card.paidAt)} | <ArrivalText order={card} />
         </span>
         <span className="text-xl font-bold text-gray-900">
           #{card.pickupNumber}

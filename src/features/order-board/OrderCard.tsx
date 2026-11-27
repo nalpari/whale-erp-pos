@@ -6,7 +6,7 @@ import { ACTION_BUTTONS, BOARD_TEXTS, STATUS_LABELS } from "./board-texts";
 import {
   formatClock,
   menuSummary,
-  pickupSchedule,
+  arrivalSchedule,
   showAutoCancelWarning,
 } from "./order-board-logic";
 import { useNow } from "./use-now";
@@ -14,12 +14,8 @@ import { useNow } from "./use-now";
 const MINUTE_MS = 60_000;
 
 /** 1분마다 이 글자만 다시 그린다. */
-export function PickupText({
-  order,
-}: {
-  order: Pick<Order, "pickupChoice" | "paidAt">;
-}) {
-  const { label, note } = pickupSchedule(order, useNow(MINUTE_MS));
+export function ArrivalText({ order }: { order: Pick<Order, "arrivalAt"> }) {
+  const { label, note } = arrivalSchedule(order, useNow(MINUTE_MS));
   return (
     <span>
       {label}
@@ -109,7 +105,7 @@ export const OrderCard = memo(function OrderCard({
           {formatClock(order.paidAt)} · {order.customerName}
         </p>
         <p>
-          <PickupText order={order} />
+          <ArrivalText order={order} />
         </p>
       </div>
       <div className="min-h-0 flex-1 overflow-hidden text-lg">

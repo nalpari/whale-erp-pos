@@ -8,7 +8,7 @@ import { PRINT_TEXTS } from "../print-forms/print-texts";
 import { ReceiptPreviewDialog } from "../print-forms/ReceiptPreviewDialog";
 import { BOARD_TEXTS, STATUS_LABELS } from "../order-board/board-texts";
 import { formatClock } from "../order-board/order-board-logic";
-import { PickupText } from "../order-board/OrderCard";
+import { ArrivalText } from "../order-board/OrderCard";
 import { CancelReasonDialog } from "./CancelReasonDialog";
 import { RemakeDialog } from "./RemakeDialog";
 import {
@@ -168,9 +168,9 @@ export function OrderSummaryDialog({
               <dd>{formatDateTime(order.paidAt)}</dd>
               <dt className="text-gray-500">{SUMMARY_TEXTS.orderNumber}</dt>
               <dd>{order.orderNumber}</dd>
-              <dt className="text-gray-500">{SUMMARY_TEXTS.pickupAt}</dt>
+              <dt className="text-gray-500">{SUMMARY_TEXTS.arrivalAt}</dt>
               <dd>
-                <PickupText order={order} />
+                <ArrivalText order={order} />
               </dd>
               <dt className="text-gray-500">{SUMMARY_TEXTS.customer}</dt>
               <dd>{order.customerName}</dd>

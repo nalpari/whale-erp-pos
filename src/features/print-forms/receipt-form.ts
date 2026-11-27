@@ -5,6 +5,7 @@ import type {
 } from "../../shared/api/order-history";
 import { isCancelledStatus } from "../../shared/api/orders";
 import { RULE, type PrintLine } from "../../shared/printer/print-lines";
+import { arrivalClock } from "../order-board/order-board-logic";
 import { formatDateTime } from "../order-summary/summary-logic";
 import { FORM_TEXTS } from "./print-texts";
 
@@ -44,6 +45,8 @@ export function buildReceiptLines(
     { text: `${FORM_TEXTS.businessNumber}: ${store.businessNumber}` },
     { text: `${FORM_TEXTS.soldAt}: ${formatDateTime(order.paidAt)}` },
     { text: `${FORM_TEXTS.orderNumber}: ${order.orderNumber}` },
+    // 취소 영수증도 원 주문의 도착 예정 시각을 찍는다 (SPEC-print-forms 12장).
+    { text: `${FORM_TEXTS.arrivalAt}: ${arrivalClock(order)}` },
     RULE,
   ];
 

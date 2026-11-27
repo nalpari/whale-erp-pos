@@ -43,7 +43,7 @@ export const FORM_TEXTS = {
   orderNumber: "주문번호",
   orderedAt: "주문일시",
   customer: "주문자",
-  pickupAt: "픽업예정",
+  arrivalAt: "도착예정",
   note: "요청사항",
   receiptTitle: "영수증",
   cancelReceiptTitle: "취소 영수증",
