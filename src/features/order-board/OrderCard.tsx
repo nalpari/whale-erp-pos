@@ -33,15 +33,25 @@ export function ArrivalText({ order }: { order: Pick<Order, "arrivalAt"> }) {
   );
 }
 
-/** 매분 0초가 아니라 경고 시각(초 단위) 정각에 뜨도록 그 시각에 한 번만 다시 그린다. */
+/** 매분 0초가 아니라 경고 시각(초 단위) 정각에 뜨게 그때 다시 그린다. */
 function AutoCancelWarning({ order }: { order: Order }) {
   const [now, setNow] = useState(Date.now);
   const warnAt = order.autoCancelAt - AUTO_CANCEL_WARNING_LEAD_MS;
   useEffect(() => {
-    const timer = setTimeout(
-      () => setNow(Date.now()),
-      Math.max(0, warnAt - Date.now()),
-    );
+    // 한 번만 걸면 시계가 뒤로 가거나 절전에서 깨 일찍 울렸을 때 경고가 끝내 안 뜬다.
+    // 그래서 울릴 때마다 남은 시간을 다시 재서 걸고, 최대 1분마다 다시 확인한다.
+    let timer: ReturnType<typeof setTimeout>;
+    const schedule = () => {
+      timer = setTimeout(
+        () => {
+          const t = Date.now();
+          setNow(t);
+          if (t < warnAt) schedule();
+        },
+        Math.min(Math.max(0, warnAt - Date.now()), MINUTE_MS),
+      );
+    };
+    schedule();
     return () => clearTimeout(timer);
   }, [warnAt]);
   if (!showAutoCancelWarning(order, now)) return null;
