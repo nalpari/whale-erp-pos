@@ -150,6 +150,8 @@ describe("카드 (2.3 · 2.4)", () => {
   });
 
   it("1분마다 시간 글자만 바뀐다: N분 뒤 → 빨간 N분 지남, 12분에 자동 취소 경고", async () => {
+    // 카드 시계는 매분 0초에 바뀌므로(use-now) 정각에서 시작해야 「12분 뒤」 경계가 흔들리지 않는다.
+    vi.setSystemTime(new Date(2026, 10, 18, 15, 25, 0));
     const { backend } = renderBoard();
     await flush();
     act(() => backend.dev.addOrders(1)); // 첫 모의 주문은 도착 최소 시간(기본 5분)
