@@ -25,6 +25,7 @@ function order(
     status,
     updatedAt: PAID,
     paidAt: PAID,
+    autoCancelAt: PAID + 15 * 60_000,
     pickupChoice: "now",
     customerName: "박*준",
     phoneLast4: "1234",

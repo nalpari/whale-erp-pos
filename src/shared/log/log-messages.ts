@@ -194,6 +194,18 @@ export const logMessages = {
     `주문서 ${retry ? "다시 인쇄" : "자동 출력"} 건너뜀: ${orderId}, 「주문서」 체크된 슬롯 없음`,
   settingsFailed: (action: "save" | "load") =>
     action === "save" ? "설정 저장 실패" : "설정 읽기 실패",
+  // 주문설정은 실패 원인 이름과, 저장한 항목 이름 · 값만 남긴다 (SPEC-settings-order 8장).
+  orderSettingsFailed: (
+    action: "load" | "save",
+    timedOut: boolean,
+    errorName: string,
+  ) =>
+    `주문설정 ${action === "load" ? "읽기" : "저장"} ${timedOut ? "시간 초과" : `실패: ${errorName}`}`,
+  orderSettingsSaved: (
+    item: "autoCancelMinutes" | "arrivalMinMinutes",
+    minutes: number,
+  ) =>
+    `주문설정 저장: ${item === "autoCancelMinutes" ? "자동 취소 시간" : "도착 최소 시간"} ${minutes}분`,
   // 소개 · 공지 본문은 남기지 않는다 (매장정보 SPEC 7장).
   storeInfoSaved: () => "매장정보 저장",
   storeInfoFailed: (

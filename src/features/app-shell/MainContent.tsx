@@ -16,6 +16,8 @@ import { CustomerCancelSound } from "../order-board/CustomerCancelSound";
 import { OrderBoardScreen } from "../order-board/OrderBoardScreen";
 import { WidgetSettingsScreen } from "../settings-widget/WidgetSettingsScreen";
 import { PrinterSettingsScreen } from "../settings-printer/PrinterSettingsScreen";
+import { OrderSettingsScreen } from "../settings-order/OrderSettingsScreen";
+import { useOrderSettingsApi } from "../../shared/api/order-settings-context";
 import { useOrdersOptional } from "../../shared/orders/orders-context";
 import { panelId, tabId } from "../../shared/ui/tab-ids";
 import { TabBar } from "../../shared/ui/TabBar";
@@ -36,6 +38,9 @@ export function MainContent() {
   const storeInfoApi = useStoreInfoApi();
   const soldoutApi = useSoldOutApi();
   const popularApi = usePopularApi();
+  const orderSettingsApi = useOrderSettingsApi();
+  // 주문설정 저장 요청이 가는 중에는 메인 탭 · 환경설정 하위 탭 이동을 막는다(겹친 저장 · 토스트 놓침 방지). 위젯 이동은 막지 않는다.
+  const [orderSettingsSaving, setOrderSettingsSaving] = useState(false);
   // [AI챗봇 인기메뉴 설정] 탭을 누를 때마다(이미 그 탭일 때도) 목록을 다시 조회하게 알린다 (SPEC-settings-ai-popular 3장).
   const [popularPress, setPopularPress] = useState(0);
   // 인기메뉴 추가 · 삭제 요청이 가는 중에는 메인 탭 · 환경설정 하위 탭 이동을 막는다. 위젯 이동은 막지 않는다: 주문 처리가 먼저다.
@@ -97,6 +102,7 @@ export function MainContent() {
             )
               return;
             if (popularBusy && popularActive && id !== active.id) return;
+            if (orderSettingsSaving && id !== active.id) return;
             if (
               storeInfoSaving &&
               active.id === "store-info" &&
@@ -140,6 +146,7 @@ export function MainContent() {
                 onSelect={(id) => {
                   // 요청 중에는 같은 탭을 다시 눌러도 재조회하지 않는다(목록이 오류 화면으로 바뀌는 것을 막는다).
                   if (popularBusy && popularActive) return;
+                  if (orderSettingsSaving) return;
                   actions.selectSettingsTab(id);
                   if (id === "ai-popular-menu") setPopularPress((n) => n + 1);
                 }}
@@ -158,6 +165,11 @@ export function MainContent() {
                   />
                 ) : settings.id === "widget" ? (
                   <WidgetSettingsScreen />
+                ) : settings.id === "order" && orderSettingsApi ? (
+                  <OrderSettingsScreen
+                    api={orderSettingsApi}
+                    onSavingChange={setOrderSettingsSaving}
+                  />
                 ) : settings.id === "ai-popular-menu" &&
                   popularApi &&
                   state.session ? (
