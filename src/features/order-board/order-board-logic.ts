@@ -1,7 +1,6 @@
 // 주문접수 화면의 순수 함수 (SPEC-order-board 3장). 현재 시각은 늘 인자로 받는다 (가짜 시계로 시험).
 import {
   isCancelledStatus,
-  PICKUP_CHOICE_MINUTES,
   type Order,
   type OrderItem,
 } from "../../shared/api/orders";
@@ -41,35 +40,32 @@ export function menuSummary(items: OrderItem[]): {
   };
 }
 
-export interface PickupSchedule {
+export interface ArrivalSchedule {
   label: string;
   /** 괄호 안 글자. 없으면 괄호를 쓰지 않는다. */
   note?: { text: string; overdue: boolean };
 }
 
-/** 픽업 예정 문구 4가지 (Q26). 예정 시각 = 결제 시각 + 고객이 고른 값. */
-export function pickupSchedule(
-  order: Pick<Order, "pickupChoice" | "paidAt">,
+/** 도착 예정 「HH:mm」. 화면 문구와 주문서 · 영수증이 같이 쓴다 (SPEC-order-board 12장, SPEC-print-forms 12장). */
+export function arrivalClock(order: Pick<Order, "arrivalAt">): string {
+  return formatClock(order.arrivalAt);
+}
+
+/** 「HH:mm 도착 (N분 뒤 | N분 지남)」 (SPEC-order-board 12장). */
+export function arrivalSchedule(
+  order: Pick<Order, "arrivalAt">,
   now: number,
-): PickupSchedule {
-  const choice = order.pickupChoice;
-  // 값 이름이 아직 가정이라 모르는 값이 와도 "NaN"이 보이지 않게 「지금」으로 본다. 실제 API에서는 통신 계층이 검사한다.
-  const minutes: number | undefined = PICKUP_CHOICE_MINUTES[choice];
-  const target = order.paidAt + (minutes ?? 0) * MIN;
-  const label =
-    minutes === undefined || choice === "now"
-      ? "지금 픽업"
-      : `${formatClock(target)} 픽업`;
+): ArrivalSchedule {
+  const target = order.arrivalAt;
+  const label = `${arrivalClock(order)} 도착`;
   if (now >= target) {
     const late = Math.floor((now - target) / MIN);
-    // 예정 시각 뒤 1분이 되기 전에는 괄호를 붙이지 않는다 (Q26에 정해진 문구가 없다).
+    // 도착 시각 뒤 1분이 되기 전에는 괄호를 붙이지 않는다 (「0분 지남」을 보이지 않게, T04 규칙 그대로).
     return late >= 1
       ? { label, note: { text: `${late}분 지남`, overdue: true } }
       : { label };
   }
-  if (choice === "1hour-plus") {
-    return { label, note: { text: "1시간 이상", overdue: false } };
-  }
+  // 올림이라 「0분 뒤」는 나오지 않는다: 남은 시간이 1초여도 「1분 뒤」.
   const remaining = Math.ceil((target - now) / MIN);
   return { label, note: { text: `${remaining}분 뒤`, overdue: false } };
 }

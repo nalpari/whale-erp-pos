@@ -75,7 +75,7 @@ export const HISTORY_TEXTS = {
   orderNumber: "주문번호",
   customer: "고객명",
   phone: "연락처",
-  pickupAt: "픽업 예정",
+  arrivalAt: "도착 예정",
   note: "요청사항",
   payment: "결제정보",
   orderAmount: "주문금액",

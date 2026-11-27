@@ -1,5 +1,6 @@
 // 요약 팝업 · 취소 사유 팝업 (SPEC-order-summary 6장). 진짜 OrdersProvider + 모의 서버로 주문접수 화면 안에서 끝까지 돌린다.
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { formatClock } from "../order-board/order-board-logic";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockAuthApi, type Session } from "../../shared/api/auth";
 import { createMockOrderFeed } from "../../shared/api/order-feed";
@@ -151,11 +152,25 @@ describe("내용 (2.2)", () => {
     expect(d.getByText("261118000001" + "0003")).toBeInTheDocument();
     expect(d.getByText("홍*동")).toBeInTheDocument();
     expect(d.getByText("***-****-0000")).toBeInTheDocument();
+    expect(d.getByText("도착 예정")).toBeInTheDocument();
+    expect(summary()).toHaveTextContent(/\d{2}:\d{2} 도착 \(\d+분 뒤\)/);
+    expect(d.getByText(/^\d+분 뒤$/)).not.toHaveClass("text-red-600");
     expect(d.getByText(/^얼음 조금만.*포장해 주세요\.$/)).toBeInTheDocument();
     expect(
       d.getByText("샷 추가, 시럽 빼기, 얼음 적게, 컵 두 개로 나눠 담기"),
     ).toBeInTheDocument();
     expect(d.getByText(/초코 쿠키\(시험\) × 3/)).toBeInTheDocument();
+  });
+
+  it("도착 예정: 「HH:mm 도착 (N분 뒤)」, 도착 시각이 지나면 빨간 「N분 지남」 (12장)", async () => {
+    await openWith(1); // 첫 모의 주문: 결제 + 도착 최소 시간(기본 5분)
+    expect(summary()).toHaveTextContent(
+      `${formatClock(Date.now() + 5 * 60_000)} 도착 (5분 뒤)`,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(8 * 60_000);
+    });
+    expect(inSummary().getByText("3분 지남")).toHaveClass("text-red-600");
   });
 
   it("요청사항이 없으면 칸이 없다", async () => {

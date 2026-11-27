@@ -28,6 +28,7 @@ import { createFakeWindow } from "../../test/fakes";
 import { AppShell } from "../app-shell/AppShell";
 import { AppShellProvider } from "../app-shell/AppShellContext";
 import { BOARD_TEXTS } from "./board-texts";
+import { formatClock } from "./order-board-logic";
 
 const STORE: Session = {
   accountType: "store",
@@ -148,19 +149,22 @@ describe("카드 (2.3 · 2.4)", () => {
     ).toHaveClass("min-h-14");
   });
 
-  it("1분마다 시간 글자만 바뀐다: 지금 픽업 → 3분 지남, 12분에 자동 취소 경고", async () => {
+  it("1분마다 시간 글자만 바뀐다: N분 뒤 → 빨간 N분 지남, 12분에 자동 취소 경고", async () => {
     const { backend } = renderBoard();
     await flush();
-    act(() => backend.dev.addOrders(1)); // 첫 모의 주문은 「지금」
+    act(() => backend.dev.addOrders(1)); // 첫 모의 주문은 도착 최소 시간(기본 5분)
     await flush();
-    expect(within(card(1)).getByText(/지금 픽업/)).toBeInTheDocument();
+    expect(card(1)).toHaveTextContent(
+      `${formatClock(Date.now() + 5 * 60_000)} 도착 (5분 뒤)`,
+    );
+    expect(within(card(1)).getByText("5분 뒤")).not.toHaveClass("text-red-600");
     expect(within(card(1)).queryByText(/지남/)).toBeNull();
     expect(within(card(1)).queryByText("3분 뒤 자동 취소")).toBeNull();
 
-    await advance(3 * 60_000);
+    await advance(8 * 60_000);
     expect(within(card(1)).getByText("3분 지남")).toHaveClass("text-red-600");
 
-    await advance(9 * 60_000);
+    await advance(4 * 60_000);
     expect(within(card(1)).getByText("3분 뒤 자동 취소")).toBeInTheDocument();
   });
 

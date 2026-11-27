@@ -1,5 +1,6 @@
 // 주문내역 화면 (SPEC-order-history 7장). 진짜 OrdersProvider + 모의 서버로 목록 · 상세 · 상태 변경을 끝까지 돌린다.
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { formatClock } from "../order-board/order-board-logic";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockAuthApi, type Session } from "../../shared/api/auth";
 import { createMockOrderFeed } from "../../shared/api/order-feed";
@@ -468,7 +469,17 @@ describe("상세 (3장)", () => {
     expect(within(basic).getByText("***-****-0000")).toBeInTheDocument();
     expect(within(basic).getByText(/홍\*동/)).toBeInTheDocument();
     expect(within(basic).getByText("3번째 주문")).toBeInTheDocument(); // 같은 고객의 앞선 #1 · #2 + 이번 주문
-    expect(within(basic).getByText(/픽업$/)).toBeInTheDocument();
+    expect(within(basic).getByText("도착 예정")).toBeInTheDocument();
+    // 3번째 모의 주문의 도착 = 결제 + (도착 최소 5분 + 10분). 지난 주문처럼 「N분 뒤 · 지남」 괄호 없이 시각만.
+    const [y, mo, d, h, mi] = within(basic)
+      .getByText(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/)
+      .textContent!.split(/[- :]/)
+      .map(Number);
+    expect(
+      within(basic).getByText(
+        `${formatClock(new Date(y, mo - 1, d, h, mi + 15).getTime())} 도착`,
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "요청사항" })).toHaveTextContent(
       "얼음 조금만",
     );
