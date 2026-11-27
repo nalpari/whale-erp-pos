@@ -1,9 +1,10 @@
 // 주문 카드 하나 (SPEC-order-board 2.3 · 2.4). 개인정보는 서버가 가린 값만 보인다.
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import type { Order, OrderAction } from "../../shared/api/orders";
 import { BUTTON_COLORS, CARD_COLORS } from "./card-colors";
 import { ACTION_BUTTONS, BOARD_TEXTS, STATUS_LABELS } from "./board-texts";
 import {
+  AUTO_CANCEL_WARNING_LEAD_MS,
   formatClock,
   menuSummary,
   arrivalSchedule,
@@ -32,8 +33,28 @@ export function ArrivalText({ order }: { order: Pick<Order, "arrivalAt"> }) {
   );
 }
 
+/** 매분 0초가 아니라 경고 시각(초 단위) 정각에 뜨게 그때 다시 그린다. */
 function AutoCancelWarning({ order }: { order: Order }) {
-  if (!showAutoCancelWarning(order, useNow(MINUTE_MS))) return null;
+  const [now, setNow] = useState(Date.now);
+  const warnAt = order.autoCancelAt - AUTO_CANCEL_WARNING_LEAD_MS;
+  useEffect(() => {
+    // 한 번만 걸면 시계가 뒤로 가거나 절전에서 깨 일찍 울렸을 때 경고가 끝내 안 뜬다.
+    // 그래서 울릴 때마다 남은 시간을 다시 재서 걸고, 최대 1분마다 다시 확인한다.
+    let timer: ReturnType<typeof setTimeout>;
+    const schedule = () => {
+      timer = setTimeout(
+        () => {
+          const t = Date.now();
+          setNow(t);
+          if (t < warnAt) schedule();
+        },
+        Math.min(Math.max(0, warnAt - Date.now()), MINUTE_MS),
+      );
+    };
+    schedule();
+    return () => clearTimeout(timer);
+  }, [warnAt]);
+  if (!showAutoCancelWarning(order, now)) return null;
   return (
     <p className="text-base font-bold text-red-600">
       {BOARD_TEXTS.autoCancelWarning}

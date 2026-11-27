@@ -51,23 +51,23 @@ export function arrivalClock(order: Pick<Order, "arrivalAt">): string {
   return formatClock(order.arrivalAt);
 }
 
-/** 「HH:mm 도착 (N분 뒤 | N분 지남)」 (SPEC-order-board 12장). */
+/** 이만큼 지나면 분 대신 「1시간 이상 지남」. 0시 자동 픽업완료가 없어 어제 주문에 「710분 지남」이 보이지 않게 한다 (12장 B-1). */
+const OVERDUE_CAP_MIN = 60;
+
+/** 「HH:mm 도착 (N분 뒤 | N분 지남 | 1시간 이상 지남)」 (SPEC-order-board 12장). */
 export function arrivalSchedule(
   order: Pick<Order, "arrivalAt">,
   now: number,
 ): ArrivalSchedule {
-  const target = order.arrivalAt;
   const label = `${arrivalClock(order)} 도착`;
-  if (now >= target) {
-    const late = Math.floor((now - target) / MIN);
-    // 도착 시각 뒤 1분이 되기 전에는 괄호를 붙이지 않는다 (「0분 지남」을 보이지 않게, T04 규칙 그대로).
-    return late >= 1
-      ? { label, note: { text: `${late}분 지남`, overdue: true } }
-      : { label };
-  }
-  // 올림이라 「0분 뒤」는 나오지 않는다: 남은 시간이 1초여도 「1분 뒤」.
-  const remaining = Math.ceil((target - now) / MIN);
-  return { label, note: { text: `${remaining}분 뒤`, overdue: false } };
+  // 도착 시각 · 현재 시각 모두 초를 버린 분으로 센다: 보이는 「HH:mm」과 괄호 숫자가 어긋나지 않게 (12장 A-1).
+  // 같은 분이면 괄호가 없다 (「0분 뒤 · 0분 지남」 없음).
+  const diff = Math.floor(now / MIN) - Math.floor(order.arrivalAt / MIN);
+  if (diff === 0) return { label };
+  if (diff < 0)
+    return { label, note: { text: `${-diff}분 뒤`, overdue: false } };
+  const text = diff >= OVERDUE_CAP_MIN ? "1시간 이상 지남" : `${diff}분 지남`;
+  return { label, note: { text, overdue: true } };
 }
 
 export function showAutoCancelWarning(order: Order, now: number): boolean {

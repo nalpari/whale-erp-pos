@@ -84,6 +84,43 @@ describe("arrivalSchedule (12장, 15:25 결제 · 20분 고름 → 15:45 도착)
     });
     expect(at(23, 30).note).toEqual({ text: "3분 지남", overdue: true });
   });
+  it("59분까지는 「N분 지남」, 60분부터 빨간 「1시간 이상 지남」", () => {
+    expect(at(79, 59).note).toEqual({ text: "59분 지남", overdue: true });
+    expect(at(80).note).toEqual({ text: "1시간 이상 지남", overdue: true });
+    expect(at(20 + 710).note).toEqual({
+      text: "1시간 이상 지남",
+      overdue: true,
+    });
+  });
+  it("「N분 뒤」는 60분이 넘어도 그대로 센다", () => {
+    const far = order("a", { arrivalAt: PAID + 90 * MIN });
+    expect(arrivalSchedule(far, PAID).note?.text).toBe("90분 뒤");
+  });
+});
+
+describe("arrivalSchedule 분 기준 (12장 A-1, 도착 15:47:30 → 보이는 시각 15:47)", () => {
+  const ARRIVAL = new Date(2026, 10, 18, 15, 47, 30).getTime();
+  const at = (m: number, s: number) =>
+    arrivalSchedule(
+      order("a", { arrivalAt: ARRIVAL }),
+      new Date(2026, 10, 18, 15, m, s).getTime(),
+    );
+
+  it("15:46:00~15:46:59는 「1분 뒤」", () => {
+    expect(at(46, 0).note).toEqual({ text: "1분 뒤", overdue: false });
+    expect(at(46, 59).note).toEqual({ text: "1분 뒤", overdue: false });
+  });
+  it("15:45:59는 「2분 뒤」", () => {
+    expect(at(45, 59).note?.text).toBe("2분 뒤");
+  });
+  it("15:47:00~15:47:59는 괄호 없음 (초가 도착 시각보다 앞이든 뒤든)", () => {
+    expect(at(47, 0)).toEqual({ label: "15:47 도착" });
+    expect(at(47, 30)).toEqual({ label: "15:47 도착" });
+    expect(at(47, 59)).toEqual({ label: "15:47 도착" });
+  });
+  it("15:48:00부터 「1분 지남」", () => {
+    expect(at(48, 0).note).toEqual({ text: "1분 지남", overdue: true });
+  });
 });
 
 describe("showAutoCancelWarning (SPEC-settings-order 5장)", () => {
