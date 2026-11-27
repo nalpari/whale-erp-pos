@@ -3,7 +3,7 @@ type: Task Report
 title: T20 환경설정 — 주문설정
 description: 환경설정에 [주문설정] 탭을 만들어 자동 취소 시간과 도착 최소 시간을 매장이 정하고, 카드 경고를 주문의 자동 취소 예정 시각 기준으로 바꾼다.
 tags: [settings-order, order-board, order-sync]
-status: draft
+status: stable
 generated:
   by: claude-code/claude-opus-5-5
   at: 2026-11-27T10:00:00+09:00
@@ -14,6 +14,9 @@ sources:
   - id: task
     resource: plane:WHALEERPPO-53
     title: T20 환경설정 — 주문설정
+verified:
+  - by: human:yjnoh
+    at: 2026-11-27T10:40:00+09:00
 ---
 
 # 목표
@@ -65,5 +68,7 @@ sources:
 - 2026-11-27 리뷰 보류 지적(저장 시간 초과 때 서버 값과 화면이 달라짐) → 사용자 A-2: 시간 초과면 토스트 뒤 서버에서 다시 읽음. 스펙 4장 · 13장 F 추가, 작업 세션에 전달
 - 2026-11-27 A-2 반영 보고: 시간 초과면 다시 읽기, 테스트 2개, ② Minor 2 고침 → 지휘 세션 확인(853 통과), 시나리오 문서 작성
 - 2026-11-27 사용자 실제 창 A1~A3 확인, 나머지는 자동 테스트로 대신하기로 함(A-1)
+- 2026-11-27 사용자 "커밋해" → 커밋 `5bfc735` · `2177734`, main 머지 `6239d27`
+- 2026-11-27 사용자 보고서 승인(stable)
 
 [^spec]: SPEC-settings-order 5장 · 13장 D · E
