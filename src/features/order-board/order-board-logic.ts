@@ -7,8 +7,8 @@ import {
 } from "../../shared/api/orders";
 
 const MIN = 60_000;
-/** 결제 뒤 이만큼 지난 접수대기 주문에 「3분 뒤 자동 취소」를 보인다 (Q20, 15분 자동 취소 3분 전). */
-export const AUTO_CANCEL_WARNING_MS = 12 * MIN;
+/** 자동 취소 예정 시각보다 이만큼 앞서 「3분 뒤 자동 취소」를 보인다 (SPEC-settings-order 5장). */
+export const AUTO_CANCEL_WARNING_LEAD_MS = 3 * MIN;
 /** 카드에 보이는 메뉴 줄 수 (Q24). */
 export const MENU_LINES = 3;
 
@@ -76,7 +76,8 @@ export function pickupSchedule(
 
 export function showAutoCancelWarning(order: Order, now: number): boolean {
   return (
-    order.status === "pending" && now - order.paidAt >= AUTO_CANCEL_WARNING_MS
+    order.status === "pending" &&
+    now >= order.autoCancelAt - AUTO_CANCEL_WARNING_LEAD_MS
   );
 }
 

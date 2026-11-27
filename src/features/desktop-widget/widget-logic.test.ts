@@ -17,6 +17,7 @@ function order(id: string, status: Order["status"], paidAt: number): Order {
     status,
     updatedAt: paidAt,
     paidAt,
+    autoCancelAt: paidAt + 15 * 60_000,
     pickupChoice: "now",
     items: [{ name: "아메리카노(시험)", quantity: 1 }],
     customerName: "홍*동",
